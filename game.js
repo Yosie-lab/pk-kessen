@@ -525,12 +525,12 @@ function computeGoalRect() {
   const topOverhang = 22;
 
   const playableH = Math.max(80, availH - topOverhang);
-  const maxGhByHeight = playableH * 0.3;
-  const maxGhByWidth = (availW * 0.94) / 3;
-  const ghCap = h <= 300 ? 96 : h <= 380 ? 132 : h <= 460 ? 160 : 200;
+  const maxGhByHeight = playableH * 0.32;
+  const maxGhByWidth = (availW * 0.96) / 2.92;
+  const ghCap = h <= 300 ? 104 : h <= 380 ? 142 : h <= 460 ? 172 : 216;
   const gh = Math.min(maxGhByHeight, maxGhByWidth, ghCap);
 
-  const gw = Math.min(availW * 0.94, gh * 3.0);
+  const gw = Math.min(availW * 0.96, gh * 3.0);
   const x = inset.left + (availW - gw) * 0.5;
   const y = inset.top + topOverhang;
 
@@ -688,10 +688,10 @@ function keeperDiveAim(dir, height = "mid") {
 const KEEPER_LOCAL_FOOT_Y = 82;
 const KEEPER_LOCAL_HEAD_TOP = -14;
 const BALL_REF_GOAL_H = 160;
-const BALL_REF_RADIUS = 12;
+const BALL_REF_RADIUS = 9;
 
 function ballBaseRadius(g = goalRect()) {
-  return clamp((g.h / BALL_REF_GOAL_H) * BALL_REF_RADIUS, 7, 14);
+  return clamp((g.h / BALL_REF_GOAL_H) * BALL_REF_RADIUS, 5.5, 11);
 }
 
 function keeperScaleForGoal(g = goalRect()) {
@@ -1541,10 +1541,10 @@ function shotEndPoint(result, ballSpot) {
  * ポスト／バー時: 接近（減速）→ 密着の一瞬 → 跳ね返り（落下・スピン変化）
  */
 function flightBallScale(u, result, scaleMul = 1) {
-  // ゴールネット到達時は小さくしすぎない
-  const end = result?.goal ? 0.95 : result?.saved ? 0.78 : result?.post ? 0.78 : 0.62;
+  const end = result?.goal ? 0.72 : result?.saved ? 0.78 : result?.post ? 0.78 : 0.62;
   const travelU = result?.saved ? Math.min(u / 0.84, 1) : u;
-  return lerp(1.2, end, travelU) * scaleMul;
+  const start = result?.goal ? 1.05 : 1.2;
+  return lerp(start, end, travelU) * scaleMul;
 }
 
 function sampleFlightPosition(from, end, postHit, result, u, h) {
@@ -2189,11 +2189,7 @@ function finishKick(result, shooter) {
     state.scores[key] += 1;
     state.flash = 1;
     state.crowdPulse = 1;
-    state.netShake = 1;
-    state.netImpact = {
-      x: result.zone ? ZONE_X[result.zone.dir] : result.aim?.x ?? 0.5,
-      y: result.zone ? ZONE_Y[result.zone.height] : result.aim?.y ?? 0.5,
-    };
+    // ゴールネットは揺らさない
     // 自軍ゴールは歓声、相手ゴールは残念な声
     if (shooter === "you") playCheer();
     else playMiss();
