@@ -402,9 +402,6 @@ const state = {
   lastOppIndex: -1,
   scene: buildScene(OPPONENT_KITS[0]),
   aim: { x: 0.5, y: 0.45 },
-  power: 0,
-  charging: false,
-  chargeDir: 1,
   shot: null,
   save: null,
   keeperDir: "center",
@@ -424,7 +421,6 @@ const state = {
   netShake: 0,
   netImpact: { x: 0.5, y: 0.5 },
   message: "",
-  waiting: false,
   dpr: 1,
   w: 0,
   h: 0,
@@ -1029,9 +1025,6 @@ function startMatch() {
 function beginYouShoot() {
   state.turn = "you-shoot";
   state.phase = "ready";
-  state.waiting = false;
-  state.charging = false;
-  state.power = 0;
   state.aim = { x: 0.5, y: 0.48 };
   state.aimLocked = false;
   state.pointerAim = null;
@@ -1056,7 +1049,6 @@ function beginYouShoot() {
 function beginYouSave() {
   state.turn = "you-save";
   state.phase = "ready-save";
-  state.waiting = false;
   state.ball = null;
   state.kicker = null;
   state.approach = rollApproach(false);
@@ -2226,7 +2218,6 @@ function finishKick(result, shooter) {
 
   updateHud();
   state.phase = "result-beat";
-  state.waiting = true;
 
   setTimeout(() => {
     state.ball = null;
@@ -2419,119 +2410,6 @@ function drawSky() {
   }
 }
 
-/** 国らしい遠景（シンプルなシルエット） */
-function drawVenueMotif(v) {
-  const { w, h } = state;
-  const baseY = h * 0.145;
-  ctx.fillStyle = "rgba(0,0,0,0.28)";
-
-  if (v.motif === "palms") {
-    for (const px of [0.08, 0.18, 0.82, 0.92]) {
-      const x = w * px;
-      ctx.fillRect(x - 2, baseY - 28, 4, 36);
-      ctx.beginPath();
-      for (let i = 0; i < 5; i++) {
-        const a = -Math.PI / 2 + (i - 2) * 0.35;
-        ctx.moveTo(x, baseY - 28);
-        ctx.quadraticCurveTo(x + Math.cos(a) * 18, baseY - 42, x + Math.cos(a) * 28, baseY - 22);
-      }
-      ctx.fill();
-    }
-    return;
-  }
-
-  if (v.motif === "desert") {
-    ctx.beginPath();
-    ctx.moveTo(0, baseY + 8);
-    ctx.quadraticCurveTo(w * 0.2, baseY - 18, w * 0.4, baseY + 2);
-    ctx.quadraticCurveTo(w * 0.55, baseY - 22, w * 0.72, baseY);
-    ctx.quadraticCurveTo(w * 0.88, baseY - 14, w, baseY + 6);
-    ctx.lineTo(w, baseY + 20);
-    ctx.lineTo(0, baseY + 20);
-    ctx.fill();
-    if (!v.sun) {
-      ctx.fillStyle = "rgba(255,220,160,0.35)";
-      ctx.beginPath();
-      ctx.arc(w * 0.78, h * 0.05, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = v.sky[0];
-      ctx.beginPath();
-      ctx.arc(w * 0.79, h * 0.048, 9, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    return;
-  }
-
-  if (v.motif === "tower") {
-    const tx = w * 0.12;
-    ctx.beginPath();
-    ctx.moveTo(tx - 14, baseY + 6);
-    ctx.lineTo(tx - 4, baseY - 48);
-    ctx.lineTo(tx + 4, baseY - 48);
-    ctx.lineTo(tx + 14, baseY + 6);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillRect(tx - 2, baseY - 58, 4, 12);
-    return;
-  }
-
-  if (v.motif === "coast") {
-    ctx.beginPath();
-    ctx.moveTo(0, baseY + 10);
-    for (let x = 0; x <= w; x += 20) {
-      ctx.lineTo(x, baseY + 4 + Math.sin(x * 0.04) * 5);
-    }
-    ctx.lineTo(w, baseY + 18);
-    ctx.lineTo(0, baseY + 18);
-    ctx.fill();
-    return;
-  }
-
-  if (v.motif === "overcast") {
-    ctx.fillStyle = "rgba(40,48,56,0.35)";
-    for (const c of [
-      [0.15, 0.04, 0.2],
-      [0.45, 0.02, 0.28],
-      [0.75, 0.05, 0.22],
-    ]) {
-      ctx.beginPath();
-      ctx.ellipse(w * c[0], h * c[1], w * c[2], h * 0.03, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    return;
-  }
-
-  if (v.motif === "industrial") {
-    for (const bx of [0.06, 0.14, 0.86, 0.94]) {
-      const x = w * bx;
-      const bh = 18 + (bx * 40) % 22;
-      ctx.fillRect(x - 10, baseY - bh, 20, bh + 8);
-      ctx.fillRect(x - 3, baseY - bh - 14, 6, 14);
-    }
-    return;
-  }
-
-  if (v.motif === "plaza") {
-    for (const bx of [0.05, 0.12, 0.88, 0.95]) {
-      const x = w * bx;
-      ctx.fillRect(x - 12, baseY - 22, 24, 28);
-      ctx.fillRect(x - 4, baseY - 34, 8, 12);
-    }
-    return;
-  }
-
-  if (v.motif === "flat") {
-    ctx.fillRect(0, baseY + 2, w, 10);
-    return;
-  }
-
-  for (let i = 0; i < 14; i++) {
-    const x = (w / 14) * i + 4;
-    const bh = 10 + ((i * 17) % 28);
-    ctx.fillRect(x, baseY - bh, w / 16, bh + 6);
-  }
-}
-
 function crowdHash(col, row, salt = 0) {
   return ((col * 73856093) ^ (row * 19349663) ^ salt) >>> 0;
 }
@@ -2598,15 +2476,6 @@ function drawStandAisles(standTop, standBottom, tierH, tierCount) {
       ctx.fillRect(cx - aisleHalf, ty - 2.5, aisleHalf * 2, 2.5);
       ctx.fillStyle = "rgba(255,255,255,0.04)";
       ctx.fillRect(cx - aisleHalf, ty - 2.5, aisleHalf * 2, 0.8);
-      // 踏み面ハatching
-      ctx.strokeStyle = "rgba(0,0,0,0.12)";
-      ctx.lineWidth = 0.8;
-      for (let s = -aisleHalf; s < aisleHalf; s += 5) {
-        ctx.beginPath();
-        ctx.moveTo(cx + s, standTop + t * tierH + 4);
-        ctx.lineTo(cx + s + 4, standTop + t * tierH + 8);
-        ctx.stroke();
-      }
     }
 
     // 通路手すり
@@ -2865,7 +2734,9 @@ function drawCrowd() {
     const rowH = tierH * 0.78;
     const headR = lerp(3.2, 5.8, 1 - depth);
     const wave = pulseAmt * lerp(10, 28, 1 - depth);
-    const colsPerBlock = Math.floor(lerp(4, 8, 1 - depth * 0.2));
+    const colsPerBlock = Math.floor(
+      lerp(4, 8, 1 - depth * 0.2) * (state.w < 560 ? 0.72 : 1)
+    );
 
     for (let b = 0; b < blocks.length; b++) {
       const block = blocks[b];
@@ -2930,7 +2801,7 @@ function drawWeatherOverlay() {
     const now = performance.now();
     ctx.strokeStyle = `rgba(200,220,240,${0.12 + v.rain * 0.18})`;
     ctx.lineWidth = 1.2;
-    const n = Math.floor(50 + v.rain * 70);
+    const n = Math.min(40, Math.floor(50 + v.rain * 70));
     for (let i = 0; i < n; i++) {
       const x = ((i * 97 + now * 0.35) % (w + 40)) - 20;
       const y = ((i * 53 + now * 0.9) % (h * 0.7));
@@ -3315,8 +3186,8 @@ function drawGoal() {
     }
   }
 
-  // 奥ネット（細かい六角）
-  strokeNetFace(bl, br, blb, brb, 28, 16, 0.7, 0.36);
+  // 奥ネット（軽量メッシュ）
+  strokeNetFace(bl, br, blb, brb, 18, 10, 0.7, 0.36);
   // 左側面ネット
   const leftBulge = {
     tl: fl,
@@ -3324,7 +3195,7 @@ function drawGoal() {
     bl: flb,
     br: { x: blb.x - depth * 0.07, y: blb.y + depth * 0.01 },
   };
-  strokeNetFace(leftBulge.tl, leftBulge.tr, leftBulge.bl, leftBulge.br, 10, 16, 0.35, 0.24);
+  strokeNetFace(leftBulge.tl, leftBulge.tr, leftBulge.bl, leftBulge.br, 6, 10, 0.35, 0.24);
   // 右側面
   const rightBulge = {
     tl: fr,
@@ -3332,19 +3203,9 @@ function drawGoal() {
     bl: frb,
     br: { x: brb.x + depth * 0.07, y: brb.y + depth * 0.01 },
   };
-  strokeNetFace(rightBulge.tl, rightBulge.tr, rightBulge.bl, rightBulge.br, 10, 16, 0.35, 0.24);
+  strokeNetFace(rightBulge.tl, rightBulge.tr, rightBulge.bl, rightBulge.br, 6, 10, 0.35, 0.24);
   // 天井ネット
-  strokeNetFace(fl, fr, bl, br, 24, 8, 0.22, 0.18);
-
-  // 深さ方向のメッシュ（薄く2層）
-  for (let d = 1; d <= 2; d++) {
-    const t = d / 3;
-    const tl = lerp2(fl, bl, t);
-    const tr = lerp2(fr, br, t);
-    const blp = lerp2(flb, blb, t);
-    const brp = lerp2(frb, brb, t);
-    strokeNetFace(tl, tr, blp, brp, 22, 14, 0.45 + t * 0.2, 0.09 + t * 0.07);
-  }
+  strokeNetFace(fl, fr, bl, br, 14, 5, 0.22, 0.18);
 
   // —— 奥のフレーム（細い白パイプ） ——
   function strokePipe(a, b, width, color) {
@@ -4771,16 +4632,18 @@ function drawBall() {
   }
 
   for (const t of state.ball.trail) {
-    t.a *= 0.86;
     if (t.a < 0.05) continue;
-    ctx.globalAlpha = t.a * 0.28;
-    drawSoccerBall(
+    ctx.globalAlpha = t.a * 0.32;
+    ctx.beginPath();
+    ctx.arc(
       t.x,
       t.y,
-      baseR * (10 / 12) * (t.scale || state.ball.scale),
-      t.spinY || 0,
-      t.spinX || 0
+      baseR * 0.85 * (t.scale || state.ball.scale),
+      0,
+      Math.PI * 2
     );
+    ctx.fillStyle = "#f0f2ee";
+    ctx.fill();
     ctx.globalAlpha = 1;
   }
 
@@ -4817,10 +4680,27 @@ function update(dt) {
   if (state.flash > 0) state.flash = Math.max(0, state.flash - dt * 1.8);
   if (state.crowdPulse > 0) state.crowdPulse = Math.max(0, state.crowdPulse - dt * 0.9);
   if (state.netShake > 0) state.netShake = Math.max(0, state.netShake - dt * 0.9);
+  if (state.ball?.trail?.length) {
+    for (const t of state.ball.trail) t.a *= 0.86;
+    state.ball.trail = state.ball.trail.filter((t) => t.a >= 0.05);
+  }
+}
+
+function renderBackdrop() {
+  const grad = ctx.createLinearGradient(0, 0, 0, state.h);
+  grad.addColorStop(0, "#0c1a14");
+  grad.addColorStop(1, "#06110d");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, state.w, state.h);
 }
 
 function render() {
   try {
+    if (state.mode === "title" || state.mode === "result") {
+      renderBackdrop();
+      return;
+    }
+
     drawSky();
     drawCrowd();
     drawPitch();
@@ -4908,15 +4788,20 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
-window.addEventListener("pointerdown", onPointerDown);
-canvas.addEventListener("pointerdown", onPointerDown);
+canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
 window.addEventListener("pointermove", onPointerMove);
 
-window.addEventListener("resize", () => {
-  resize();
-  if (state.mode === "play") refreshFixedGoal();
-});
-const layoutObserver = new ResizeObserver(() => resize());
+let resizeTimer = 0;
+function scheduleLayoutRefresh() {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    resize();
+    if (state.mode === "play") refreshFixedGoal();
+  }, 32);
+}
+
+window.addEventListener("resize", scheduleLayoutRefresh);
+const layoutObserver = new ResizeObserver(scheduleLayoutRefresh);
 layoutObserver.observe(canvas);
 resize();
 requestAnimationFrame(loop);

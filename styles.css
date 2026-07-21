@@ -500,78 +500,6 @@ button {
   letter-spacing: 0.04em;
 }
 
-.dive-pad {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(72px, 1fr));
-  grid-template-rows: repeat(3, auto);
-  gap: 8px;
-  width: min(360px, 100%);
-}
-
-.dive-btn {
-  padding: 12px 6px;
-  background: rgba(8, 24, 16, 0.82);
-  color: var(--ink);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  letter-spacing: 0.04em;
-  font-size: 0.86rem;
-  font-weight: 700;
-  transition:
-    background 0.15s ease,
-    transform 0.15s ease,
-    border-color 0.15s ease;
-}
-
-.dive-btn:hover,
-.dive-btn:focus-visible {
-  background: rgba(232, 255, 106, 0.16);
-  border-color: rgba(232, 255, 106, 0.55);
-  outline: none;
-}
-
-.dive-btn:active {
-  transform: scale(0.97);
-}
-
-.power-wrap {
-  width: min(320px, 88vw);
-  display: grid;
-  gap: 6px;
-}
-
-.power-track {
-  position: relative;
-  height: 12px;
-  background: rgba(255, 255, 255, 0.12);
-  overflow: hidden;
-}
-
-.power-fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #7dffb2, var(--accent), #ffb35c);
-  transition: none;
-}
-
-.power-sweet {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 62%;
-  width: 16%;
-  background: rgba(255, 255, 255, 0.18);
-  border-left: 1px solid rgba(255, 255, 255, 0.35);
-  border-right: 1px solid rgba(255, 255, 255, 0.35);
-}
-
-.power-label {
-  font-family: var(--font-display);
-  font-size: 0.95rem;
-  letter-spacing: 0.2em;
-  color: var(--muted);
-  text-align: center;
-}
-
 @media (max-width: 560px) {
   .hud:not([hidden]) {
     min-height: 10.75rem;
@@ -627,16 +555,6 @@ button {
 
   .brand {
     font-size: clamp(4.6rem, 24vw, 7rem);
-  }
-
-  .dive-pad {
-    grid-template-columns: repeat(3, 1fr);
-    width: min(340px, 100%);
-  }
-
-  .dive-btn {
-    padding: 11px 4px;
-    font-size: 0.78rem;
   }
 }
 
