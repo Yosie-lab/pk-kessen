@@ -1,0 +1,10 @@
+{
+  "name": "pk-kessen",
+  "version": "1.0.0",
+  "description": "サッカーPK戦ゲーム",
+  "license": "MIT",
+  "scripts": {
+    "start": "python3 -m http.server 5180",
+    "dev": "python3 -m http.server 5180"
+  }
+}

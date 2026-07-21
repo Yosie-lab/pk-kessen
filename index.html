@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>PK決戦</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Dela+Gothic+One&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="pitch" aria-hidden="true"></canvas>
+
+      <header class="hud" id="hud" hidden>
+        <div class="scoreboard">
+          <div class="side you">
+            <span class="label" id="label-you">JAPAN</span>
+            <div class="score-row">
+              <span class="flag" id="flag-you" aria-hidden="true">🇯🇵</span>
+              <span class="score" id="score-you">0</span>
+            </div>
+            <div class="kicks" id="kicks-you"></div>
+          </div>
+          <div class="round-meta">
+            <span class="brand-mini">PK決戦</span>
+            <span class="round" id="round-label">1 / 5</span>
+          </div>
+          <div class="side cpu">
+            <span class="label" id="label-cpu">RIVAL</span>
+            <div class="score-row">
+              <span class="score" id="score-cpu">0</span>
+              <span class="flag" id="flag-cpu" aria-hidden="true">🏳️</span>
+            </div>
+            <div class="kicks" id="kicks-cpu"></div>
+          </div>
+        </div>
+        <p class="prompt" id="prompt"></p>
+      </header>
+
+      <section class="screen title-screen" id="title-screen">
+        <div class="title-atmosphere" aria-hidden="true"></div>
+        <div class="title-content">
+          <p class="eyebrow">SUDDEN DEATH</p>
+          <h1 class="brand">PK決戦</h1>
+          <p class="tagline">もつれた試合を、一発で決める。</p>
+          <div class="cta-row">
+            <button type="button" class="btn primary" id="btn-start">キックオフ</button>
+          </div>
+          <p class="hint">キックオフのあと、ピッチをクリックするとホイッスルが鳴り助走が始まります。</p>
+          <p class="hint" id="boot-error" hidden style="color:#ff8a7a;margin-top:12px"></p>
+        </div>
+      </section>
+
+      <section class="screen result-screen" id="result-screen" hidden>
+        <div class="result-card">
+          <p class="result-kicker" id="result-kicker">MATCH OVER</p>
+          <h2 class="result-title" id="result-title">勝利</h2>
+          <p class="result-score" id="result-score">0 - 0</p>
+          <button type="button" class="btn primary" id="btn-retry">もう一度</button>
+        </div>
+      </section>
+
+      <div class="controls" id="controls" hidden>
+        <div class="aim-hint" id="aim-hint">クリックで助走開始</div>
+      </div>
+    </div>
+    <script type="module" src="./game.js"></script>
+    <script>
+      setTimeout(function () {
+        if (window.__PK_LOADED) return;
+        var el = document.getElementById("boot-error");
+        if (!el) return;
+        el.hidden = false;
+        el.textContent =
+          location.protocol === "file:"
+            ? "このままでは動きません。ターミナルで npm start し、 http://127.0.0.1:5180/ を開いてください。"
+            : "ゲーム脚本の読み込みに失敗しました。ページをハードリロードするか、 npm start で再起動してください。";
+      }, 1200);
+    </script>
+  </body>
+</html>
