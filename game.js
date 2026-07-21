@@ -685,9 +685,21 @@ function keeperDiveAim(dir, height = "mid") {
   return cellCenter(dir, height);
 }
 
-/** 待機はゴールエリア最奥＝ゴールライン上（足がラインに来る位置） */
+function keeperScaleForGoal(g = goalRect()) {
+  return clamp((g.h * 0.6) / 100, 1.05, 1.32);
+}
+
+/** 待機ポーズの足元までのアンカーからの距離（スケール後） */
+function keeperFootDrop(g = goalRect()) {
+  return 80 * keeperScaleForGoal(g);
+}
+
+/** 待機はゴールライン上（足元がラインに揃う位置） */
 function keeperReadyAim() {
-  return { x: ZONE_X.center, y: 0.48 };
+  const g = goalRect();
+  const footDrop = keeperFootDrop(g);
+  const aimY = clamp(1 - footDrop / Math.max(g.h, 1), 0.1, 0.94);
+  return { x: ZONE_X.center, y: aimY };
 }
 
 /** キーパーフェイント 10種（キックごとに抽選） */
@@ -3494,9 +3506,10 @@ function drawKeeper() {
   const height = state.keeperHeight || "mid";
   const t = state.keeperProgress;
   const feint = sampleKeeperFeint();
+  const g = goalRect();
   const rest = worldFromAim(keeperReadyAim());
   rest.x += feint.ox;
-  rest.y += feint.oy;
+  rest.y = Math.min(rest.y + feint.oy, g.y + g.h - keeperFootDrop(g));
   const target = worldFromAim(keeperDiveAim(dir, height));
   const diveSide = dir === "left" ? -1 : dir === "right" ? 1 : 0;
   const diveLift = height === "high" ? -1 : height === "low" ? 1 : 0;
@@ -3908,8 +3921,7 @@ function drawKeeper() {
 
   ctx.save();
   ctx.translate(x, y);
-  const g = goalRect();
-  const keeperScale = clamp((g.h * 0.6) / 100, 1.05, 1.32);
+  const keeperScale = keeperScaleForGoal(g);
   ctx.scale(keeperScale, keeperScale);
   ctx.rotate(bodyRot);
 
