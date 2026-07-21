@@ -17,7 +17,10 @@
       <header class="hud" id="hud" hidden>
         <div class="scoreboard">
           <div class="side you">
-            <span class="label" id="label-you">JAPAN</span>
+            <div class="country-head">
+              <span class="country-head-spacer" aria-hidden="true">VS</span>
+              <span class="label" id="label-you">JAPAN</span>
+            </div>
             <div class="score-row">
               <span class="flag" id="flag-you" aria-hidden="true">🇯🇵</span>
               <span class="score" id="score-you">0</span>
@@ -29,7 +32,7 @@
             <span class="round" id="round-label">1 / 5</span>
           </div>
           <div class="side cpu">
-            <div class="vs-country-head">
+            <div class="country-head">
               <span class="vs-prefix">VS</span>
               <span class="label" id="label-cpu">RIVAL</span>
             </div>

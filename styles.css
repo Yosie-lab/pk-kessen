@@ -97,7 +97,7 @@ button {
   text-align: right;
 }
 
-.side.cpu .vs-country-head {
+.side.cpu .country-head {
   justify-content: flex-end;
 }
 
@@ -114,26 +114,25 @@ button {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
-.side.you .label {
-  font-family: var(--font-display);
-  font-size: clamp(1.05rem, 3.2vw, 1.45rem);
-  letter-spacing: 0.1em;
-  line-height: 1;
-  color: var(--you);
-  max-width: 170px;
-}
-
-.side.you .flag {
-  font-size: clamp(2.1rem, 6vw, 2.9rem);
-}
-
+.side.you .label,
 .side.cpu .label {
   font-family: var(--font-display);
   font-size: clamp(1.05rem, 3.2vw, 1.45rem);
   letter-spacing: 0.1em;
   line-height: 1;
-  color: var(--cpu);
   max-width: 170px;
+}
+
+.side.you .label {
+  color: var(--you);
+}
+
+.side.cpu .label {
+  color: var(--cpu);
+}
+
+.side.you .flag {
+  font-size: clamp(2.1rem, 6vw, 2.9rem);
 }
 
 .side.cpu .flag {
@@ -146,11 +145,24 @@ button {
   text-overflow: ellipsis;
 }
 
-.vs-country-head {
+.country-head {
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
   max-width: min(100%, 220px);
+}
+
+.side.cpu .country-head {
+  justify-content: flex-end;
+}
+
+.country-head-spacer {
+  visibility: hidden;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 3.5vw, 1.6rem);
+  letter-spacing: 0.14em;
+  line-height: 1;
 }
 
 .vs-prefix {
@@ -563,7 +575,8 @@ button {
 
   .side.you .label,
   .side.cpu .label,
-  .vs-prefix {
+  .vs-prefix,
+  .country-head-spacer {
     font-size: clamp(0.92rem, 2.9vw, 1.22rem);
   }
 
