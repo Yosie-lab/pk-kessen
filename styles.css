@@ -63,6 +63,10 @@ button {
   width: 100%;
   display: block;
   z-index: 0;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .hud {
@@ -508,6 +512,8 @@ button {
   .scoreboard {
     padding: 10px 12px;
     gap: 8px;
+    backdrop-filter: none;
+    background: rgba(8, 20, 14, 0.94);
   }
 
   .side.you .label,

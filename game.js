@@ -1,7 +1,8 @@
 import { unlockAudio, playKick, playCheer, playMiss, playPostHit, playWhistle, playVictoryCelebration } from "./audio.js";
 
 const canvas = document.getElementById("pitch");
-const ctx = canvas.getContext("2d");
+const mainCtx = canvas.getContext("2d");
+let ctx = mainCtx;
 
 const els = {
   hud: document.getElementById("hud"),
@@ -425,7 +426,63 @@ const state = {
   w: 0,
   h: 0,
   fixedGoal: null,
+  mobileLite: false,
 };
+
+const bgCache = { canvas: null, ctx: null, key: "" };
+
+function invalidateBgCache() {
+  bgCache.key = "";
+}
+
+function detectMobileLite(width = state.w, height = state.h) {
+  if (width <= 0 || height <= 0) {
+    width = window.innerWidth;
+    height = window.innerHeight;
+  }
+  return width <= 600 || height <= 720;
+}
+
+function maxBallTrail() {
+  return state.mobileLite ? 4 : 8;
+}
+
+function bgCacheKey() {
+  const g = goalRect();
+  return [
+    state.w,
+    state.h,
+    state.dpr,
+    state.scene?.id,
+    Math.round(g.x),
+    Math.round(g.y),
+    Math.round(g.w),
+    Math.round(g.h),
+    state.fixedGoal ? 1 : 0,
+  ].join("|");
+}
+
+function ensureBgCache() {
+  if (!state.mobileLite || state.crowdPulse > 0.02) return false;
+  const key = bgCacheKey();
+  if (bgCache.key === key) return true;
+  if (!bgCache.canvas) {
+    bgCache.canvas = document.createElement("canvas");
+    bgCache.ctx = bgCache.canvas.getContext("2d");
+  }
+  bgCache.canvas.width = canvas.width;
+  bgCache.canvas.height = canvas.height;
+  bgCache.ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+  const prev = ctx;
+  ctx = bgCache.ctx;
+  drawSky();
+  drawCrowd();
+  drawPitch();
+  drawGoal();
+  ctx = prev;
+  bgCache.key = key;
+  return true;
+}
 
 function pickOpponentKit() {
   let idx = Math.floor(Math.random() * OPPONENT_KITS.length);
@@ -438,6 +495,7 @@ function pickOpponentKit() {
   state.oppKit = OPPONENT_KITS[idx];
   state.youKit = SAMURAI_BLUE;
   state.scene = buildScene(state.oppKit);
+  invalidateBgCache();
   if (els.labelYou) els.labelYou.textContent = SAMURAI_BLUE.shortName;
   if (els.labelCpu) els.labelCpu.textContent = state.oppKit.name;
   if (els.flagYou) els.flagYou.textContent = SAMURAI_BLUE.flag;
@@ -461,15 +519,19 @@ function rand(min, max) {
 }
 
 function resize() {
-  state.dpr = Math.min(window.devicePixelRatio || 1, 2);
   const rect = canvas.getBoundingClientRect();
   state.w = Math.max(1, rect.width);
   state.h = Math.max(1, rect.height);
+  state.mobileLite = detectMobileLite(state.w, state.h);
+  const rawDpr = window.devicePixelRatio || 1;
+  state.dpr = state.mobileLite ? 1 : Math.min(rawDpr, 2);
   canvas.width = Math.floor(state.w * state.dpr);
   canvas.height = Math.floor(state.h * state.dpr);
   canvas.style.width = `${state.w}px`;
   canvas.style.height = `${state.h}px`;
+  ctx = mainCtx;
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+  invalidateBgCache();
 }
 
 let safeProbe = null;
@@ -536,6 +598,7 @@ function computeGoalRect() {
 function refreshFixedGoal() {
   if (state.mode !== "play") return;
   state.fixedGoal = computeGoalRect();
+  invalidateBgCache();
 }
 
 function clearFixedGoal() {
@@ -997,6 +1060,7 @@ function startMatch() {
   try {
     unlockAudio();
     clearFixedGoal();
+    invalidateBgCache();
     state.mode = "play";
     state.suddenDeath = false;
     state.kickIndex = 0;
@@ -1863,7 +1927,7 @@ function stepCpuShot(now) {
       spinX: state.ball.spinX,
       scale: state.ball.scale,
     });
-    if (state.ball.trail.length > 8) state.ball.trail.shift();
+    if (state.ball.trail.length > maxBallTrail()) state.ball.trail.shift();
 
     applyKickerMotion(state.kicker, {
       elapsed: runMs + kickMs,
@@ -2141,7 +2205,7 @@ function stepPlayerShot(now) {
       spinX: state.ball.spinX,
       scale: state.ball.scale,
     });
-    if (state.ball.trail.length > 8) state.ball.trail.shift();
+    if (state.ball.trail.length > maxBallTrail()) state.ball.trail.shift();
 
     applyKickerMotion(state.kicker, {
       elapsed: runMs + kickMs,
@@ -2671,7 +2735,43 @@ function shadeColor(hex, amount) {
   return `rgb(${r | 0},${g | 0},${b | 0})`;
 }
 
+function drawCrowdLite() {
+  const { w } = state;
+  const v = activeVenue();
+  const g = goalRect();
+  const standBottom = Math.max(80, g.y + g.h - 32);
+  const bowlGrad = ctx.createLinearGradient(0, 0, 0, standBottom);
+  bowlGrad.addColorStop(0, "rgba(10,12,18,0.96)");
+  bowlGrad.addColorStop(1, "rgba(22,26,34,0.9)");
+  ctx.fillStyle = bowlGrad;
+  ctx.fillRect(0, 0, w, standBottom);
+
+  const seats = v.seats;
+  const tierCount = 4;
+  const tierH = standBottom / tierCount;
+  for (let tier = 0; tier < tierCount; tier++) {
+    const cols = 14;
+    const y = tier * tierH + tierH * 0.38;
+    const r = lerp(2.4, 3.6, 1 - tier / (tierCount - 1));
+    for (let col = 0; col < cols; col++) {
+      const hash = crowdHash(col, tier, 0);
+      const x = (w / cols) * (col + 0.5) + ((hash % 5) - 2) * 0.4;
+      ctx.fillStyle = seats[(hash + tier) % seats.length];
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.fillStyle = "rgba(0,0,0,0.24)";
+  ctx.fillRect(0, standBottom - 10, w, 10);
+}
+
 function drawCrowd() {
+  if (state.mobileLite) {
+    drawCrowdLite();
+    return;
+  }
   const { w } = state;
   const v = activeVenue();
   const g = goalRect();
@@ -2797,7 +2897,7 @@ function drawWeatherOverlay() {
     ctx.fillStyle = mist;
     ctx.fillRect(0, h * 0.1, w, h * 0.35);
   }
-  if (v.rain > 0.05) {
+  if (v.rain > 0.05 && !state.mobileLite) {
     const now = performance.now();
     ctx.strokeStyle = `rgba(200,220,240,${0.12 + v.rain * 0.18})`;
     ctx.lineWidth = 1.2;
@@ -3150,6 +3250,7 @@ function drawGoal() {
   ctx.fill();
 
   // —— ネットメッシュ（細かい六角） ——
+  if (!state.mobileLite) {
   function strokeNetFace(tl, tr, blp, brp, cols, rows, sagAmt, alpha) {
     function pt(u, v) {
       let p = facePoint(tl, tr, blp, brp, clamp(u, 0, 1), clamp(v, 0, 1), sagAmt);
@@ -3206,6 +3307,7 @@ function drawGoal() {
   strokeNetFace(rightBulge.tl, rightBulge.tr, rightBulge.bl, rightBulge.br, 6, 10, 0.35, 0.24);
   // 天井ネット
   strokeNetFace(fl, fr, bl, br, 14, 5, 0.22, 0.18);
+  }
 
   // —— 奥のフレーム（細い白パイプ） ——
   function strokePipe(a, b, width, color) {
@@ -4481,8 +4583,38 @@ function norm3(p) {
   return [p[0] / len, p[1] / len, p[2] / len];
 }
 
+/** モバイル向けの軽量ボール描画 */
+function drawSoccerBallLite(x, y, radius) {
+  ctx.beginPath();
+  ctx.ellipse(x, y + radius * 0.1, radius * 0.9, radius * 0.28, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  ctx.fill();
+  const body = ctx.createRadialGradient(
+    x - radius * 0.28,
+    y - radius * 0.32,
+    radius * 0.08,
+    x,
+    y,
+    radius
+  );
+  body.addColorStop(0, "#ffffff");
+  body.addColorStop(0.55, "#f0f2ee");
+  body.addColorStop(1, "#b8bdb6");
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.lineWidth = Math.max(0.8, radius * 0.06);
+  ctx.stroke();
+}
+
 /** 3D投影の白黒サッカーボール（spinX / spinY で球体回転） */
 function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
+  if (state.mobileLite) {
+    drawSoccerBallLite(x, y, radius);
+    return;
+  }
   ctx.save();
   ctx.translate(x, y);
 
@@ -4701,10 +4833,14 @@ function render() {
       return;
     }
 
-    drawSky();
-    drawCrowd();
-    drawPitch();
-    drawGoal();
+    if (!ensureBgCache()) {
+      drawSky();
+      drawCrowd();
+      drawPitch();
+      drawGoal();
+    } else {
+      ctx.drawImage(bgCache.canvas, 0, 0, state.w, state.h);
+    }
     // 奥（小さい y）から手前へ。ボールがキッカー背中に張り付いて見えないようにする
     const spot = penaltyLayout().spot;
     const layers = [];
@@ -4789,7 +4925,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
-window.addEventListener("pointermove", onPointerMove);
+canvas.addEventListener("pointermove", onPointerMove, { passive: true });
 
 let resizeTimer = 0;
 function scheduleLayoutRefresh() {
