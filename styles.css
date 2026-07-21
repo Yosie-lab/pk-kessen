@@ -230,7 +230,10 @@ button {
 
 .prompt {
   max-width: 720px;
+  min-height: 4.25rem;
   margin: 12px auto 0;
+  display: grid;
+  place-items: center;
   text-align: center;
   font-size: 0.95rem;
   font-weight: 500;
@@ -584,6 +587,7 @@ button {
   .prompt {
     margin-top: 8px;
     font-size: 0.85rem;
+    min-height: 3.85rem;
   }
 
   .prompt-headline {
@@ -636,5 +640,6 @@ button {
 
   .prompt {
     margin-top: 6px;
+    min-height: 3.75rem;
   }
 }
