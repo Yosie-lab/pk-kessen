@@ -73,6 +73,10 @@ button {
   pointer-events: none;
 }
 
+.hud:not([hidden]) {
+  min-height: 11.75rem;
+}
+
 .scoreboard {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -242,10 +246,11 @@ button {
 
 .prompt {
   max-width: 720px;
-  min-height: 4.25rem;
+  height: 4.25rem;
   margin: 12px auto 0;
   display: grid;
   place-items: center;
+  overflow: hidden;
   text-align: center;
   font-size: 0.95rem;
   font-weight: 500;
@@ -568,6 +573,10 @@ button {
 }
 
 @media (max-width: 560px) {
+  .hud:not([hidden]) {
+    min-height: 10.75rem;
+  }
+
   .scoreboard {
     padding: 10px 12px;
     gap: 8px;
@@ -600,7 +609,7 @@ button {
   .prompt {
     margin-top: 8px;
     font-size: 0.85rem;
-    min-height: 3.85rem;
+    height: 3.85rem;
   }
 
   .prompt-headline {
@@ -632,6 +641,10 @@ button {
 }
 
 @media (max-height: 667px) {
+  .hud:not([hidden]) {
+    min-height: 10.25rem;
+  }
+
   .hud {
     padding-top: max(8px, env(safe-area-inset-top));
   }
@@ -653,6 +666,6 @@ button {
 
   .prompt {
     margin-top: 6px;
-    min-height: 3.75rem;
+    height: 3.75rem;
   }
 }

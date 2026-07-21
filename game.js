@@ -428,6 +428,7 @@ const state = {
   dpr: 1,
   w: 0,
   h: 0,
+  fixedGoal: null,
 };
 
 function pickOpponentKit() {
@@ -496,11 +497,12 @@ function readSafeAreaInsets() {
 /** キャンバス内のプレイ余白（HUD はキャンバス外に配置） */
 function playfieldInsets() {
   const safe = readSafeAreaInsets();
-  const canvasRect = canvas.getBoundingClientRect();
   let top = 10;
-  let bottom = 10;
+  // プレイ中は下部ヒントの出し入れでゴールサイズが揺れないよう固定
+  let bottom = state.mode === "play" ? 46 : 10;
 
-  if (els.controls && !els.controls.hidden) {
+  if (state.mode !== "play" && els.controls && !els.controls.hidden) {
+    const canvasRect = canvas.getBoundingClientRect();
     const controlsRect = els.controls.getBoundingClientRect();
     const overlap = canvasRect.bottom - controlsRect.top;
     if (overlap > 0) bottom = Math.max(bottom, overlap + 8);
@@ -514,13 +516,12 @@ function playfieldInsets() {
   };
 }
 
-function goalRect() {
+function computeGoalRect() {
   const w = state.w;
   const h = state.h;
   const inset = playfieldInsets();
   const availW = Math.max(120, w - inset.left - inset.right);
   const availH = Math.max(140, h - inset.top - inset.bottom);
-  // クロスバー・奥枠・ネット上端が g.y より上にはみ出す分
   const topOverhang = 22;
 
   const playableH = Math.max(80, availH - topOverhang);
@@ -534,6 +535,22 @@ function goalRect() {
   const y = inset.top + topOverhang;
 
   return { x, y, w: gw, h: gh };
+}
+
+function refreshFixedGoal() {
+  if (state.mode !== "play") return;
+  state.fixedGoal = computeGoalRect();
+}
+
+function clearFixedGoal() {
+  state.fixedGoal = null;
+}
+
+function goalRect() {
+  if (state.mode === "play" && state.fixedGoal) {
+    return state.fixedGoal;
+  }
+  return computeGoalRect();
 }
 
 /** 9マスの中心点。狙い・ボール着地・キーパー・セーブ判定はすべてここを基準にする */
@@ -911,7 +928,6 @@ function setPrompt(text, opts = {}) {
   els.prompt.style.animation = "none";
   void els.prompt.offsetWidth;
   els.prompt.style.animation = "";
-  requestAnimationFrame(resize);
 }
 
 function updateHud() {
@@ -945,19 +961,22 @@ function showControls(mode) {
   if (mode === "ready-save") els.aimHint.textContent = "ピッチをクリック → ホイッスル → CPUキック";
   if (mode === "aim-click") els.aimHint.textContent = "今だ！ゴールをクリックして狙え";
   if (mode === "dive-click") els.aimHint.textContent = "今だ！ゴールをクリックしてダイブ";
-  requestAnimationFrame(resize);
 }
 
 function hideOverlayScreens() {
   els.title.hidden = true;
   els.result.hidden = true;
   els.hud.hidden = false;
-  requestAnimationFrame(resize);
+  requestAnimationFrame(() => {
+    resize();
+    requestAnimationFrame(refreshFixedGoal);
+  });
 }
 
 function startMatch() {
   try {
     unlockAudio();
+    clearFixedGoal();
     state.mode = "play";
     state.suddenDeath = false;
     state.kickIndex = 0;
@@ -2272,6 +2291,7 @@ function advanceTurn(lastShooter) {
 
 function endMatch(winner) {
   state.mode = "result";
+  clearFixedGoal();
   state.phase = "idle";
   els.controls.hidden = true;
   els.result.hidden = false;
@@ -4859,10 +4879,12 @@ window.addEventListener("pointerdown", onPointerDown);
 canvas.addEventListener("pointerdown", onPointerDown);
 window.addEventListener("pointermove", onPointerMove);
 
-window.addEventListener("resize", resize);
+window.addEventListener("resize", () => {
+  resize();
+  if (state.mode === "play") refreshFixedGoal();
+});
 const layoutObserver = new ResizeObserver(() => resize());
 layoutObserver.observe(canvas);
-if (els.hud) layoutObserver.observe(els.hud);
 resize();
 requestAnimationFrame(loop);
 
