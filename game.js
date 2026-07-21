@@ -685,13 +685,19 @@ function keeperDiveAim(dir, height = "mid") {
   return cellCenter(dir, height);
 }
 
+const KEEPER_LOCAL_FOOT_Y = 82;
+const KEEPER_LOCAL_HEAD_TOP = -14;
+
 function keeperScaleForGoal(g = goalRect()) {
-  return clamp((g.h * 0.6) / 100, 1.05, 1.32);
+  // ゴール高さに比例（h=160 で約1.05）。小画面ではフレーム内に収まるよう上限もかける
+  const ref = (g.h * 0.65625) / 100;
+  const maxFit = (g.h * 0.98) / (KEEPER_LOCAL_FOOT_Y - KEEPER_LOCAL_HEAD_TOP);
+  return clamp(Math.min(ref, maxFit), 0.52, 1.32);
 }
 
 /** 待機ポーズの足元までのアンカーからの距離（スケール後） */
 function keeperFootDrop(g = goalRect()) {
-  return 80 * keeperScaleForGoal(g);
+  return KEEPER_LOCAL_FOOT_Y * keeperScaleForGoal(g);
 }
 
 /** 待機はゴールライン上（足元がラインに揃う位置） */
