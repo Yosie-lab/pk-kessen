@@ -2157,12 +2157,12 @@ function finishKick(result, shooter) {
     if (result.post) {
       if (result.post === "bar") {
         setPrompt(
-          shooter === "you" ? "バーに当たって入れられた！" : "バーに当たって入れられた…",
+          shooter === "you" ? "バーに当てて決めた" : "バーに当たって決められた",
           { result: true }
         );
       } else {
         setPrompt(
-          shooter === "you" ? "ポストに当たって決めた！" : "ポストに当たって決められた…",
+          shooter === "you" ? "ポストに当てて決めた" : "ポストに当たって決められた…",
           { result: true }
         );
       }
