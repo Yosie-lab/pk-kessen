@@ -687,6 +687,12 @@ function keeperDiveAim(dir, height = "mid") {
 
 const KEEPER_LOCAL_FOOT_Y = 82;
 const KEEPER_LOCAL_HEAD_TOP = -14;
+const BALL_REF_GOAL_H = 160;
+const BALL_REF_RADIUS = 12;
+
+function ballBaseRadius(g = goalRect()) {
+  return clamp((g.h / BALL_REF_GOAL_H) * BALL_REF_RADIUS, 7, 14);
+}
 
 function keeperScaleForGoal(g = goalRect()) {
   // ゴール高さに比例（h=160 で約1.05）。小画面ではフレーム内に収まるよう上限もかける
@@ -4734,6 +4740,13 @@ function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
 }
 
 function drawBall() {
+  const g = goalRect();
+  const baseR = ballBaseRadius(g);
+  const flightR = baseR * (13 / 12);
+  const shadowRX = baseR * (10 / 12);
+  const shadowRY = baseR * (3.5 / 12);
+  const shadowDrop = baseR;
+
   if (!state.ball) {
     if (
       state.mode === "play" &&
@@ -4743,10 +4756,10 @@ function drawBall() {
       const bx = spot.x;
       const by = spot.y;
       ctx.beginPath();
-      ctx.ellipse(bx, by + 12, 10, 3.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(bx, by + shadowDrop, shadowRX, shadowRY, 0, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(0,0,0,0.2)";
       ctx.fill();
-      drawSoccerBall(bx, by, 12, 0.35, 0.2);
+      drawSoccerBall(bx, by, baseR, 0.35, 0.2);
     }
     return;
   }
@@ -4754,10 +4767,10 @@ function drawBall() {
   // 助走・キック直前は静止したまま
   if (!state.ball.airborne) {
     ctx.beginPath();
-    ctx.ellipse(state.ball.x, state.ball.y + 12, 10, 3.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(state.ball.x, state.ball.y + shadowDrop, shadowRX, shadowRY, 0, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0,0,0,0.2)";
     ctx.fill();
-    drawSoccerBall(state.ball.x, state.ball.y, 12, 0.35, 0.2);
+    drawSoccerBall(state.ball.x, state.ball.y, baseR, 0.35, 0.2);
     return;
   }
 
@@ -4765,7 +4778,13 @@ function drawBall() {
     t.a *= 0.86;
     if (t.a < 0.05) continue;
     ctx.globalAlpha = t.a * 0.28;
-    drawSoccerBall(t.x, t.y, 10 * (t.scale || state.ball.scale), t.spinY || 0, t.spinX || 0);
+    drawSoccerBall(
+      t.x,
+      t.y,
+      baseR * (10 / 12) * (t.scale || state.ball.scale),
+      t.spinY || 0,
+      t.spinX || 0
+    );
     ctx.globalAlpha = 1;
   }
 
@@ -4773,9 +4792,9 @@ function drawBall() {
   ctx.beginPath();
   ctx.ellipse(
     state.ball.x,
-    state.ball.y + 11 * state.ball.scale + lift * 0.2,
-    10 * state.ball.scale,
-    3.4 * state.ball.scale,
+    state.ball.y + shadowDrop * 0.92 * state.ball.scale + lift * 0.2,
+    shadowRX * state.ball.scale,
+    shadowRY * state.ball.scale,
     0,
     0,
     Math.PI * 2
@@ -4786,7 +4805,7 @@ function drawBall() {
   drawSoccerBall(
     state.ball.x,
     state.ball.y,
-    13 * state.ball.scale,
+    flightR * state.ball.scale,
     state.ball.spinY || 0,
     state.ball.spinX || 0
   );
