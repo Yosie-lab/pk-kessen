@@ -45,6 +45,8 @@ button {
 
 #app {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100vw;
   height: 100dvh;
   overflow: hidden;
@@ -55,21 +57,19 @@ button {
 }
 
 #pitch {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
-  height: 100%;
   display: block;
   z-index: 0;
 }
 
 .hud {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
+  flex: 0 0 auto;
   z-index: 3;
-  padding: max(12px, env(safe-area-inset-top)) 16px 0;
+  padding: max(8px, env(safe-area-inset-top)) 12px 8px;
   pointer-events: none;
 }
 
@@ -554,7 +554,49 @@ button {
 
 @media (max-width: 560px) {
   .scoreboard {
-    padding: 12px 14px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .side.you .label,
+  .side.cpu .label,
+  .vs-prefix {
+    font-size: clamp(1rem, 3.2vw, 1.35rem);
+  }
+
+  .side.you .flag,
+  .side.cpu .flag {
+    font-size: clamp(1.75rem, 5.2vw, 2.4rem);
+  }
+
+  .score {
+    font-size: clamp(2rem, 7vw, 2.75rem);
+  }
+
+  .brand-mini {
+    font-size: 1.1rem;
+  }
+
+  .round {
+    font-size: 0.72rem;
+  }
+
+  .prompt {
+    margin-top: 8px;
+    font-size: 0.85rem;
+  }
+
+  .prompt-headline {
+    font-size: clamp(1.15rem, 3.6vw, 1.55rem);
+    line-height: 1.25;
+  }
+
+  .prompt-sub {
+    font-size: 0.85rem;
+  }
+
+  .prompt.prompt-result {
+    font-size: clamp(1.55rem, 4.6vw, 2.2rem);
   }
 
   .brand {
@@ -569,5 +611,30 @@ button {
   .dive-btn {
     padding: 11px 4px;
     font-size: 0.78rem;
+  }
+}
+
+@media (max-height: 667px) {
+  .hud {
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+
+  .scoreboard {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .kicks {
+    min-height: 8px;
+    margin-top: 2px;
+  }
+
+  .kick-dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .prompt {
+    margin-top: 6px;
   }
 }

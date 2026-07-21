@@ -465,8 +465,9 @@ function rand(min, max) {
 
 function resize() {
   state.dpr = Math.min(window.devicePixelRatio || 1, 2);
-  state.w = window.innerWidth;
-  state.h = window.innerHeight;
+  const rect = canvas.getBoundingClientRect();
+  state.w = Math.max(1, rect.width);
+  state.h = Math.max(1, rect.height);
   canvas.width = Math.floor(state.w * state.dpr);
   canvas.height = Math.floor(state.h * state.dpr);
   canvas.style.width = `${state.w}px`;
@@ -474,14 +475,64 @@ function resize() {
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
 }
 
+let safeProbe = null;
+
+function readSafeAreaInsets() {
+  if (!safeProbe) {
+    safeProbe = document.createElement("div");
+    safeProbe.style.cssText =
+      "position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);";
+    document.body.appendChild(safeProbe);
+  }
+  const s = getComputedStyle(safeProbe);
+  return {
+    top: parseFloat(s.paddingTop) || 0,
+    right: parseFloat(s.paddingRight) || 0,
+    bottom: parseFloat(s.paddingBottom) || 0,
+    left: parseFloat(s.paddingLeft) || 0,
+  };
+}
+
+/** キャンバス内のプレイ余白（HUD はキャンバス外に配置） */
+function playfieldInsets() {
+  const safe = readSafeAreaInsets();
+  const canvasRect = canvas.getBoundingClientRect();
+  let top = 10;
+  let bottom = 10;
+
+  if (els.controls && !els.controls.hidden) {
+    const controlsRect = els.controls.getBoundingClientRect();
+    const overlap = canvasRect.bottom - controlsRect.top;
+    if (overlap > 0) bottom = Math.max(bottom, overlap + 8);
+  }
+
+  return {
+    top,
+    bottom,
+    left: safe.left + 4,
+    right: safe.right + 4,
+  };
+}
+
 function goalRect() {
   const w = state.w;
   const h = state.h;
-  // 実寸 7.32m × 2.44m ≒ 幅:高さ = 3:1
-  const gh = Math.min(h * 0.25, 200);
-  const gw = Math.min(w * 0.9, Math.max(gh * 3.0, 560));
-  const x = (w - gw) / 2;
-  const y = h * 0.18;
+  const inset = playfieldInsets();
+  const availW = Math.max(120, w - inset.left - inset.right);
+  const availH = Math.max(140, h - inset.top - inset.bottom);
+  // クロスバー・奥枠・ネット上端が g.y より上にはみ出す分
+  const topOverhang = 22;
+
+  const playableH = Math.max(80, availH - topOverhang);
+  const maxGhByHeight = playableH * 0.3;
+  const maxGhByWidth = (availW * 0.94) / 3;
+  const ghCap = h <= 300 ? 96 : h <= 380 ? 132 : h <= 460 ? 160 : 200;
+  const gh = Math.min(maxGhByHeight, maxGhByWidth, ghCap);
+
+  const gw = Math.min(availW * 0.94, gh * 3.0);
+  const x = inset.left + (availW - gw) * 0.5;
+  const y = inset.top + topOverhang;
+
   return { x, y, w: gw, h: gh };
 }
 
@@ -860,6 +911,7 @@ function setPrompt(text, opts = {}) {
   els.prompt.style.animation = "none";
   void els.prompt.offsetWidth;
   els.prompt.style.animation = "";
+  requestAnimationFrame(resize);
 }
 
 function updateHud() {
@@ -893,12 +945,14 @@ function showControls(mode) {
   if (mode === "ready-save") els.aimHint.textContent = "ピッチをクリック → ホイッスル → CPUキック";
   if (mode === "aim-click") els.aimHint.textContent = "今だ！ゴールをクリックして狙え";
   if (mode === "dive-click") els.aimHint.textContent = "今だ！ゴールをクリックしてダイブ";
+  requestAnimationFrame(resize);
 }
 
 function hideOverlayScreens() {
   els.title.hidden = true;
   els.result.hidden = true;
   els.hud.hidden = false;
+  requestAnimationFrame(resize);
 }
 
 function startMatch() {
@@ -4806,6 +4860,9 @@ canvas.addEventListener("pointerdown", onPointerDown);
 window.addEventListener("pointermove", onPointerMove);
 
 window.addEventListener("resize", resize);
+const layoutObserver = new ResizeObserver(() => resize());
+layoutObserver.observe(canvas);
+if (els.hud) layoutObserver.observe(els.hud);
 resize();
 requestAnimationFrame(loop);
 
