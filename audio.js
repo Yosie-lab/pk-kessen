@@ -397,6 +397,83 @@ export function playCheer() {
   }, holdMs);
 }
 
+/** PK戦勝利：大歓声＋拍手の声援 */
+export function playVictoryCelebration() {
+  unlockAudio();
+  stopCheer();
+
+  const bedKeys = pickN(["cheerVictory", "cheer", "cheerChaos", "crowdStadium"], 2);
+  const yellKeys = pickN(CHEER_YELLS, 3);
+  const clapKeys = pickN(APPLAUSE, 4);
+
+  const holdMs = rand(3200, 4800) | 0;
+  const fadeMs = rand(700, 1100) | 0;
+
+  bedKeys.forEach((key, i) => {
+    const a = playClone(key, rand(0.42, 0.62) * (i === 0 ? 1 : 0.75), rand(0.94, 1.08), rand(0, 2.2), i * rand(40, 120));
+    activeCheer.push(a);
+  });
+
+  yellKeys.forEach((key, i) => {
+    const a = playClone(
+      key,
+      rand(0.58, 0.88) * (i === 0 ? 1 : rand(0.55, 0.8)),
+      rand(0.96, 1.14),
+      rand(0, 2.0),
+      rand(0, 220) + i * rand(80, 160)
+    );
+    activeCheer.push(a);
+  });
+
+  const extraKeys = pickN(CHEER_EXTRAS, 2);
+  extraKeys.forEach((key, i) => {
+    const a = playClone(key, rand(0.28, 0.52), rand(0.98, 1.12), rand(0, 1.5), rand(120, 420) + i * rand(100, 200));
+    activeCheer.push(a);
+  });
+
+  clapKeys.forEach((key, i) => {
+    const a = playClone(
+      key,
+      rand(0.48, 0.82) * (i === 0 ? 1 : rand(0.65, 0.9)),
+      rand(0.94, 1.1),
+      rand(0, 2.0),
+      rand(0, 280) + i * rand(60, 140)
+    );
+    activeCheer.push(a);
+  });
+
+  // 遅れて拍手を重ねてスタジアム感を強める
+  for (let wave = 0; wave < 2; wave++) {
+    pickN(APPLAUSE, 2).forEach((key, i) => {
+      const a = playClone(
+        key,
+        rand(0.34, 0.58),
+        rand(0.96, 1.08),
+        rand(0.1, 2.4),
+        rand(600, 1200) + wave * rand(500, 900) + i * rand(80, 180)
+      );
+      activeCheer.push(a);
+    });
+  }
+
+  playCrowdSwell({
+    intensity: rand(0.65, 0.95),
+    bright: rand(0.55, 0.95),
+    dur: rand(2.8, 4.2),
+    rise: rand(0.04, 0.12),
+  });
+  playApplauseTexture({
+    intensity: rand(0.75, 1),
+    dur: rand(3.0, 4.5),
+    density: rand(0.85, 1.2),
+  });
+
+  cheerTimer = setTimeout(() => {
+    for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 180) | 0));
+    cheerTimer = null;
+  }, holdMs);
+}
+
 /** 枠外・セーブ失敗など、外れたときの残念な声（毎回変化） */
 export function playMiss() {
   unlockAudio();
