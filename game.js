@@ -1171,10 +1171,17 @@ function postChanceFromAim(aim, accuracy, zone) {
 
 function pickPostPart(aim, zone) {
   const options = [];
-  if (zone.dir === "left" || aim.x < 0.42) options.push("left", "left");
-  if (zone.dir === "right" || aim.x > 0.58) options.push("right", "right");
+  // 左狙い→右ポスト、右狙い→左ポストは出さない（反対側へ外れたように見えないように）
+  if (zone.dir !== "right" && (zone.dir === "left" || aim.x < 0.42)) {
+    options.push("left", "left");
+  }
+  if (zone.dir !== "left" && (zone.dir === "right" || aim.x > 0.58)) {
+    options.push("right", "right");
+  }
   if (zone.height === "high" || aim.y < 0.38) options.push("bar", "bar");
-  options.push("left", "right", "bar");
+  if (zone.dir === "left") options.push("left", "bar");
+  else if (zone.dir === "right") options.push("right", "bar");
+  else options.push("left", "right", "bar");
   return randChoice(options);
 }
 
