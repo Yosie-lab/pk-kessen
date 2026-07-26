@@ -1144,8 +1144,10 @@ function accuracyFromPower(power) {
   return 0.18;
 }
 
-/** 精度が低いほど枠を外しやすい（少し緩め） */
+/** 精度が低いほど枠を外しやすい（少し緩め）。中央狙い時は枠内に収める */
 function missChanceFromAccuracy(accuracy, aim) {
+  // 中央列を狙った球は枠を外さない（セーブ／ポストのみで阻まれる）
+  if (zoneFromAim(aim).dir === "center") return 0;
   let chance = clamp(0.52 - accuracy * 0.42, 0.12, 0.48);
   // 枠の端を狙うほどさらに外れやすい
   const edge = Math.min(aim.x, 1 - aim.x, aim.y * 0.85, 1 - aim.y);
