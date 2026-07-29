@@ -1,7 +1,8 @@
 import { unlockAudio, playKick, playCheer, playMiss, playBlockedByKeeper, playPostHit, playWhistle, playVictoryCelebration, resetMatchAudio } from "./audio.js";
 
 const canvas = document.getElementById("pitch");
-const mainCtx = canvas.getContext("2d", { alpha: true, desynchronized: true }) || canvas.getContext("2d");
+const mainCtx =
+  canvas.getContext("2d", { alpha: true, desynchronized: false }) || canvas.getContext("2d");
 let ctx = mainCtx;
 
 const els = {
@@ -545,6 +546,35 @@ const state = {
 
 /** ページ内セッションで1回だけ確定するレイアウト（もう一度でも同じ寸法を使う） */
 let sessionLayout = null;
+let layoutPending = false;
+let layoutObserver = null;
+let viewportFrozen = false;
+
+function observeLayoutRoot() {
+  if (!layoutObserver) return;
+  layoutObserver.observe(canvas.parentElement || document.documentElement);
+}
+
+function disconnectLayoutObserver() {
+  if (!layoutObserver) return;
+  layoutObserver.disconnect();
+}
+
+function freezeViewportTracking() {
+  if (viewportFrozen) return;
+  viewportFrozen = true;
+  window.removeEventListener("resize", onWinResize);
+  if (window.visualViewport) window.visualViewport.removeEventListener("resize", onVvResize);
+  disconnectLayoutObserver();
+}
+
+function thawViewportTracking() {
+  if (!viewportFrozen) return;
+  viewportFrozen = false;
+  window.addEventListener("resize", onWinResize);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", onVvResize);
+  observeLayoutRoot();
+}
 
 const LAYOUT_LOCK_DEBOUNCE_MS = 160;
 const LAYOUT_WIDTH_RELOCK_DRIFT = 0.05;
@@ -741,16 +771,29 @@ function applyCanvasBacking(w, h, dpr, mobileLite) {
 }
 
 function pinCanvasCss(w, h) {
+  if (
+    canvas.classList.contains("pitch-locked") &&
+    canvas.style.width === `${w}px` &&
+    canvas.style.height === `${h}px`
+  ) {
+    return false;
+  }
   canvas.style.width = `${w}px`;
   canvas.style.height = `${h}px`;
   canvas.classList.add("pitch-locked");
   document.documentElement.style.setProperty("--pitch-lock-h", `${h}px`);
+  return true;
 }
 
 function pinAppShell(h) {
-  if (!els.app || h <= 0) return;
+  if (!els.app || h <= 0) return false;
+  const cur = document.documentElement.style.getPropertyValue("--app-lock-h");
+  if (els.app.classList.contains("app-locked") && cur === `${h}px`) return false;
   els.app.classList.add("app-locked");
+  document.documentElement.classList.add("viewport-locked");
   document.documentElement.style.setProperty("--app-lock-h", `${h}px`);
+  document.documentElement.style.setProperty("--viewport-lock-h", `${h}px`);
+  return true;
 }
 
 function unpinCanvasCss() {
@@ -763,27 +806,41 @@ function unpinCanvasCss() {
 function unpinAppShell() {
   if (!els.app) return;
   els.app.classList.remove("app-locked");
+  document.documentElement.classList.remove("viewport-locked");
   document.documentElement.style.removeProperty("--app-lock-h");
+  document.documentElement.style.removeProperty("--viewport-lock-h");
 }
 
-function clearSessionLayout() {
+function clearSessionLayout(reason = "unknown") {
   sessionLayout = null;
   state.fixedGoalRatio = null;
   unpinCanvasCss();
   unpinAppShell();
+  thawViewportTracking();
 }
 
 function measureFlexCanvasSize() {
   if (sessionLayout) {
     return { w: sessionLayout.w, h: sessionLayout.h };
   }
-  unpinCanvasCss();
-  // レイアウト再計算を強制してから測る
-  void canvas.offsetHeight;
   const rect = canvas.getBoundingClientRect();
+  const rw = Math.max(1, rect.width);
+  const rh = Math.max(1, rect.height);
+  // resize 直後は unpin しない（Safari が再計測で寸法を跳ねさせるのを防ぐ）
+  if (
+    state.w > 0 &&
+    state.h > 0 &&
+    Math.abs(rw - state.w) <= 2 &&
+    Math.abs(rh - state.h) <= 2
+  ) {
+    return { w: state.w, h: state.h };
+  }
+  unpinCanvasCss();
+  void canvas.offsetHeight;
+  const rect2 = canvas.getBoundingClientRect();
   return {
-    w: Math.max(1, rect.width),
-    h: Math.max(1, rect.height),
+    w: Math.max(1, rect2.width),
+    h: Math.max(1, rect2.height),
   };
 }
 
@@ -791,7 +848,6 @@ function resize(opts = {}) {
   const forceRemeasure = !!opts.forceRemeasure;
 
   if (sessionLayout && !forceRemeasure) {
-    // セッション確定済み：Safari のアドレスバー揺れを無視して同じ寸法を維持
     pinAppShell(sessionLayout.appH);
     pinCanvasCss(sessionLayout.w, sessionLayout.h);
     applyCanvasBacking(
@@ -820,6 +876,7 @@ function captureSessionLayout() {
   const dpr = mobileLite ? 1 : Math.min(rawDpr, 2);
   applyCanvasBacking(w, h, dpr, mobileLite);
   const g = computeGoalRect();
+  const goalPx = { x: g.x, y: g.y, w: g.w, h: g.h };
   const goalRatio = {
     x: g.x / w,
     y: g.y / h,
@@ -827,19 +884,25 @@ function captureSessionLayout() {
     h: g.h / h,
   };
   state.fixedGoalRatio = goalRatio;
-  const appH = Math.max(1, els.app?.getBoundingClientRect().height || h);
+  const vv = window.visualViewport;
+  const appH = Math.max(
+    1,
+    Math.round(vv?.height ?? els.app?.getBoundingClientRect().height ?? h)
+  );
   sessionLayout = {
     w,
     h,
     dpr,
     mobileLite,
     goalRatio,
+    goalPx,
     appH,
     winW: window.innerWidth,
   };
   pinAppShell(appH);
   pinCanvasCss(w, h);
   invalidateBgCache();
+  freezeViewportTracking();
 }
 
 let safeProbe = null;
@@ -917,8 +980,11 @@ function goalRectFromRatio() {
 function goalRect() {
   if (goalRectFrame === frameId) return goalRectScratch;
   goalRectFrame = frameId;
-  // セッション／試合中は比率固定。結果画面でも同じ寸法を使う
-  const g = state.fixedGoalRatio ? goalRectFromRatio() : computeGoalRect();
+  const g = sessionLayout?.goalPx
+    ? sessionLayout.goalPx
+    : state.fixedGoalRatio
+      ? goalRectFromRatio()
+      : computeGoalRect();
   goalRectScratch.x = g.x;
   goalRectScratch.y = g.y;
   goalRectScratch.w = g.w;
@@ -1485,7 +1551,7 @@ function startMatch() {
     // ページ読み込み後、一度確定したセッションレイアウトはそのまま使用
     // （試合開始ごとに再測定すると iPhone Safari の UI 揺れでサイズが変化するのを防ぐ）
     if (!sessionLayout) {
-      clearSessionLayout();
+      clearSessionLayout("startMatch-no-session");
     }
     state.mode = "play";
     state.suddenDeath = false;
@@ -1507,8 +1573,25 @@ function startMatch() {
     state.keeperProgress = 0;
     hideOverlayScreens();
     updateHud();
-    beginYouShoot();
-    scheduleLockFixedGoal();
+    void els.hud.offsetHeight;
+    if (sessionLayout) {
+      resize({ source: "startMatch-restore" });
+      beginYouShoot();
+    } else {
+      layoutPending = true;
+      resize({ forceRemeasure: true });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (state.mode !== "play" || sessionLayout) {
+            layoutPending = false;
+            return;
+          }
+          captureSessionLayout();
+          layoutPending = false;
+          beginYouShoot();
+        });
+      });
+    }
   } catch (err) {
     console.error(err);
   }
@@ -5190,6 +5273,28 @@ function norm3(p) {
   return [p[0] / len, p[1] / len, p[2] / len];
 }
 
+/** 飛翔中モバイル向け：パネル投影なし（60fps 優先） */
+function drawSoccerBallAirLite(x, y, radius, spinY = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  const body = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, radius * 0.05, 0, 0, radius);
+  body.addColorStop(0, "#ffffff");
+  body.addColorStop(0.55, "#eef0eb");
+  body.addColorStop(1, "#b8bdb6");
+  ctx.fillStyle = body;
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.42)";
+  ctx.lineWidth = Math.max(0.65, radius * 0.038);
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.88, spinY + i * 2.1, spinY + i * 2.1 + 1.15);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 /** モバイル向け：3Dパネル投影（柄はデスクトップと同系統） */
 function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = true) {
   if (withShadow) {
@@ -5270,7 +5375,11 @@ function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = tru
 /** 3D投影の白黒サッカーボール（spinX / spinY で球体回転） */
 function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
   if (state.mobileLite) {
-    drawSoccerBallLite(x, y, radius, spinY, spinX, false);
+    if (state.ball?.airborne) {
+      drawSoccerBallAirLite(x, y, radius, spinY);
+    } else {
+      drawSoccerBallLite(x, y, radius, spinY, spinX, false);
+    }
     return;
   }
   ctx.save();
@@ -5491,6 +5600,10 @@ function render() {
       renderBackdrop();
       return;
     }
+    if (layoutPending) {
+      renderBackdrop();
+      return;
+    }
 
     ensureBgCache();
     ctx.drawImage(bgCache.canvas, 0, 0, state.w, state.h);
@@ -5638,17 +5751,25 @@ canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
 canvas.addEventListener("pointermove", onPointerMove, { passive: true });
 
 let resizeTimer = 0;
-function scheduleLayoutRefresh() {
+function canvasDriftsFromSession() {
+  if (!sessionLayout) return false;
+  const rect = canvas.getBoundingClientRect();
+  return (
+    Math.abs(rect.width - sessionLayout.w) > 2 || Math.abs(rect.height - sessionLayout.h) > 2
+  );
+}
+
+function scheduleLayoutRefresh(source = "unknown") {
   if (sessionLayout) {
-    // 高さの揺れ（Safari アドレスバー等）は無視。幅が大きく変わったときだけ再ロック
     const widthDrift =
       Math.abs(window.innerWidth - sessionLayout.winW) / Math.max(1, sessionLayout.winW);
     if (widthDrift >= LAYOUT_WIDTH_RELOCK_DRIFT) {
-      clearSessionLayout();
+      clearSessionLayout("width-drift");
       if (state.mode === "play") scheduleLockFixedGoal();
       else resize({ forceRemeasure: true });
       return;
     }
+    if (!canvasDriftsFromSession()) return;
     resize();
     return;
   }
@@ -5658,20 +5779,32 @@ function scheduleLayoutRefresh() {
   }, RESIZE_DEBOUNCE_MS);
 }
 
-window.addEventListener("resize", scheduleLayoutRefresh);
-window.addEventListener("orientationchange", () => {
-  clearSessionLayout();
-  setTimeout(scheduleLayoutRefresh, 280);
-});
-if (window.visualViewport) {
-  window.visualViewport.addEventListener("resize", () => {
-    if (sessionLayout) resize();
-  });
+function onWinResize() {
+  if (sessionLayout) {
+    const widthDrift =
+      Math.abs(window.innerWidth - sessionLayout.winW) / Math.max(1, sessionLayout.winW);
+    if (widthDrift >= LAYOUT_WIDTH_RELOCK_DRIFT) scheduleLayoutRefresh("win-resize");
+    return;
+  }
+  scheduleLayoutRefresh("win-resize");
 }
-const layoutObserver = new ResizeObserver(scheduleLayoutRefresh);
-// キャンバス自体を監視すると applyCanvasBacking で width/height を変えるたびに
-// ResizeObserver が再発火してリサイズループになるため、親要素を監視する
-layoutObserver.observe(canvas.parentElement || document.documentElement);
+
+function onVvResize() {
+  if (sessionLayout && canvasDriftsFromSession()) scheduleLayoutRefresh("vv-resize");
+}
+
+function onOrientationChange() {
+  clearSessionLayout("orientation");
+  setTimeout(() => scheduleLayoutRefresh("orientation"), 280);
+}
+
+window.addEventListener("resize", onWinResize);
+window.addEventListener("orientationchange", onOrientationChange);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", onVvResize);
+}
+layoutObserver = new ResizeObserver(() => scheduleLayoutRefresh("resize-observer"));
+observeLayoutRoot();
 resize({ forceRemeasure: true });
 requestAnimationFrame(loop);
 

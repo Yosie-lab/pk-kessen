@@ -58,7 +58,19 @@ button {
     linear-gradient(180deg, #06110d 0%, #0a1f15 42%, #082016 100%);
 }
 
+html.viewport-locked,
+html.viewport-locked body {
+  height: var(--viewport-lock-h);
+  min-height: var(--viewport-lock-h);
+  max-height: var(--viewport-lock-h);
+  overflow: hidden;
+}
+
 #app.app-locked {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
   height: var(--app-lock-h);
   min-height: var(--app-lock-h);
   max-height: var(--app-lock-h);
