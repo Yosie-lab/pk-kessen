@@ -58,6 +58,12 @@ button {
     linear-gradient(180deg, #06110d 0%, #0a1f15 42%, #082016 100%);
 }
 
+#app.app-locked {
+  height: var(--app-lock-h);
+  min-height: var(--app-lock-h);
+  max-height: var(--app-lock-h);
+}
+
 #pitch {
   position: relative;
   flex: 1 1 auto;

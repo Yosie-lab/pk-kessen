@@ -5,6 +5,7 @@ const mainCtx = canvas.getContext("2d", { alpha: true, desynchronized: true }) |
 let ctx = mainCtx;
 
 const els = {
+  app: document.getElementById("app"),
   hud: document.getElementById("hud"),
   title: document.getElementById("title-screen"),
   result: document.getElementById("result-screen"),
@@ -546,7 +547,7 @@ const state = {
 let sessionLayout = null;
 
 const LAYOUT_LOCK_DEBOUNCE_MS = 160;
-const LAYOUT_RELOCK_DRIFT = 0.12;
+const LAYOUT_WIDTH_RELOCK_DRIFT = 0.05;
 const RESIZE_DEBOUNCE_MS = 32;
 const STRIKE = {
   FLIGHT_MS: 820,
@@ -746,6 +747,12 @@ function pinCanvasCss(w, h) {
   document.documentElement.style.setProperty("--pitch-lock-h", `${h}px`);
 }
 
+function pinAppShell(h) {
+  if (!els.app || h <= 0) return;
+  els.app.classList.add("app-locked");
+  document.documentElement.style.setProperty("--app-lock-h", `${h}px`);
+}
+
 function unpinCanvasCss() {
   canvas.style.width = "";
   canvas.style.height = "";
@@ -753,10 +760,17 @@ function unpinCanvasCss() {
   document.documentElement.style.removeProperty("--pitch-lock-h");
 }
 
+function unpinAppShell() {
+  if (!els.app) return;
+  els.app.classList.remove("app-locked");
+  document.documentElement.style.removeProperty("--app-lock-h");
+}
+
 function clearSessionLayout() {
   sessionLayout = null;
   state.fixedGoalRatio = null;
   unpinCanvasCss();
+  unpinAppShell();
 }
 
 function measureFlexCanvasSize() {
@@ -778,6 +792,7 @@ function resize(opts = {}) {
 
   if (sessionLayout && !forceRemeasure) {
     // セッション確定済み：Safari のアドレスバー揺れを無視して同じ寸法を維持
+    pinAppShell(sessionLayout.appH);
     pinCanvasCss(sessionLayout.w, sessionLayout.h);
     applyCanvasBacking(
       sessionLayout.w,
@@ -812,15 +827,17 @@ function captureSessionLayout() {
     h: g.h / h,
   };
   state.fixedGoalRatio = goalRatio;
+  const appH = Math.max(1, els.app?.getBoundingClientRect().height || h);
   sessionLayout = {
     w,
     h,
     dpr,
     mobileLite,
     goalRatio,
+    appH,
     winW: window.innerWidth,
-    winH: window.innerHeight,
   };
+  pinAppShell(appH);
   pinCanvasCss(w, h);
   invalidateBgCache();
 }
@@ -5622,46 +5639,35 @@ canvas.addEventListener("pointermove", onPointerMove, { passive: true });
 
 let resizeTimer = 0;
 function scheduleLayoutRefresh() {
-  // セッション確定中：ウィンドウサイズのドリフトが閾値未満なら無視
-  // （canvas の width/height 変更で ResizeObserver が再発火→ループになるのを防ぐ）
   if (sessionLayout) {
-    const drift = Math.max(
-      Math.abs(window.innerWidth - sessionLayout.winW) / Math.max(1, sessionLayout.winW),
-      Math.abs(window.innerHeight - sessionLayout.winH) / Math.max(1, sessionLayout.winH)
-    );
-    if (drift < LAYOUT_RELOCK_DRIFT) {
-      // ドリフトなし → ピンを維持するだけで OK。タイマー不要
-      return;
-    }
-    // 大きな変化 → セッションリセット（タイマーへ）
-  }
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    if (!sessionLayout) {
-      resize({ forceRemeasure: true });
-      return;
-    }
-    // ピン留め中は canvas を外して測らない（再入場ループになる）。
-    // ウィンドウの大きな変化だけセッションを作り直す。
-    const drift = Math.max(
-      Math.abs(window.innerWidth - sessionLayout.winW) / Math.max(1, sessionLayout.winW),
-      Math.abs(window.innerHeight - sessionLayout.winH) / Math.max(1, sessionLayout.winH)
-    );
-    if (drift >= LAYOUT_RELOCK_DRIFT) {
+    // 高さの揺れ（Safari アドレスバー等）は無視。幅が大きく変わったときだけ再ロック
+    const widthDrift =
+      Math.abs(window.innerWidth - sessionLayout.winW) / Math.max(1, sessionLayout.winW);
+    if (widthDrift >= LAYOUT_WIDTH_RELOCK_DRIFT) {
       clearSessionLayout();
       if (state.mode === "play") scheduleLockFixedGoal();
       else resize({ forceRemeasure: true });
       return;
     }
     resize();
+    return;
+  }
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    resize({ forceRemeasure: true });
   }, RESIZE_DEBOUNCE_MS);
 }
 
 window.addEventListener("resize", scheduleLayoutRefresh);
 window.addEventListener("orientationchange", () => {
   clearSessionLayout();
-  scheduleLayoutRefresh();
+  setTimeout(scheduleLayoutRefresh, 280);
 });
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    if (sessionLayout) resize();
+  });
+}
 const layoutObserver = new ResizeObserver(scheduleLayoutRefresh);
 // キャンバス自体を監視すると applyCanvasBacking で width/height を変えるたびに
 // ResizeObserver が再発火してリサイズループになるため、親要素を監視する
