@@ -45,6 +45,7 @@ const cache = {};
 let unlocked = false;
 let cheerTimer = null;
 let activeCheer = [];
+let cheerGen = 0;
 let audioCtx = null;
 
 function rand(a, b) {
@@ -73,12 +74,24 @@ function getAudio(key) {
   return cache[key];
 }
 
+/** 起動時にサンプルを先読み（ゴール時の無音対策） */
+function preloadSounds() {
+  Object.keys(FILES).forEach((key) => {
+    try {
+      getAudio(key).load();
+    } catch (_) {}
+  });
+}
+preloadSounds();
+
 function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
   const base = getAudio(key);
   const a = base.cloneNode();
   a.volume = Math.max(0, Math.min(1, volume));
   a.playbackRate = rate;
-  const applyStart = () => {
+  a.preload = "auto";
+
+  const tryPlay = (attempt = 0) => {
     try {
       const dur = a.duration;
       if (Number.isFinite(dur) && dur > 0.4) {
@@ -86,19 +99,33 @@ function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
         a.currentTime = Math.min(startAt, maxStart);
       }
     } catch (_) {}
-  };
-  const start = () => {
-    applyStart();
     const p = a.play();
-    if (p && p.catch) p.catch(() => {});
+    if (p && p.catch) {
+      p.catch(() => {
+        if (attempt < 2) {
+          setTimeout(() => tryPlay(attempt + 1), 60 + attempt * 80);
+        }
+      });
+    }
   };
-  if (a.readyState >= 1) {
-    /* metadata ready */
+
+  const start = () => tryPlay(0);
+  if (a.readyState >= 2) {
+    if (delayMs > 8) setTimeout(start, delayMs);
+    else start();
   } else {
-    a.addEventListener("loadedmetadata", applyStart, { once: true });
+    a.addEventListener(
+      "canplay",
+      () => {
+        if (delayMs > 8) setTimeout(start, delayMs);
+        else start();
+      },
+      { once: true }
+    );
+    try {
+      a.load();
+    } catch (_) {}
   }
-  if (delayMs > 8) setTimeout(start, delayMs);
-  else start();
   return a;
 }
 
@@ -114,9 +141,10 @@ function getCtx() {
 
 /** ブラウザの自動再生制限を解除（最初のユーザー操作で呼ぶ） */
 export function unlockAudio() {
+  const ctx = getCtx();
+  if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
   if (unlocked) return;
   unlocked = true;
-  getCtx();
   Object.keys(FILES).forEach((key) => {
     const a = getAudio(key);
     a.volume = 0;
@@ -298,6 +326,7 @@ function playWoodworkThump(intensity = 0.12, freq = 130) {
 }
 
 function stopCheer() {
+  cheerGen++;
   if (cheerTimer) {
     clearTimeout(cheerTimer);
     cheerTimer = null;
@@ -311,12 +340,24 @@ function stopCheer() {
   activeCheer = [];
 }
 
+/** ゴール直後に必ず鳴る短いアクセント（歓声レイヤーの遅延・失敗対策） */
+function playGoalSting() {
+  const yell = playClone("cheerYell", rand(0.78, 0.92), rand(1.0, 1.1), 0, 0);
+  activeCheer.push(yell);
+  const short = playClone("cheerShort", rand(0.62, 0.78), rand(0.98, 1.08), 0, rand(0, 35));
+  activeCheer.push(short);
+  playKickBodyThump(rand(0.14, 0.22), rand(95, 130));
+}
+
 /**
  * スタジアム歓声（短め・毎回違うレイヤー／速度／入り）
  */
 export function playCheer() {
   unlockAudio();
   stopCheer();
+  const gen = cheerGen;
+
+  playGoalSting();
 
   const style = Math.random(); // 反応の型を変える
   const bedKey = pick(CHEER_BEDS);
@@ -326,8 +367,8 @@ export function playCheer() {
 
   const bedRate = rand(0.92, 1.12);
   const yellRate = rand(0.95, 1.18);
-  const bedVol = rand(0.28, 0.48);
-  const yellVol = rand(0.48, 0.78);
+  const bedVol = rand(0.38, 0.52);
+  const yellVol = rand(0.62, 0.82);
   const holdMs = rand(1400, 2300) | 0;
   const fadeMs = rand(380, 700) | 0;
 
@@ -336,7 +377,7 @@ export function playCheer() {
 
   // メインの叫び声（わずかにずらして厚み）
   yellKeys.forEach((key, i) => {
-    const delay = i === 0 ? rand(0, 90) : rand(40, 160);
+    const delay = i === 0 ? 0 : rand(40, 160);
     const a = playClone(
       key,
       yellVol * (i === 0 ? 1 : rand(0.45, 0.7)),
@@ -380,18 +421,19 @@ export function playCheer() {
 
   // 合成のざわめき＋拍手粒でスタジアム感を毎回変える
   playCrowdSwell({
-    intensity: rand(0.35, 0.75),
+    intensity: rand(0.45, 0.8),
     bright: rand(0.35, 0.9),
     dur: rand(1.5, 2.6),
     rise: rand(0.05, 0.18),
   });
   playApplauseTexture({
-    intensity: rand(0.4, 0.85),
+    intensity: rand(0.5, 0.9),
     dur: rand(1.6, 2.8),
     density: rand(0.55, 1),
   });
 
   cheerTimer = setTimeout(() => {
+    if (gen !== cheerGen) return;
     for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 120) | 0));
     cheerTimer = null;
   }, holdMs);
@@ -401,6 +443,9 @@ export function playCheer() {
 export function playVictoryCelebration() {
   unlockAudio();
   stopCheer();
+  const gen = cheerGen;
+
+  playGoalSting();
 
   const bedKeys = pickN(["cheerVictory", "cheer", "cheerChaos", "crowdStadium"], 2);
   const yellKeys = pickN(CHEER_YELLS, 3);
@@ -469,6 +514,7 @@ export function playVictoryCelebration() {
   });
 
   cheerTimer = setTimeout(() => {
+    if (gen !== cheerGen) return;
     for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 180) | 0));
     cheerTimer = null;
   }, holdMs);
@@ -480,7 +526,7 @@ export function playMiss() {
   stopCheer();
 
   const bed = pick(["crowdStadium", "cheerYell", "cheerChant"]);
-  const murmur = playClone(bed, rand(0.14, 0.28), rand(0.62, 0.82), rand(0, 1.5));
+  const murmur = playClone(bed, rand(0.32, 0.48), rand(0.62, 0.82), rand(0, 1.5));
   activeCheer = [murmur];
   const hold = rand(700, 1100) | 0;
   setTimeout(() => fadeOut(murmur, rand(400, 650) | 0), hold);

@@ -2583,8 +2583,9 @@ function finishKick(result, shooter) {
     }
   } else if (result.saved) {
     state.flash = 0.45;
-    // 自軍キーパーのセーブは歓声
+    // 自軍キーパーのセーブは歓声、自軍シュート被セーブは残念な声
     if (shooter === "cpu") playCheer();
+    else playMiss();
     setPrompt(shooter === "you" ? "阻まれた！" : "セーブ！", { result: true });
   } else if (result.post) {
     state.flash = 0.7;
