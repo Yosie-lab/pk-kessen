@@ -736,6 +736,9 @@ function resize() {
   ctx = mainCtx;
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   invalidateBgCache();
+  if (state.mode === "play" && state.fixedGoalRatio) {
+    lockFixedGoal();
+  }
 }
 
 let safeProbe = null;
@@ -760,8 +763,8 @@ function readSafeAreaInsets() {
 function playfieldInsets() {
   const safe = readSafeAreaInsets();
   let top = 10;
-  // プレイ中は下部ヒントの出し入れでゴールサイズが揺れないよう固定
-  let bottom = state.mode === "play" ? 46 : 10;
+  // プレイ中・結果画面は同じ下部余白でゴールサイズを揃える（もう一度で揺れない）
+  let bottom = state.mode === "play" || state.mode === "result" ? 46 : 10;
 
   if (state.mode !== "play" && els.controls && !els.controls.hidden) {
     const canvasRect = canvas.getBoundingClientRect();
@@ -812,7 +815,6 @@ function goalRectFromRatio() {
 
 function lockFixedGoal() {
   if (state.mode !== "play") return;
-  resize();
   const g = computeGoalRect();
   const nextRatio = {
     x: g.x / state.w,
@@ -1366,7 +1368,9 @@ function scheduleLockFixedGoal() {
   clearTimeout(lockGoalTimer);
   lockGoalTimer = setTimeout(() => {
     lockGoalTimer = 0;
-    if (state.mode === "play") lockFixedGoal();
+    if (state.mode !== "play") return;
+    resize();
+    lockFixedGoal();
   }, LAYOUT_LOCK_DEBOUNCE_MS);
 }
 
@@ -1374,8 +1378,6 @@ function hideOverlayScreens() {
   els.title.hidden = true;
   els.result.hidden = true;
   els.hud.hidden = false;
-  lockFixedGoal();
-  scheduleLockFixedGoal();
 }
 
 function startMatch() {
@@ -1384,7 +1386,6 @@ function startMatch() {
     clearMatchTimers();
     resetMatchAudio();
     playerAimHistory.length = 0;
-    clearFixedGoal();
     invalidateBgCache();
     state.mode = "play";
     state.suddenDeath = false;
@@ -1407,6 +1408,7 @@ function startMatch() {
     hideOverlayScreens();
     updateHud();
     beginYouShoot();
+    scheduleLockFixedGoal();
   } catch (err) {
     console.error(err);
   }
@@ -2827,7 +2829,6 @@ function advanceTurn(lastShooter) {
 
 function endMatch(winner) {
   state.mode = "result";
-  clearFixedGoal();
   state.phase = "idle";
   els.controls.hidden = true;
   els.result.hidden = false;
