@@ -1061,20 +1061,20 @@ const KEEPER_LOCAL_FOOT_Y = 82;
 const KEEPER_LOCAL_HEAD_TOP = -14;
 /** キーパーローカル座標での頭半径（drawKeeper の ctx.arc 9.5 と一致） */
 const KEEPER_HEAD_LOCAL_R = 9.5;
-/** ペナルティ地点のボールはゴール前より手前なので、頭より大きめ */
-const BALL_SPOT_HEAD_RATIO = 1.35;
+/** ペナルティ地点のボールは手前にあるが、実寸比（直径≈22cm）に合わせて控えめに */
+const BALL_SPOT_HEAD_RATIO = 1.08;
 
 function keeperHeadRadius(g = goalRect()) {
   return KEEPER_HEAD_LOCAL_R * keeperScaleForGoal(g);
 }
 
-/** ペナルティ地点のボール描画倍率（手前視点：キッカーの足元・ゴール対比で自然な大きさ） */
-const BALL_SPOT_DRAW_RATIO = 1.75;
+/** ペナルティ地点のボール描画倍率（手前視点・キーパー頭との対比） */
+const BALL_SPOT_DRAW_RATIO = 1.42;
 
 /** ペナルティ地点のボール描画用 */
 function ballSpotDrawRadius(g = goalRect()) {
   const headR = keeperHeadRadius(g);
-  return clamp(headR * BALL_SPOT_DRAW_RATIO, 14, headR * 2.2);
+  return clamp(headR * BALL_SPOT_DRAW_RATIO, 11, headR * 1.72);
 }
 
 function penaltySpotMarkRadius() {
@@ -1105,7 +1105,7 @@ function drawPenaltySpotMark() {
 
 function ballBaseRadius(g = goalRect()) {
   const headR = keeperHeadRadius(g);
-  return clamp(headR * BALL_SPOT_HEAD_RATIO, 11, headR * 1.55);
+  return clamp(headR * BALL_SPOT_HEAD_RATIO, 9, headR * 1.22);
 }
 
 function keeperScaleForGoal(g = goalRect()) {
@@ -2063,9 +2063,9 @@ function flightBallScale(u, result, scaleMul = 1) {
   const baseR = ballBaseRadius(g);
   const flightR = Math.max(baseR * (13 / 12), 1);
   const headR = keeperHeadRadius(g);
-  // ゴール到達時の見かけ半径
-  const goalEnd = clamp(headR / flightR * 1.3, 0.9, 1.38);
-  const goalStart = clamp(goalEnd * 1.15, goalEnd, 1.48);
+  // ゴール到達時：キーパー頭よりやや小さめ（遠景の実寸感）
+  const goalEnd = clamp(headR / flightR * 1.14, 0.82, 1.22);
+  const goalStart = clamp(goalEnd * 1.1, goalEnd, 1.32);
 
   let end;
   let start;
