@@ -768,14 +768,22 @@ function lockFixedGoal() {
   if (state.mode !== "play") return;
   resize();
   const g = computeGoalRect();
-  state.fixedGoal = g;
-  state.fixedGoalRatio = {
+  const nextRatio = {
     x: g.x / state.w,
     y: g.y / state.h,
     w: g.w / state.w,
     h: g.h / state.h,
   };
-  invalidateBgCache();
+  const prev = state.fixedGoalRatio;
+  const same =
+    prev &&
+    Math.abs(prev.x - nextRatio.x) < 0.001 &&
+    Math.abs(prev.y - nextRatio.y) < 0.001 &&
+    Math.abs(prev.w - nextRatio.w) < 0.001 &&
+    Math.abs(prev.h - nextRatio.h) < 0.001;
+  state.fixedGoal = g;
+  state.fixedGoalRatio = nextRatio;
+  if (!same) invalidateBgCache();
 }
 
 function refreshFixedGoal() {
@@ -1292,20 +1300,22 @@ function showControls(mode) {
   if (mode === "dive-click") els.aimHint.textContent = "今だ！ゴールをクリックしてダイブ";
 }
 
+let lockGoalTimer = 0;
+
+function scheduleLockFixedGoal() {
+  clearTimeout(lockGoalTimer);
+  lockGoalTimer = setTimeout(() => {
+    lockGoalTimer = 0;
+    if (state.mode === "play") lockFixedGoal();
+  }, 120);
+}
+
 function hideOverlayScreens() {
   els.title.hidden = true;
   els.result.hidden = true;
   els.hud.hidden = false;
-  requestAnimationFrame(() => {
-    lockFixedGoal();
-    // iPhone Safari: アドレスバー収縮後のキャンバス高さが落ち着いてから比率を確定
-    requestAnimationFrame(() => {
-      lockFixedGoal();
-      setTimeout(() => {
-        if (state.mode === "play") lockFixedGoal();
-      }, 120);
-    });
-  });
+  lockFixedGoal();
+  scheduleLockFixedGoal();
 }
 
 function startMatch() {
@@ -2143,8 +2153,6 @@ function startCpuRunup() {
   state.keeperProgress = 0;
   showControls("none");
   setPrompt("CPU助走！キックの瞬間にゴールをクリックしてダイブ");
-
-  requestAnimationFrame(stepCpuShot);
 }
 
 function lockPlayerDive(clientX, clientY, elapsed) {
@@ -2274,15 +2282,15 @@ function stepCpuShot(now) {
     state.ball.scale = flightBallScale(u, result, pos.scaleMul ?? 1);
     state.ball.spinY = u * pending.spinYaw * (pos.spinMul ?? 1);
     state.ball.spinX = u * pending.spinPitch * (pos.spinMul ?? 1);
-    state.ball.trail.push({
-      x: state.ball.x,
-      y: state.ball.y,
-      a: 1,
-      spinY: state.ball.spinY,
-      spinX: state.ball.spinX,
-      scale: state.ball.scale,
-    });
-    if (state.ball.trail.length > maxBallTrail()) state.ball.trail.shift();
+    pushBallTrail(
+      state.ball.trail,
+      state.ball.x,
+      state.ball.y,
+      1,
+      state.ball.spinY,
+      state.ball.spinX,
+      state.ball.scale
+    );
 
     applyKickerMotion(state.kicker, {
       elapsed: runMs + kickMs,
@@ -2309,8 +2317,6 @@ function stepCpuShot(now) {
       return;
     }
   }
-
-  requestAnimationFrame(stepCpuShot);
 }
 
 /** クリック後：ホイッスル → キーパーフェイント中にキッカー助走 */
@@ -2449,8 +2455,24 @@ function startPlayerRunup() {
   state.keeperProgress = 0;
   showControls("none");
   setPrompt("助走！キックの瞬間にゴールをクリック");
+}
 
-  requestAnimationFrame(stepPlayerShot);
+const ballTrailPool = [];
+
+function pushBallTrail(trail, x, y, a, spinY, spinX, scale) {
+  let slot = ballTrailPool[trail.length];
+  if (!slot) {
+    slot = {};
+    ballTrailPool.push(slot);
+  }
+  slot.x = x;
+  slot.y = y;
+  slot.a = a;
+  slot.spinY = spinY;
+  slot.spinX = spinX;
+  slot.scale = scale;
+  trail.push(slot);
+  if (trail.length > maxBallTrail()) trail.shift();
 }
 
 function applyPendingEarlyAim(elapsed) {
@@ -2611,15 +2633,15 @@ function stepPlayerShot(now) {
     state.ball.scale = flightBallScale(u, result, pos.scaleMul ?? 1);
     state.ball.spinY = u * pending.spinYaw * (pos.spinMul ?? 1);
     state.ball.spinX = u * pending.spinPitch * (pos.spinMul ?? 1);
-    state.ball.trail.push({
-      x: state.ball.x,
-      y: state.ball.y,
-      a: 1,
-      spinY: state.ball.spinY,
-      spinX: state.ball.spinX,
-      scale: state.ball.scale,
-    });
-    if (state.ball.trail.length > maxBallTrail()) state.ball.trail.shift();
+    pushBallTrail(
+      state.ball.trail,
+      state.ball.x,
+      state.ball.y,
+      1,
+      state.ball.spinY,
+      state.ball.spinX,
+      state.ball.scale
+    );
 
     applyKickerMotion(state.kicker, {
       elapsed: runMs + kickMs,
@@ -2646,8 +2668,14 @@ function stepPlayerShot(now) {
       return;
     }
   }
+}
 
-  requestAnimationFrame(stepPlayerShot);
+/** 助走・飛翔の物理更新（メイン rAF から呼ぶ） */
+function tickPendingStrike(now) {
+  const pending = state.pendingStrike;
+  if (!pending) return;
+  if (pending.mode === "shoot") stepPlayerShot(now);
+  else if (pending.mode === "save") stepCpuShot(now);
 }
 
 function finishKick(result, shooter) {
@@ -2662,7 +2690,7 @@ function finishKick(result, shooter) {
     state.crowdPulse = 1;
     // ゴールネットは揺らさない
     // 自軍ゴールは歓声、相手ゴールは残念な声
-    if (shooter === "you") playCheer();
+    if (shooter === "you") playCheer({ lite: state.mobileLite });
     else playMiss();
     if (result.post) {
       if (result.post === "bar") {
@@ -2682,7 +2710,7 @@ function finishKick(result, shooter) {
   } else if (result.saved) {
     state.flash = 0.45;
     // 自軍キーパーのセーブは歓声、相手キーパーに阻まれたら小さめのスタジアム反応
-    if (shooter === "cpu") playCheer();
+    if (shooter === "cpu") playCheer({ lite: state.mobileLite });
     else playBlockedByKeeper();
     setPrompt(shooter === "you" ? "阻まれた！" : "セーブ！", { result: true });
   } else if (result.post) {
@@ -3328,11 +3356,13 @@ function drawWeatherOverlay() {
   if (v.fog > 0.01) {
     ctx.fillStyle = `rgba(200,210,220,${v.fog * 0.55})`;
     ctx.fillRect(0, 0, w, h * 0.55);
-    const mist = ctx.createLinearGradient(0, h * 0.12, 0, h * 0.4);
-    mist.addColorStop(0, `rgba(220,230,240,${v.fog * 0.35})`);
-    mist.addColorStop(1, "rgba(220,230,240,0)");
-    ctx.fillStyle = mist;
-    ctx.fillRect(0, h * 0.1, w, h * 0.35);
+    if (!state.mobileLite) {
+      const mist = ctx.createLinearGradient(0, h * 0.12, 0, h * 0.4);
+      mist.addColorStop(0, `rgba(220,230,240,${v.fog * 0.35})`);
+      mist.addColorStop(1, "rgba(220,230,240,0)");
+      ctx.fillStyle = mist;
+      ctx.fillRect(0, h * 0.1, w, h * 0.35);
+    }
   }
   if (v.rain > 0.05 && !state.mobileLite) {
     const now = performance.now();
@@ -3908,7 +3938,46 @@ function drawLimb(x1, y1, x2, y2, width, color) {
   ctx.stroke();
 }
 
+function drawKeeperMobile() {
+  const dir = state.keeperDir || "center";
+  const height = state.keeperHeight || "mid";
+  const t = state.keeperProgress;
+  const rest = worldFromAim(keeperReadyAim());
+  const target = worldFromAim(keeperDiveAim(dir, height));
+  const stretch = keeperDiveEase(t);
+  const diveSide = dir === "left" ? -1 : dir === "right" ? 1 : 0;
+  const x = lerp(rest.x, target.x, stretch);
+  const y = lerp(rest.y, target.y, stretch);
+  const kit = state.turn === "you-save" ? state.youKit : state.oppKit;
+  const glove = state.turn === "you-save" ? "#d8ff4a" : "#f5f5f5";
+  const handSpread = stretch * (diveSide !== 0 ? diveSide * 26 : 0);
+  const handLift = height === "high" ? -18 : height === "low" ? 10 : -4;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = kit.jersey;
+  ctx.beginPath();
+  ctx.ellipse(0, 6, 13, 20, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = kit.shorts || "#1c2430";
+  ctx.fillRect(-10, 18, 20, 10);
+  ctx.fillStyle = "#e6b589";
+  ctx.beginPath();
+  ctx.arc(0, -12, 8.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = glove;
+  ctx.beginPath();
+  ctx.ellipse(handSpread - 11, handLift, 5.5, 7, 0, 0, Math.PI * 2);
+  ctx.ellipse(handSpread + 11, handLift, 5.5, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawKeeper() {
+  if (state.mobileLite) {
+    drawKeeperMobile();
+    return;
+  }
   const dir = state.keeperDir || "center";
   const height = state.keeperHeight || "mid";
   const t = state.keeperProgress;
@@ -4542,7 +4611,58 @@ function drawKeeper() {
   ctx.restore();
 }
 
+function drawPlayerFigureLite(opts) {
+  const {
+    x,
+    y,
+    scale = 1,
+    pose = "ready",
+    kickT = 0,
+    stride = 0,
+    kit = SAMURAI_BLUE,
+    facing = 1,
+  } = opts;
+  const kt = clamp(kickT, 0, 1);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(facing * scale, scale);
+  const lean = pose === "run" ? -0.18 : pose === "kick" ? -0.28 : -0.1;
+  ctx.rotate(lean);
+  ctx.fillStyle = kit.jersey;
+  ctx.fillRect(-10, -38, 20, 26);
+  ctx.fillStyle = kit.shorts || "#1c2430";
+  ctx.fillRect(-9, -12, 18, 11);
+  ctx.fillStyle = "#e6b589";
+  ctx.beginPath();
+  ctx.arc(0, -46, 8, 0, Math.PI * 2);
+  ctx.fill();
+  if (pose === "run") {
+    const s = Math.sin(stride);
+    ctx.strokeStyle = "#111";
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(-5, -6);
+    ctx.lineTo(-8 + s * 6, 8);
+    ctx.moveTo(5, -6);
+    ctx.lineTo(8 - s * 6, 8);
+    ctx.stroke();
+  } else if (pose === "kick" && kt > 0.34) {
+    const strike = clamp((kt - 0.34) / 0.66, 0, 1);
+    ctx.strokeStyle = kit.jerseyDark;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(6, -8);
+    ctx.lineTo(16 + strike * 14, -18 - strike * 10);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawPlayerFigure(opts) {
+  if (state.mobileLite) {
+    drawPlayerFigureLite(opts);
+    return;
+  }
   const {
     x,
     y,
@@ -5025,6 +5145,27 @@ function norm3(p) {
   return [p[0] / len, p[1] / len, p[2] / len];
 }
 
+/** 飛翔中モバイル向け：パネル投影なしの軽量ボール */
+function drawSoccerBallFast(x, y, radius, spinY = 0) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.beginPath();
+  ctx.arc(0, 0, radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#f2f4ef";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.38)";
+  ctx.lineWidth = Math.max(0.75, radius * 0.042);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(0,0,0,0.5)";
+  ctx.lineWidth = Math.max(0.65, radius * 0.034);
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.9, spinY + i * 2.05, spinY + i * 2.05 + 1.15);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 /** モバイル向け：3Dパネル投影（柄はデスクトップと同系統） */
 function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = true) {
   if (withShadow) {
@@ -5103,9 +5244,13 @@ function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = tru
 }
 
 /** 3D投影の白黒サッカーボール（spinX / spinY で球体回転） */
-function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
+function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0, fast = false) {
   if (state.mobileLite) {
-    drawSoccerBallLite(x, y, radius, spinY, spinX);
+    if (fast) {
+      drawSoccerBallFast(x, y, radius, spinY);
+    } else {
+      drawSoccerBallLite(x, y, radius, spinY, spinX);
+    }
     return;
   }
   ctx.save();
@@ -5287,7 +5432,8 @@ function drawBall() {
     state.ball.y,
     flightR * state.ball.scale,
     state.ball.spinY || 0,
-    state.ball.spinX || 0
+    state.ball.spinX || 0,
+    state.mobileLite && state.ball.airborne
   );
 }
 
@@ -5297,17 +5443,18 @@ function drawFlash() {
   ctx.fillRect(0, 0, state.w, state.h);
 }
 
-function update(dt) {
+function update(dt, now = performance.now()) {
   if (state.flash > 0) state.flash = Math.max(0, state.flash - dt * 1.8);
   if (state.crowdPulse > 0) state.crowdPulse = Math.max(0, state.crowdPulse - dt * 0.9);
   if (state.netShake > 0) state.netShake = Math.max(0, state.netShake - dt * 0.9);
   if (
     state.whistlePending &&
     state.whistleStartedAt > 0 &&
-    performance.now() - state.whistleStartedAt > 2200
+    now - state.whistleStartedAt > 2200
   ) {
     flushWhistleRunup(state.turn === "you-save" ? "save" : "shoot");
   }
+  tickPendingStrike(now);
   if (state.ball?.trail?.length) {
     const trail = state.ball.trail;
     let write = 0;
@@ -5398,7 +5545,7 @@ function loop(now) {
   if (!loopRunning) return;
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
-  update(dt);
+  update(dt, now);
   render();
   requestAnimationFrame(loop);
 }

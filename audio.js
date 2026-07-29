@@ -352,12 +352,26 @@ function playGoalSting() {
 /**
  * スタジアム歓声（短め・毎回違うレイヤー／速度／入り）
  */
-export function playCheer() {
+export function playCheer(opts = {}) {
+  const lite = opts === true || opts?.lite;
   unlockAudio();
   stopCheer();
   const gen = cheerGen;
 
   playGoalSting();
+
+  if (lite) {
+    const yell = playClone(pick(CHEER_YELLS), rand(0.58, 0.76), rand(0.96, 1.12), rand(0, 1.2));
+    activeCheer.push(yell);
+    const clap = playClone(pick(APPLAUSE), rand(0.34, 0.52), rand(0.94, 1.08), rand(0, 90));
+    activeCheer.push(clap);
+    cheerTimer = setTimeout(() => {
+      if (gen !== cheerGen) return;
+      for (const a of activeCheer) fadeOut(a, rand(420, 620) | 0);
+      cheerTimer = null;
+    }, rand(1500, 2100) | 0);
+    return;
+  }
 
   const style = Math.random(); // 反応の型を変える
   const bedKey = pick(CHEER_BEDS);
@@ -419,18 +433,23 @@ export function playCheer() {
     activeCheer.push(late);
   }
 
-  // 合成のざわめき＋拍手粒でスタジアム感を毎回変える
-  playCrowdSwell({
+  // 合成のざわめき＋拍手粒でスタジアム感を毎回変える（描画フレームをブロックしないよう次 tick へ）
+  const swellOpts = {
     intensity: rand(0.45, 0.8),
     bright: rand(0.35, 0.9),
     dur: rand(1.5, 2.6),
     rise: rand(0.05, 0.18),
-  });
-  playApplauseTexture({
+  };
+  const textureOpts = {
     intensity: rand(0.5, 0.9),
     dur: rand(1.6, 2.8),
     density: rand(0.55, 1),
-  });
+  };
+  setTimeout(() => {
+    if (gen !== cheerGen) return;
+    playCrowdSwell(swellOpts);
+    playApplauseTexture(textureOpts);
+  }, 0);
 
   cheerTimer = setTimeout(() => {
     if (gen !== cheerGen) return;
