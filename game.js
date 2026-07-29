@@ -899,6 +899,12 @@ function keeperHeadRadius(g = goalRect()) {
   return KEEPER_HEAD_LOCAL_R * keeperScaleForGoal(g);
 }
 
+/** ペナルティ地点のボール描画用（飛翔計算とは別。ゴール到達サイズ≈キーパー頭） */
+function ballSpotDrawRadius(g = goalRect()) {
+  const headR = keeperHeadRadius(g);
+  return clamp(headR, 5.5, headR * 1.06);
+}
+
 function ballBaseRadius(g = goalRect()) {
   const headR = keeperHeadRadius(g);
   return clamp(headR * BALL_SPOT_HEAD_RATIO, 5.5, headR * 1.02);
@@ -1446,21 +1452,21 @@ function applyKeeperDive(dive) {
 /** キックごとに助走・踏み込み・蹴りの型を抽選 */
 function rollKickStyle() {
   const presets = [
-    { name: "drive", plantAt: 0.46, decelPow: 2.05, strideMul: 1.1, legAmp: 1.1, kickMsMul: 0.88, runMsMul: 0.86, launchU: 0.21, followMs: 330, swingSpan: 0.56, slideAmp: 6.0 },
-    { name: "snap", plantAt: 0.4, decelPow: 1.82, strideMul: 1.24, legAmp: 1.14, kickMsMul: 0.8, runMsMul: 0.82, launchU: 0.17, followMs: 270, swingSpan: 0.52, slideAmp: 6.8 },
-    { name: "surge", plantAt: 0.5, decelPow: 2.22, strideMul: 1.02, legAmp: 1.08, kickMsMul: 0.92, runMsMul: 0.9, launchU: 0.23, followMs: 360, swingSpan: 0.6, slideAmp: 5.6 },
-    { name: "stutter", plantAt: 0.47, decelPow: 2.08, strideMul: 1.12, legAmp: 1.06, kickMsMul: 0.86, runMsMul: 0.88, launchU: 0.2, followMs: 310, swingSpan: 0.56, slideAmp: 5.8, stutter: true },
-    { name: "power", plantAt: 0.44, decelPow: 2.18, strideMul: 1.0, legAmp: 1.3, kickMsMul: 0.94, runMsMul: 0.88, launchU: 0.22, followMs: 370, swingSpan: 0.6, slideAmp: 6.4 },
-    { name: "burst", plantAt: 0.38, decelPow: 1.78, strideMul: 1.26, legAmp: 1.04, kickMsMul: 0.78, runMsMul: 0.8, launchU: 0.16, followMs: 260, swingSpan: 0.5, slideAmp: 6.6 },
-    { name: "lefty", plantAt: 0.47, decelPow: 2.12, strideMul: 1.06, legAmp: 1.1, kickMsMul: 0.9, runMsMul: 0.88, launchU: 0.2, followMs: 340, swingSpan: 0.58, slideAmp: 5.8, leftFooted: true },
+    { name: "drive", plantAt: 0.44, decelPow: 1.95, strideMul: 1.14, legAmp: 1.16, kickMsMul: 0.84, runMsMul: 0.84, launchU: 0.19, followMs: 320, swingSpan: 0.48, slideAmp: 6.8 },
+    { name: "snap", plantAt: 0.38, decelPow: 1.72, strideMul: 1.28, legAmp: 1.2, kickMsMul: 0.76, runMsMul: 0.8, launchU: 0.16, followMs: 260, swingSpan: 0.44, slideAmp: 7.4 },
+    { name: "surge", plantAt: 0.48, decelPow: 2.08, strideMul: 1.06, legAmp: 1.14, kickMsMul: 0.88, runMsMul: 0.88, launchU: 0.21, followMs: 350, swingSpan: 0.5, slideAmp: 6.2 },
+    { name: "stutter", plantAt: 0.45, decelPow: 1.98, strideMul: 1.16, legAmp: 1.12, kickMsMul: 0.82, runMsMul: 0.86, launchU: 0.18, followMs: 300, swingSpan: 0.48, slideAmp: 6.4, stutter: true },
+    { name: "power", plantAt: 0.42, decelPow: 2.05, strideMul: 1.04, legAmp: 1.36, kickMsMul: 0.9, runMsMul: 0.86, launchU: 0.2, followMs: 360, swingSpan: 0.5, slideAmp: 7.0 },
+    { name: "burst", plantAt: 0.36, decelPow: 1.68, strideMul: 1.3, legAmp: 1.1, kickMsMul: 0.74, runMsMul: 0.78, launchU: 0.15, followMs: 250, swingSpan: 0.42, slideAmp: 7.2 },
+    { name: "lefty", plantAt: 0.45, decelPow: 2.02, strideMul: 1.1, legAmp: 1.16, kickMsMul: 0.86, runMsMul: 0.86, launchU: 0.18, followMs: 330, swingSpan: 0.48, slideAmp: 6.6, leftFooted: true },
   ];
   const base = randChoice(presets);
   return {
     ...base,
-    plantAt: clamp(base.plantAt + rand(-0.03, 0.03), 0.36, 0.54),
-    legAmp: clamp(base.legAmp + rand(-0.06, 0.06), 0.94, 1.34),
-    kickMsMul: clamp(base.kickMsMul + rand(-0.05, 0.05), 0.76, 1.02),
-    runMsMul: clamp(base.runMsMul + rand(-0.05, 0.05), 0.76, 1.02),
+    plantAt: clamp(base.plantAt + rand(-0.025, 0.025), 0.34, 0.52),
+    legAmp: clamp(base.legAmp + rand(-0.04, 0.04), 1.02, 1.4),
+    kickMsMul: clamp(base.kickMsMul + rand(-0.04, 0.04), 0.72, 0.98),
+    runMsMul: clamp(base.runMsMul + rand(-0.04, 0.04), 0.74, 0.98),
     followMs: clamp((base.followMs + rand(-35, 35)) | 0, 240, 420),
     strideMul: clamp(base.strideMul + rand(-0.08, 0.08), 0.9, 1.34),
     slideAmp: base.slideAmp + rand(-0.4, 0.5),
@@ -1469,8 +1475,8 @@ function rollKickStyle() {
 }
 
 function strikeTiming(runDist, kickStyle = {}) {
-  const runMs = clamp((395 + runDist * 0.38) * (kickStyle.runMsMul ?? 1), 410, 820);
-  const kickMs = clamp(255 * (kickStyle.kickMsMul ?? 1), 200, 320);
+  const runMs = clamp((385 + runDist * 0.36) * (kickStyle.runMsMul ?? 1), 400, 780);
+  const kickMs = clamp(238 * (kickStyle.kickMsMul ?? 1), 185, 300);
   return { runMs, kickMs };
 }
 
@@ -1589,14 +1595,14 @@ function sampleKickerMotion({
   const decelPow = style.decelPow ?? 2.35;
   const strideMul = style.strideMul ?? 1;
   const swingSpan = style.swingSpan ?? 0.68;
-  const slideAmp = style.slideAmp ?? 5.6;
+  const slideAmp = style.slideAmp ?? 6.4;
 
   if (airborne) {
     const fu = clamp(flightElapsed / followMs, 0, 1);
     const sideBias = approach?.side ?? 0;
     const followDir = side === "you" ? 1 : -1;
-    const drift = 8 + Math.abs(sideBias) * 5 + slideAmp * 0.72;
-    const ease = 1 - Math.pow(1 - fu, 2.35);
+    const drift = 10 + Math.abs(sideBias) * 6 + slideAmp * 0.82;
+    const ease = 1 - Math.pow(1 - fu, 2.5);
     return {
       x: lerp(runTo.x, runTo.x + followDir * drift, ease),
       y: runTo.y - Math.sin(fu * Math.PI) * (1.8 + slideAmp * 0.08),
@@ -1632,10 +1638,11 @@ function sampleKickerMotion({
     }
 
     if (u < plantAt) {
-      return { x, y, pose: "run", kick: 0, stride, run: u };
+      const sprint = u > plantAt * 0.78 ? 1 + ((u - plantAt * 0.78) / (plantAt * 0.22)) * 0.22 : 1;
+      return { x, y, pose: "run", kick: 0, stride: stride * sprint, run: u };
     }
     const pu = (u - plantAt) / (1 - plantAt);
-    const plantEase = pu * pu * (3 - 2 * pu);
+    const plantEase = Math.pow(pu, 1.65) * (3 - 2 * pu);
     return {
       x,
       y,
@@ -1647,16 +1654,17 @@ function sampleKickerMotion({
   }
 
   const ku = clamp((elapsed - runMs) / kickMs, 0, 1);
-  const swingEase = ku < swingSpan ? 1 - Math.pow(1 - ku / swingSpan, 2.5) : 1;
+  const swingEase = ku < swingSpan ? 1 - Math.pow(1 - ku / swingSpan, 3.1) : 1;
   const kickT = lerp(plantKickTEnd, 1, swingEase);
   const slideDir = side === "you" ? -1 : 1;
-  const x = runTo.x + slideDir * lerp(0, slideAmp, Math.sin(ku * Math.PI * 0.95));
-  const y = runTo.y + lerp(0, 1.6 + slideAmp * 0.08, Math.sin(ku * Math.PI));
+  const strikeWave = Math.sin(ku * Math.PI * 0.98);
+  const x = runTo.x + slideDir * lerp(0, slideAmp * 1.12, strikeWave);
+  const y = runTo.y + lerp(0, 2.4 + slideAmp * 0.1, strikeWave) - Math.sin(ku * Math.PI) * 0.8;
 
   return {
     x,
     y,
-    pose: ku < 0.88 ? "kick" : "follow",
+    pose: ku < 0.82 ? "kick" : "follow",
     kick: kickT,
     stride: 0,
     run: 1,
@@ -4453,47 +4461,47 @@ function drawPlayerFigure(opts) {
     torsoTwist = s * 0.09;
   } else if (pose === "plant") {
     const p = clamp(kt / 0.36, 0, 1);
-    lean = lerp(-0.12, -0.04, p);
-    bob = lerp(1.1, 0, p);
-    hipSwingL = lerp(0.14, 0.05, p);
-    hipSwingR = lerp(-0.26, -1.48, p);
-    kneeL = lerp(0.16, 0.08, p);
-    kneeR = lerp(0.3, 1.14, p);
-    kickFootLift = lerp(0, 9.5, p);
-    armL = lerp(0.22, -0.12, p);
-    armR = lerp(-0.12, 0.38, p);
-    elbowL = lerp(0.48, 0.36, p);
-    elbowR = lerp(0.42, 0.32, p);
-    torsoTwist = lerp(0.05, -0.14, p);
+    lean = lerp(-0.16, -0.06, p);
+    bob = lerp(1.4, 0, p);
+    hipSwingL = lerp(0.16, 0.06, p);
+    hipSwingR = lerp(-0.3, -1.62, p);
+    kneeL = lerp(0.18, 0.1, p);
+    kneeR = lerp(0.34, 1.28, p);
+    kickFootLift = lerp(0, 11.5, p);
+    armL = lerp(0.28, -0.28, p);
+    armR = lerp(-0.16, 0.48, p);
+    elbowL = lerp(0.5, 0.32, p);
+    elbowR = lerp(0.4, 0.28, p);
+    torsoTwist = lerp(0.06, -0.18, p);
   } else if (pose === "kick") {
     const strike = clamp((kt - 0.36) / 0.64, 0, 1);
-    const wind = clamp(strike / 0.34, 0, 1);
-    const thru = clamp((strike - 0.34) / 0.66, 0, 1);
-    lean = lerp(-0.04, -0.48, wind * 0.5 + thru * 0.5);
-    bob = thru > 0.18 ? -3.0 : lerp(0, -1.4, wind);
-    hipSwingL = lerp(0.05, 0.22, thru);
-    hipSwingR = lerp(-1.48, 1.45, wind * 0.35 + thru * 0.65);
-    kneeL = lerp(0.08, 0.34, thru);
-    kneeR = lerp(1.14, 0.04, wind);
-    kickFootLift = lerp(9.5, -6.5, wind) + thru * 4.2;
-    armL = lerp(-0.12, -0.52, wind);
-    armR = lerp(0.38, -0.1, thru);
-    elbowL = lerp(0.36, 0.58, wind);
-    elbowR = lerp(0.32, 0.46, thru);
-    torsoTwist = lerp(-0.14, 0.18, thru);
+    const wind = clamp(strike / 0.3, 0, 1);
+    const thru = clamp((strike - 0.3) / 0.7, 0, 1);
+    lean = lerp(-0.06, -0.58, wind * 0.45 + thru * 0.55);
+    bob = thru > 0.14 ? -3.8 : lerp(0, -1.8, wind);
+    hipSwingL = lerp(0.06, 0.26, thru);
+    hipSwingR = lerp(-1.62, 1.62, wind * 0.4 + thru * 0.6);
+    kneeL = lerp(0.1, 0.38, thru);
+    kneeR = lerp(1.28, 0.02, wind);
+    kickFootLift = lerp(11.5, -8.5, wind) + thru * 5.8;
+    armL = lerp(-0.28, -0.68, wind);
+    armR = lerp(0.48, 0.18, thru);
+    elbowL = lerp(0.32, 0.62, wind);
+    elbowR = lerp(0.28, 0.38, thru);
+    torsoTwist = lerp(-0.18, 0.22, thru);
   } else if (pose === "follow") {
-    lean = lerp(-0.42, -0.12, kt);
-    bob = lerp(-2.2, 0, kt);
-    hipSwingL = lerp(0.22, 0.08, kt);
-    hipSwingR = lerp(1.45, -0.14, kt);
-    kneeL = lerp(0.34, 0.24, kt);
-    kneeR = lerp(0.04, 0.32, kt);
-    kickFootLift = lerp(2.6, 0, kt);
-    armL = lerp(-0.52, -0.2, kt);
-    armR = lerp(-0.1, 0.22, kt);
-    elbowL = lerp(0.58, 0.44, kt);
-    elbowR = lerp(0.46, 0.4, kt);
-    torsoTwist = lerp(0.18, 0, kt);
+    lean = lerp(-0.52, -0.14, kt);
+    bob = lerp(-2.6, 0, kt);
+    hipSwingL = lerp(0.26, 0.1, kt);
+    hipSwingR = lerp(1.62, -0.16, kt);
+    kneeL = lerp(0.38, 0.26, kt);
+    kneeR = lerp(0.02, 0.36, kt);
+    kickFootLift = lerp(3.2, 0, kt);
+    armL = lerp(-0.68, -0.24, kt);
+    armR = lerp(0.18, 0.28, kt);
+    elbowL = lerp(0.62, 0.46, kt);
+    elbowR = lerp(0.38, 0.42, kt);
+    torsoTwist = lerp(0.22, 0, kt);
   } else {
     // ready：待機ポーズをバリエーション（常にゴールへ前傾）
     const idle = Math.sin(performance.now() / 380);
@@ -4592,8 +4600,9 @@ function drawPlayerFigure(opts) {
     ctx.save();
     ctx.translate(side * 3.2, -8);
     ctx.rotate(hipSwing);
-    const thighLen = 17 + (side > 0 && footLift !== 0 ? 1.5 : 0);
-    const shinLen = 16 + (side > 0 && footLift < 0 ? 2 : 0);
+    const isKickLeg = (side > 0 && !leftFooted) || (side < 0 && leftFooted);
+    const thighLen = 17 + (isKickLeg && footLift !== 0 ? 2.2 : 0);
+    const shinLen = 16 + (isKickLeg && footLift < 0 ? 3.5 : isKickLeg && footLift > 8 ? 1.5 : 0);
     const kneeX = side * 1.2;
     const kneeY = thighLen;
     if (kit.exposeThigh) {
@@ -4618,7 +4627,7 @@ function drawPlayerFigure(opts) {
     ctx.restore();
   }
 
-  const kickFlash = pose === "kick" && kt > 0.42 && kt < 0.6;
+  const kickFlash = pose === "kick" && kt > 0.36 && kt < 0.66;
   drawLeg(-1, leftFooted ? drawKickSwing : drawPlantSwing, leftFooted ? drawKickKnee : drawPlantKnee, false, leftFooted ? drawKickLift : drawPlantLift);
   drawLeg(1, leftFooted ? drawPlantSwing : drawKickSwing, leftFooted ? drawPlantKnee : drawKickKnee, kickFlash, leftFooted ? drawPlantLift : drawKickLift);
 
@@ -4628,8 +4637,12 @@ function drawPlayerFigure(opts) {
     // 肩は胴の外側。後ろ姿でも側面から腕が下りる
     ctx.translate(side * 11.2, -45);
     // 後ろ手に見えないよう振りを制限（左は過負回転、右は過正回転をカット）
-    const rot =
-      side < 0
+    const powerKick = pose === "kick" || pose === "plant" || pose === "follow";
+    const rot = powerKick
+      ? side < 0
+        ? clamp(shoulderRot, -0.78, 0.9)
+        : clamp(shoulderRot, -0.9, 0.42)
+      : side < 0
         ? clamp(shoulderRot, -0.2, 0.7)
         : clamp(shoulderRot, -0.7, 0.2);
     ctx.rotate(rot);
@@ -5069,11 +5082,13 @@ function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
 
 function drawBall() {
   const g = goalRect();
+  const spotR = ballSpotDrawRadius(g);
   const baseR = ballBaseRadius(g);
   const flightR = baseR * (13 / 12);
-  const shadowRX = baseR * (10 / 12);
-  const shadowRY = baseR * (3.5 / 12);
-  const shadowDrop = baseR;
+  const groundR = state.ball?.airborne ? baseR : spotR;
+  const shadowRX = groundR * (10 / 12);
+  const shadowRY = groundR * (3.5 / 12);
+  const shadowDrop = groundR;
 
   if (!state.ball) {
     if (
@@ -5087,7 +5102,7 @@ function drawBall() {
       ctx.ellipse(bx, by + shadowDrop, shadowRX, shadowRY, 0, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(0,0,0,0.2)";
       ctx.fill();
-      drawSoccerBall(bx, by, baseR, 0.35, 0.2);
+      drawSoccerBall(bx, by, spotR, 0.35, 0.2);
     }
     return;
   }
@@ -5098,7 +5113,7 @@ function drawBall() {
     ctx.ellipse(state.ball.x, state.ball.y + shadowDrop, shadowRX, shadowRY, 0, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0,0,0,0.2)";
     ctx.fill();
-    drawSoccerBall(state.ball.x, state.ball.y, baseR, 0.35, 0.2);
+    drawSoccerBall(state.ball.x, state.ball.y, spotR, 0.35, 0.2);
     return;
   }
 
