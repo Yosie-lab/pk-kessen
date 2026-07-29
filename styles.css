@@ -502,12 +502,17 @@ button {
   pointer-events: auto;
 }
 
+.controls > .aim-hint {
+  pointer-events: none;
+}
+
 .aim-hint {
   padding: 8px 14px;
   background: rgba(0, 0, 0, 0.45);
   font-size: 0.82rem;
   color: var(--muted);
   letter-spacing: 0.04em;
+  pointer-events: none;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;

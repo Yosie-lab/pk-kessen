@@ -528,7 +528,11 @@ const state = {
   diveLocked: false,
   pointerAim: null,
   pendingStrike: null,
+  pendingEarlyAim: null,
+  pendingEarlyDive: null,
   whistlePending: false,
+  whistleTimerId: null,
+  whistleStartedAt: 0,
   flash: 0,
   crowdPulse: 0,
   netShake: 0,
@@ -544,9 +548,15 @@ const state = {
 };
 
 const bgCache = { canvas: null, ctx: null, key: "" };
+let layoutCache = null;
+let layoutCacheKey = "";
+const renderLayers = [];
+let loopRunning = true;
 
 function invalidateBgCache() {
   bgCache.key = "";
+  layoutCache = null;
+  layoutCacheKey = "";
 }
 
 function detectMobileLite(width = state.w, height = state.h) {
@@ -577,7 +587,6 @@ function bgCacheKey() {
 }
 
 function ensureBgCache() {
-  if (!state.mobileLite || state.crowdPulse > 0.02) return false;
   const key = bgCacheKey();
   if (bgCache.key === key) return true;
   if (!bgCache.canvas) {
@@ -589,13 +598,27 @@ function ensureBgCache() {
   bgCache.ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   const prev = ctx;
   ctx = bgCache.ctx;
+  // 観客の歓声パルスはキャッシュに焼き込まず、毎フレーム overlay で描く
+  const savedPulse = state.crowdPulse;
+  state.crowdPulse = 0;
   drawSky();
   drawCrowd();
   drawPitch();
   drawGoal();
+  state.crowdPulse = savedPulse;
   ctx = prev;
   bgCache.key = key;
   return true;
+}
+
+/** ゴール後の観客フラッシュ（背景キャッシュの上に重ねる） */
+function drawCrowdPulseOverlay() {
+  const pulse = state.crowdPulse;
+  if (pulse <= 0.05) return;
+  const g = goalRect();
+  const standBottom = Math.max(80, g.y + g.h - 32);
+  ctx.fillStyle = `rgba(255,255,255,${0.03 + pulse * 0.08})`;
+  ctx.fillRect(0, 0, state.w, standBottom);
 }
 
 function pickOpponentKit() {
@@ -640,13 +663,28 @@ function rand(min, max) {
 
 function resize() {
   const rect = canvas.getBoundingClientRect();
-  state.w = Math.max(1, rect.width);
-  state.h = Math.max(1, rect.height);
-  state.mobileLite = detectMobileLite(state.w, state.h);
+  const w = Math.max(1, rect.width);
+  const h = Math.max(1, rect.height);
+  const mobileLite = detectMobileLite(w, h);
   const rawDpr = window.devicePixelRatio || 1;
-  state.dpr = state.mobileLite ? 1 : Math.min(rawDpr, 2);
-  canvas.width = Math.floor(state.w * state.dpr);
-  canvas.height = Math.floor(state.h * state.dpr);
+  const dpr = mobileLite ? 1 : Math.min(rawDpr, 2);
+  const cw = Math.floor(w * dpr);
+  const ch = Math.floor(h * dpr);
+  if (
+    w === state.w &&
+    h === state.h &&
+    dpr === state.dpr &&
+    cw === canvas.width &&
+    ch === canvas.height
+  ) {
+    return;
+  }
+  state.w = w;
+  state.h = h;
+  state.mobileLite = mobileLite;
+  state.dpr = dpr;
+  canvas.width = cw;
+  canvas.height = ch;
   canvas.style.width = `${state.w}px`;
   canvas.style.height = `${state.h}px`;
   ctx = mainCtx;
@@ -1289,6 +1327,7 @@ function startMatch() {
     state.save = null;
     state.pendingStrike = null;
     state.whistlePending = false;
+    clearWhistleTimer();
     state.keeperDir = "center";
     state.keeperHeight = "mid";
     state.keeperProgress = 0;
@@ -1312,11 +1351,14 @@ function beginYouShoot() {
   state.shot = null;
   state.save = null;
   state.pendingStrike = null;
+  state.pendingEarlyAim = null;
+  state.pendingEarlyDive = null;
   state.keeperDir = "center";
   state.keeperHeight = "mid";
   state.keeperProgress = 0;
   rollKeeperFeint();
   state.whistlePending = false;
+  clearWhistleTimer();
   showControls("ready");
   setPrompt({
     headline: `${SAMURAI_BLUE.shortName} kick`,
@@ -1336,11 +1378,14 @@ function beginYouSave() {
   state.diveLocked = false;
   state.pointerAim = null;
   state.pendingStrike = null;
+  state.pendingEarlyAim = null;
+  state.pendingEarlyDive = null;
   state.keeperDir = "center";
   state.keeperHeight = "mid";
   state.keeperProgress = 0;
   rollKeeperFeint();
   state.whistlePending = false;
+  clearWhistleTimer();
   showControls("ready-save");
   setPrompt({
     headline: `${state.oppKit.name} kick`,
@@ -2043,6 +2088,7 @@ function startCpuRunup() {
   state.diveLocked = false;
   state.aimLocked = false;
   state.pointerAim = null;
+  state.pendingEarlyDive = null;
   state.cpuShotAim = cpuShotAim;
   state.cpuPower = cpuPower;
   state.pendingStrike = {
@@ -2177,6 +2223,7 @@ function stepCpuShot(now) {
       showControls("dive-click");
       setPrompt("今だ！ゴールをクリックしてダイブ");
     }
+    applyPendingEarlyDive(elapsed);
   }
 
   if (!state.diveLocked && elapsed > aimClose) {
@@ -2267,12 +2314,42 @@ function stepCpuShot(now) {
 }
 
 /** クリック後：ホイッスル → キーパーフェイント中にキッカー助走 */
+function clearWhistleTimer() {
+  if (state.whistleTimerId != null) {
+    clearTimeout(state.whistleTimerId);
+    state.whistleTimerId = null;
+  }
+}
+
+function flushWhistleRunup(kind) {
+  if (!state.whistlePending) return false;
+  if (kind === "shoot" && state.turn !== "you-shoot") return false;
+  if (kind === "save" && state.turn !== "you-save") return false;
+  clearWhistleTimer();
+  state.whistlePending = false;
+  try {
+    if (kind === "shoot") startPlayerRunup();
+    else startCpuRunup();
+  } catch (err) {
+    console.error(err);
+    state.phase = kind === "shoot" ? "ready" : "ready-save";
+    showControls(kind === "shoot" ? "ready" : "ready-save");
+  }
+  return true;
+}
+
 function signalAndStartRunup(kind) {
+  if (state.whistlePending && state.phase === "whistle") {
+    flushWhistleRunup(kind);
+    return;
+  }
   if (state.whistlePending) return;
   if (kind === "shoot" && !(state.phase === "ready" && state.turn === "you-shoot")) return;
   if (kind === "save" && !(state.phase === "ready-save" && state.turn === "you-save")) return;
 
+  clearWhistleTimer();
   state.whistlePending = true;
+  state.whistleStartedAt = performance.now();
   state.phase = "whistle";
   showControls("none");
   setPrompt("ホイッスル！");
@@ -2286,7 +2363,8 @@ function signalAndStartRunup(kind) {
   }
 
   const delay = 480;
-  setTimeout(() => {
+  state.whistleTimerId = setTimeout(() => {
+    state.whistleTimerId = null;
     state.whistlePending = false;
     try {
       if (kind === "shoot") startPlayerRunup();
@@ -2322,6 +2400,7 @@ function startPlayerRunup() {
   state.phase = "runup";
   state.aimLocked = false;
   state.pointerAim = null;
+  state.pendingEarlyAim = null;
   state.pendingStrike = {
     mode: "shoot",
     runFrom,
@@ -2372,6 +2451,24 @@ function startPlayerRunup() {
   setPrompt("助走！キックの瞬間にゴールをクリック");
 
   requestAnimationFrame(stepPlayerShot);
+}
+
+function applyPendingEarlyAim(elapsed) {
+  if (!state.pendingEarlyAim || state.aimLocked || !state.pendingStrike) return;
+  const pending = state.pendingStrike;
+  if (elapsed < pending.aimOpen || elapsed > pending.aimClose) return;
+  const p = state.pendingEarlyAim;
+  state.pendingEarlyAim = null;
+  lockPlayerAim(p.clientX, p.clientY, elapsed);
+}
+
+function applyPendingEarlyDive(elapsed) {
+  if (!state.pendingEarlyDive || state.diveLocked || !state.pendingStrike) return;
+  const pending = state.pendingStrike;
+  if (elapsed < pending.aimOpen || elapsed > pending.aimClose) return;
+  const p = state.pendingEarlyDive;
+  state.pendingEarlyDive = null;
+  lockPlayerDive(p.clientX, p.clientY, elapsed);
 }
 
 function lockPlayerAim(clientX, clientY, elapsed) {
@@ -2463,6 +2560,7 @@ function stepPlayerShot(now) {
       showControls("aim-click");
       setPrompt("今だ！ゴールをクリック");
     }
+    applyPendingEarlyAim(elapsed);
   }
 
   if (!state.aimLocked && elapsed > aimClose) {
@@ -2605,6 +2703,8 @@ function finishKick(result, shooter) {
     state.ball = null;
     state.kicker = null;
     state.pendingStrike = null;
+    state.pendingEarlyAim = null;
+    state.pendingEarlyDive = null;
     state.aimLocked = false;
     state.diveLocked = false;
     state.pointerAim = null;
@@ -2706,29 +2806,47 @@ function onPointerDown(e) {
   const point = e.touches ? e.touches[0] : e;
   if (!point) return;
 
-  if (state.phase === "ready" && state.turn === "you-shoot") {
+  if ((state.phase === "ready" || state.phase === "whistle") && state.turn === "you-shoot") {
     e.preventDefault();
     signalAndStartRunup("shoot");
     return;
   }
 
-  if (state.phase === "ready-save" && state.turn === "you-save") {
+  if ((state.phase === "ready-save" || state.phase === "whistle") && state.turn === "you-save") {
     e.preventDefault();
     signalAndStartRunup("save");
     return;
   }
 
-  if (state.phase === "aim-click" && state.turn === "you-shoot" && state.pendingStrike) {
-    e.preventDefault();
-    const elapsed = performance.now() - state.pendingStrike.started;
-    lockPlayerAim(point.clientX, point.clientY, elapsed);
-    return;
+  if (state.turn === "you-shoot" && state.pendingStrike && !state.aimLocked) {
+    if (state.phase === "aim-click" || state.phase === "runup") {
+      e.preventDefault();
+      const elapsed = performance.now() - state.pendingStrike.started;
+      const pending = state.pendingStrike;
+      if (elapsed < pending.aimOpen) {
+        state.pendingEarlyAim = { clientX: point.clientX, clientY: point.clientY };
+        return;
+      }
+      if (elapsed <= pending.aimClose) {
+        lockPlayerAim(point.clientX, point.clientY, elapsed);
+      }
+      return;
+    }
   }
 
-  if (state.phase === "dive-click" && state.turn === "you-save" && state.pendingStrike) {
-    e.preventDefault();
-    const elapsed = performance.now() - state.pendingStrike.started;
-    lockPlayerDive(point.clientX, point.clientY, elapsed);
+  if (state.turn === "you-save" && state.pendingStrike && !state.diveLocked) {
+    if (state.phase === "dive-click" || state.phase === "runup") {
+      e.preventDefault();
+      const elapsed = performance.now() - state.pendingStrike.started;
+      const pending = state.pendingStrike;
+      if (elapsed < pending.aimOpen) {
+        state.pendingEarlyDive = { clientX: point.clientX, clientY: point.clientY };
+        return;
+      }
+      if (elapsed <= pending.aimClose) {
+        lockPlayerDive(point.clientX, point.clientY, elapsed);
+      }
+    }
   }
 }
 
@@ -3265,6 +3383,9 @@ function goalBackRect() {
 /** PKスポット・エリアの配置（実寸比: 6yd / 12ydスポット / 18yd） */
 function penaltyLayout() {
   const { w, h } = state;
+  const ratio = state.fixedGoalRatio;
+  const cacheKey = `${w}|${h}|${ratio ? `${ratio.x},${ratio.y},${ratio.w},${ratio.h}` : ""}`;
+  if (layoutCache && layoutCacheKey === cacheKey) return layoutCache;
   const g = goalRect();
   const gy = g.y + g.h;
   const gCx = g.x + g.w * 0.5;
@@ -3279,7 +3400,7 @@ function penaltyLayout() {
   const penFarHalf = Math.min(goalHalf * 3.45, w * 0.52);
   // 実寸: ゴールエリア幅 18.32m / ゴール 7.32m ≒ 2.5倍
   const sixFarHalf = Math.min(goalHalf * 2.5, penFarHalf * 0.78);
-  return {
+  layoutCache = {
     gy,
     gCx,
     spotY,
@@ -3289,6 +3410,8 @@ function penaltyLayout() {
     sixFarHalf,
     spot: { x: w * 0.5, y: spotY },
   };
+  layoutCacheKey = cacheKey;
+  return layoutCache;
 }
 
 function drawPitch() {
@@ -5178,9 +5301,24 @@ function update(dt) {
   if (state.flash > 0) state.flash = Math.max(0, state.flash - dt * 1.8);
   if (state.crowdPulse > 0) state.crowdPulse = Math.max(0, state.crowdPulse - dt * 0.9);
   if (state.netShake > 0) state.netShake = Math.max(0, state.netShake - dt * 0.9);
+  if (
+    state.whistlePending &&
+    state.whistleStartedAt > 0 &&
+    performance.now() - state.whistleStartedAt > 2200
+  ) {
+    flushWhistleRunup(state.turn === "you-save" ? "save" : "shoot");
+  }
   if (state.ball?.trail?.length) {
-    for (const t of state.ball.trail) t.a *= 0.86;
-    state.ball.trail = state.ball.trail.filter((t) => t.a >= 0.05);
+    const trail = state.ball.trail;
+    let write = 0;
+    for (let i = 0; i < trail.length; i++) {
+      trail[i].a *= 0.86;
+      if (trail[i].a >= 0.05) {
+        if (write !== i) trail[write] = trail[i];
+        write++;
+      }
+    }
+    trail.length = write;
   }
 }
 
@@ -5199,17 +5337,13 @@ function render() {
       return;
     }
 
-    if (!ensureBgCache()) {
-      drawSky();
-      drawCrowd();
-      drawPitch();
-      drawGoal();
-    } else {
-      ctx.drawImage(bgCache.canvas, 0, 0, state.w, state.h);
-    }
+    ensureBgCache();
+    ctx.drawImage(bgCache.canvas, 0, 0, state.w, state.h);
+    drawCrowdPulseOverlay();
     // 奥（小さい y）から手前へ。ボールがキッカー背中に張り付いて見えないようにする
     const spot = penaltyLayout().spot;
-    const layers = [];
+    renderLayers.length = 0;
+    const layers = renderLayers;
 
     const diveAim =
       state.keeperProgress > 0.02
@@ -5261,12 +5395,21 @@ function render() {
 
 let last = performance.now();
 function loop(now) {
+  if (!loopRunning) return;
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   update(dt);
   render();
   requestAnimationFrame(loop);
 }
+
+document.addEventListener("visibilitychange", () => {
+  loopRunning = !document.hidden;
+  if (loopRunning) {
+    last = performance.now();
+    requestAnimationFrame(loop);
+  }
+});
 
 els.btnStart.addEventListener("click", (e) => {
   e.preventDefault();
@@ -5285,10 +5428,10 @@ window.addEventListener("keydown", (e) => {
     return;
   }
   if (e.key === " ") {
-    if (state.phase === "ready" && state.turn === "you-shoot") {
+    if ((state.phase === "ready" || state.phase === "whistle") && state.turn === "you-shoot") {
       e.preventDefault();
       signalAndStartRunup("shoot");
-    } else if (state.phase === "ready-save" && state.turn === "you-save") {
+    } else if ((state.phase === "ready-save" || state.phase === "whistle") && state.turn === "you-save") {
       e.preventDefault();
       signalAndStartRunup("save");
     }
@@ -5303,8 +5446,6 @@ function scheduleLayoutRefresh() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
     resize();
-    // プレイ中は fixedGoalRatio から再計算するだけ。比率そのものは試合開始時に固定
-    if (state.mode === "play") invalidateBgCache();
   }, 32);
 }
 
