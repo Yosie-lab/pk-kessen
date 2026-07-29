@@ -1,7 +1,7 @@
 import { unlockAudio, playKick, playCheer, playMiss, playBlockedByKeeper, playPostHit, playWhistle, playVictoryCelebration } from "./audio.js";
 
 const canvas = document.getElementById("pitch");
-const mainCtx = canvas.getContext("2d");
+const mainCtx = canvas.getContext("2d", { alpha: true, desynchronized: true }) || canvas.getContext("2d");
 let ctx = mainCtx;
 
 const els = {
@@ -552,6 +552,7 @@ let layoutCache = null;
 let layoutCacheKey = "";
 const renderLayers = [];
 let loopRunning = true;
+let frameNow = 0;
 
 function invalidateBgCache() {
   bgCache.key = "";
@@ -3938,50 +3939,11 @@ function drawLimb(x1, y1, x2, y2, width, color) {
   ctx.stroke();
 }
 
-function drawKeeperMobile() {
-  const dir = state.keeperDir || "center";
-  const height = state.keeperHeight || "mid";
-  const t = state.keeperProgress;
-  const rest = worldFromAim(keeperReadyAim());
-  const target = worldFromAim(keeperDiveAim(dir, height));
-  const stretch = keeperDiveEase(t);
-  const diveSide = dir === "left" ? -1 : dir === "right" ? 1 : 0;
-  const x = lerp(rest.x, target.x, stretch);
-  const y = lerp(rest.y, target.y, stretch);
-  const kit = state.turn === "you-save" ? state.youKit : state.oppKit;
-  const glove = state.turn === "you-save" ? "#d8ff4a" : "#f5f5f5";
-  const handSpread = stretch * (diveSide !== 0 ? diveSide * 26 : 0);
-  const handLift = height === "high" ? -18 : height === "low" ? 10 : -4;
-
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = kit.jersey;
-  ctx.beginPath();
-  ctx.ellipse(0, 6, 13, 20, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = kit.shorts || "#1c2430";
-  ctx.fillRect(-10, 18, 20, 10);
-  ctx.fillStyle = "#e6b589";
-  ctx.beginPath();
-  ctx.arc(0, -12, 8.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = glove;
-  ctx.beginPath();
-  ctx.ellipse(handSpread - 11, handLift, 5.5, 7, 0, 0, Math.PI * 2);
-  ctx.ellipse(handSpread + 11, handLift, 5.5, 7, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
 function drawKeeper() {
-  if (state.mobileLite) {
-    drawKeeperMobile();
-    return;
-  }
   const dir = state.keeperDir || "center";
   const height = state.keeperHeight || "mid";
   const t = state.keeperProgress;
-  const feint = sampleKeeperFeint();
+  const feint = sampleKeeperFeint(frameNow);
   const g = goalRect();
   const rest = worldFromAim(keeperReadyAim());
   rest.x += feint.ox;
@@ -3990,7 +3952,7 @@ function drawKeeper() {
   const diveSide = dir === "left" ? -1 : dir === "right" ? 1 : 0;
   const diveLift = height === "high" ? -1 : height === "low" ? 1 : 0;
   const stretch = keeperDiveEase(t);
-  const idle = stretch < 0.05 ? Math.sin(performance.now() / 280) * 0.42 : 0;
+  const idle = stretch < 0.05 ? Math.sin(frameNow / 280) * 0.42 : 0;
   const isLowCatch = height === "low" && stretch > 0.02;
   const isHighDive = height === "high" && diveSide !== 0 && stretch > 0.02;
   const isCenterCatch = height === "mid" && diveSide === 0 && stretch > 0.02;
@@ -4341,7 +4303,7 @@ function drawKeeper() {
       y: kneeR.y + lerp(16, 11 + Math.abs(diveLift) * stretch * 5, stretch),
     };
 
-    const nowArm = performance.now();
+    const nowArm = frameNow;
     const breath = Math.sin(nowArm / 520);
     const openClose = 0.5 + 0.5 * Math.sin(nowArm / 640);
     const bobL = Math.sin(nowArm / 360);
@@ -4611,58 +4573,7 @@ function drawKeeper() {
   ctx.restore();
 }
 
-function drawPlayerFigureLite(opts) {
-  const {
-    x,
-    y,
-    scale = 1,
-    pose = "ready",
-    kickT = 0,
-    stride = 0,
-    kit = SAMURAI_BLUE,
-    facing = 1,
-  } = opts;
-  const kt = clamp(kickT, 0, 1);
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(facing * scale, scale);
-  const lean = pose === "run" ? -0.18 : pose === "kick" ? -0.28 : -0.1;
-  ctx.rotate(lean);
-  ctx.fillStyle = kit.jersey;
-  ctx.fillRect(-10, -38, 20, 26);
-  ctx.fillStyle = kit.shorts || "#1c2430";
-  ctx.fillRect(-9, -12, 18, 11);
-  ctx.fillStyle = "#e6b589";
-  ctx.beginPath();
-  ctx.arc(0, -46, 8, 0, Math.PI * 2);
-  ctx.fill();
-  if (pose === "run") {
-    const s = Math.sin(stride);
-    ctx.strokeStyle = "#111";
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.moveTo(-5, -6);
-    ctx.lineTo(-8 + s * 6, 8);
-    ctx.moveTo(5, -6);
-    ctx.lineTo(8 - s * 6, 8);
-    ctx.stroke();
-  } else if (pose === "kick" && kt > 0.34) {
-    const strike = clamp((kt - 0.34) / 0.66, 0, 1);
-    ctx.strokeStyle = kit.jerseyDark;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(6, -8);
-    ctx.lineTo(16 + strike * 14, -18 - strike * 10);
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
 function drawPlayerFigure(opts) {
-  if (state.mobileLite) {
-    drawPlayerFigureLite(opts);
-    return;
-  }
   const {
     x,
     y,
@@ -4765,8 +4676,8 @@ function drawPlayerFigure(opts) {
     torsoTwist = lerp(0.22, 0, kt);
   } else {
     // ready：待機ポーズをバリエーション（常にゴールへ前傾）
-    const idle = Math.sin(performance.now() / 380);
-    const idle2 = Math.sin(performance.now() / 520);
+    const idle = Math.sin(frameNow / 380);
+    const idle2 = Math.sin(frameNow / 520);
     lean = -0.1;
     bob = Math.abs(idle) * 0.7;
     hipSwingL = 0.08 + idle * 0.03;
@@ -5479,6 +5390,7 @@ function renderBackdrop() {
 
 function render() {
   try {
+    frameNow = performance.now();
     if (state.mode === "title" || state.mode === "result") {
       renderBackdrop();
       return;
