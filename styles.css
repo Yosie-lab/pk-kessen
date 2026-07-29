@@ -75,6 +75,9 @@ button {
   z-index: 3;
   padding: max(8px, env(safe-area-inset-top)) 12px 8px;
   pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .hud:not([hidden]) {
@@ -261,6 +264,9 @@ button {
   letter-spacing: 0.04em;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
   animation: prompt-in 0.45s ease both;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .prompt-headline {
@@ -502,6 +508,9 @@ button {
   font-size: 0.82rem;
   color: var(--muted);
   letter-spacing: 0.04em;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 @media (max-width: 560px) {

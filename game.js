@@ -538,6 +538,8 @@ const state = {
   w: 0,
   h: 0,
   fixedGoal: null,
+  /** 試合中の画面↔ゴール比率（{ x,y,w,h } を 0〜1 で保持） */
+  fixedGoalRatio: null,
   mobileLite: false,
 };
 
@@ -570,7 +572,7 @@ function bgCacheKey() {
     Math.round(g.y),
     Math.round(g.w),
     Math.round(g.h),
-    state.fixedGoal ? 1 : 0,
+    state.fixedGoalRatio ? 1 : 0,
   ].join("|");
 }
 
@@ -707,19 +709,43 @@ function computeGoalRect() {
   return { x, y, w: gw, h: gh };
 }
 
-function refreshFixedGoal() {
+function goalRectFromRatio() {
+  const r = state.fixedGoalRatio;
+  if (!r || state.w <= 0 || state.h <= 0) return null;
+  return {
+    x: r.x * state.w,
+    y: r.y * state.h,
+    w: r.w * state.w,
+    h: r.h * state.h,
+  };
+}
+
+function lockFixedGoal() {
   if (state.mode !== "play") return;
-  state.fixedGoal = computeGoalRect();
+  resize();
+  const g = computeGoalRect();
+  state.fixedGoal = g;
+  state.fixedGoalRatio = {
+    x: g.x / state.w,
+    y: g.y / state.h,
+    w: g.w / state.w,
+    h: g.h / state.h,
+  };
   invalidateBgCache();
+}
+
+function refreshFixedGoal() {
+  lockFixedGoal();
 }
 
 function clearFixedGoal() {
   state.fixedGoal = null;
+  state.fixedGoalRatio = null;
 }
 
 function goalRect() {
-  if (state.mode === "play" && state.fixedGoal) {
-    return state.fixedGoal;
+  if (state.mode === "play" && state.fixedGoalRatio) {
+    return goalRectFromRatio();
   }
   return computeGoalRect();
 }
@@ -1080,6 +1106,15 @@ function sampleKeeperFeint(now = performance.now()) {
   };
 }
 
+function clearTextSelection() {
+  try {
+    const sel = window.getSelection?.();
+    if (sel && sel.rangeCount > 0) sel.removeAllRanges();
+  } catch (_) {
+    /* ignore */
+  }
+}
+
 function setPrompt(text, opts = {}) {
   let headline = null;
   let sub = null;
@@ -1123,6 +1158,12 @@ function setPrompt(text, opts = {}) {
   els.prompt.style.animation = "none";
   void els.prompt.offsetWidth;
   els.prompt.style.animation = "";
+
+  // 結果コメント中は下部ヒントを出さない（場面転換時の重なり防止）
+  if (opts.result || state.phase === "result-beat") {
+    showControls("none");
+  }
+  clearTextSelection();
 }
 
 function updateHud() {
@@ -1149,6 +1190,13 @@ function renderKicks(container, history) {
 }
 
 function showControls(mode) {
+  // 結果表示・飛翔・ホイッスル中は操作ヒントを出さない
+  if (
+    mode !== "none" &&
+    (state.phase === "result-beat" || state.phase === "flight" || state.phase === "whistle")
+  ) {
+    mode = "none";
+  }
   els.controls.hidden = mode === "none";
   const showHint = mode === "ready" || mode === "ready-save" || mode === "aim-click" || mode === "dive-click";
   els.aimHint.hidden = !showHint;
@@ -1163,8 +1211,14 @@ function hideOverlayScreens() {
   els.result.hidden = true;
   els.hud.hidden = false;
   requestAnimationFrame(() => {
-    resize();
-    requestAnimationFrame(refreshFixedGoal);
+    lockFixedGoal();
+    // iPhone Safari: アドレスバー収縮後のキャンバス高さが落ち着いてから比率を確定
+    requestAnimationFrame(() => {
+      lockFixedGoal();
+      setTimeout(() => {
+        if (state.mode === "play") lockFixedGoal();
+      }, 120);
+    });
   });
 }
 
@@ -2358,6 +2412,7 @@ function stepPlayerShot(now) {
 }
 
 function finishKick(result, shooter) {
+  showControls("none");
   const key = shooter === "you" ? "you" : "cpu";
   const outcome = result.goal ? "goal" : "miss";
   state.history[key].push(outcome);
@@ -2477,6 +2532,7 @@ function advanceTurn(lastShooter) {
     }
     state.suddenDeath = true;
     state.kickIndex = 0;
+    showControls("none");
     setPrompt("サドンデス！");
     setTimeout(() => beginYouShoot(), 700);
     return;
@@ -5053,7 +5109,8 @@ function scheduleLayoutRefresh() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
     resize();
-    if (state.mode === "play") refreshFixedGoal();
+    // プレイ中は fixedGoalRatio から再計算するだけ。比率そのものは試合開始時に固定
+    if (state.mode === "play") invalidateBgCache();
   }, 32);
 }
 
