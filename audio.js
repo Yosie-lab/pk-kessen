@@ -353,7 +353,7 @@ function playGoalSting() {
  * スタジアム歓声（短め・毎回違うレイヤー／速度／入り）
  */
 export function playCheer(opts = {}) {
-  const lite = opts === true || opts?.lite;
+  const lite = opts?.lite;
   unlockAudio();
   stopCheer();
   const gen = cheerGen;

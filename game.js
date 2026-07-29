@@ -516,7 +516,6 @@ const state = {
   scene: buildScene(OPPONENT_KITS[0]),
   aim: { x: 0.5, y: 0.45 },
   shot: null,
-  save: null,
   keeperDir: "center",
   keeperHeight: "mid",
   keeperProgress: 0,
@@ -535,16 +534,32 @@ const state = {
   whistleStartedAt: 0,
   flash: 0,
   crowdPulse: 0,
-  netShake: 0,
-  netImpact: { x: 0.5, y: 0.5 },
-  message: "",
   dpr: 1,
   w: 0,
   h: 0,
-  fixedGoal: null,
   /** 試合中の画面↔ゴール比率（{ x,y,w,h } を 0〜1 で保持） */
   fixedGoalRatio: null,
   mobileLite: false,
+};
+
+const LAYOUT_LOCK_DEBOUNCE_MS = 120;
+const RESIZE_DEBOUNCE_MS = 32;
+const STRIKE = {
+  FLIGHT_MS: 820,
+  AIM_OPEN_RATIO: 0.72,
+  AIM_CLOSE_KICK_RATIO: 0.75,
+  PERFECT_HIT_RATIO: 0.5,
+  TIMING_ERR_DIV: 0.55,
+  SPIN_YAW_TURNS: 5.2,
+  SPIN_PITCH_TURNS: 3.4,
+  SPIN_PITCH_BIAS: 2.2,
+  WHISTLE_DELAY_MS: 480,
+  WHISTLE_STUCK_MS: 2200,
+  TRAIL_FADE: 0.86,
+  TRAIL_MIN_ALPHA: 0.05,
+  POST_CLANG_U: 0.52,
+  POST_FLIGHT_MUL: 1.4,
+  SAVE_FLIGHT_MUL: 1.32,
 };
 
 const bgCache = { canvas: null, ctx: null, key: "" };
@@ -589,7 +604,7 @@ function bgCacheKey() {
 
 function ensureBgCache() {
   const key = bgCacheKey();
-  if (bgCache.key === key) return true;
+  if (bgCache.key === key) return;
   if (!bgCache.canvas) {
     bgCache.canvas = document.createElement("canvas");
     bgCache.ctx = bgCache.canvas.getContext("2d");
@@ -609,7 +624,6 @@ function ensureBgCache() {
   state.crowdPulse = savedPulse;
   ctx = prev;
   bgCache.key = key;
-  return true;
 }
 
 /** ゴール後の観客フラッシュ（背景キャッシュの上に重ねる） */
@@ -782,17 +796,11 @@ function lockFixedGoal() {
     Math.abs(prev.y - nextRatio.y) < 0.001 &&
     Math.abs(prev.w - nextRatio.w) < 0.001 &&
     Math.abs(prev.h - nextRatio.h) < 0.001;
-  state.fixedGoal = g;
   state.fixedGoalRatio = nextRatio;
   if (!same) invalidateBgCache();
 }
 
-function refreshFixedGoal() {
-  lockFixedGoal();
-}
-
 function clearFixedGoal() {
-  state.fixedGoal = null;
   state.fixedGoalRatio = null;
 }
 
@@ -1222,7 +1230,6 @@ function setPrompt(text, opts = {}) {
     plain = headline ? `${headline}${sub}` : sub;
   }
 
-  state.message = plain;
   els.prompt.textContent = "";
   els.prompt.classList.toggle("prompt-result", !!opts.result);
   els.prompt.classList.toggle("prompt-matchup", !!headline);
@@ -1308,7 +1315,7 @@ function scheduleLockFixedGoal() {
   lockGoalTimer = setTimeout(() => {
     lockGoalTimer = 0;
     if (state.mode === "play") lockFixedGoal();
-  }, 120);
+  }, LAYOUT_LOCK_DEBOUNCE_MS);
 }
 
 function hideOverlayScreens() {
@@ -1335,7 +1342,6 @@ function startMatch() {
     state.kicker = null;
     state.approach = null;
     state.shot = null;
-    state.save = null;
     state.pendingStrike = null;
     state.whistlePending = false;
     clearWhistleTimer();
@@ -1360,7 +1366,6 @@ function beginYouShoot() {
   state.kicker = null;
   state.approach = rollApproach(true);
   state.shot = null;
-  state.save = null;
   state.pendingStrike = null;
   state.pendingEarlyAim = null;
   state.pendingEarlyDive = null;
@@ -1384,7 +1389,6 @@ function beginYouSave() {
   state.kicker = null;
   state.approach = rollApproach(false);
   state.shot = null;
-  state.save = null;
   state.aimLocked = false;
   state.diveLocked = false;
   state.pointerAim = null;
@@ -2068,11 +2072,157 @@ function bindFlightPath(pending, result) {
   pending.postClangPlayed = false;
   // バウンドが見えるよう飛翔を少し長く
   if (result.post && pending.flightMs) {
-    pending.flightMs = pending.flightMs * 1.4;
+    pending.flightMs = pending.flightMs * STRIKE.POST_FLIGHT_MUL;
   }
   if (result.saved && pending.flightMs) {
-    pending.flightMs = Math.round(pending.flightMs * 1.32);
+    pending.flightMs = Math.round(pending.flightMs * STRIKE.SAVE_FLIGHT_MUL);
   }
+}
+
+function strikeAimWindow(runMs, kickMs) {
+  return {
+    flightMs: STRIKE.FLIGHT_MS,
+    aimOpen: runMs * STRIKE.AIM_OPEN_RATIO,
+    aimClose: runMs + kickMs * STRIKE.AIM_CLOSE_KICK_RATIO,
+    perfectHit: runMs + kickMs * STRIKE.PERFECT_HIT_RATIO,
+  };
+}
+
+function assignPendingSpin(pending) {
+  const dx = pending.end.x - pending.ballSpot.x;
+  const dy = pending.end.y - pending.ballSpot.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  pending.spinYaw = (dx / dist) * Math.PI * STRIKE.SPIN_YAW_TURNS;
+  pending.spinPitch = (dy / dist) * Math.PI * STRIKE.SPIN_PITCH_TURNS + Math.PI * STRIKE.SPIN_PITCH_BIAS;
+}
+
+function forceOffTarget(result) {
+  return {
+    ...result,
+    onTarget: false,
+    saved: false,
+    post: null,
+    postIn: false,
+    postScatter: null,
+    goal: false,
+  };
+}
+
+function initStrikeBall(ballSpot) {
+  return {
+    x: ballSpot.x,
+    y: ballSpot.y,
+    start: ballSpot,
+    end: ballSpot,
+    t: 0,
+    scale: 1,
+    spinY: 0,
+    spinX: 0,
+    trail: [],
+    airborne: false,
+  };
+}
+
+function initStrikeKicker(side, runFrom, approach) {
+  return {
+    side,
+    x: runFrom.x,
+    y: runFrom.y,
+    run: 0,
+    stride: 0,
+    kick: 0,
+    pose: "run",
+    facing: approach.facing,
+    idlePose: approach.idlePose,
+    kickStyle: approach.kickStyle,
+  };
+}
+
+const ballTrailPool = [];
+
+function pushBallTrail(trail, x, y, a, spinY, spinX, scale) {
+  let slot = ballTrailPool[trail.length];
+  if (!slot) {
+    slot = {};
+    ballTrailPool.push(slot);
+  }
+  slot.x = x;
+  slot.y = y;
+  slot.a = a;
+  slot.spinY = spinY;
+  slot.spinX = spinX;
+  slot.scale = scale;
+  trail.push(slot);
+  if (trail.length > maxBallTrail()) trail.shift();
+}
+
+function fadeBallTrail(trail, decay = STRIKE.TRAIL_FADE, minA = STRIKE.TRAIL_MIN_ALPHA) {
+  let write = 0;
+  for (let i = 0; i < trail.length; i++) {
+    trail[i].a *= decay;
+    if (trail[i].a >= minA) {
+      if (write !== i) trail[write] = trail[i];
+      write++;
+    }
+  }
+  trail.length = write;
+}
+
+function stepStrikeFlight(pending, now, side) {
+  const { runMs, kickMs, flightMs, ballSpot, runFrom, runTo, runDist, approach } = pending;
+  const flightElapsed = now - pending.flightStartedAt;
+  const u = clamp(flightElapsed / flightMs, 0, 1);
+  const result = pending.result;
+  const end = pending.end;
+  const pos = sampleFlightPosition(ballSpot, end, pending.postHit, result, u, state.h);
+  if (result.post && (pos.atImpact || u >= STRIKE.POST_CLANG_U) && !pending.postClangPlayed) {
+    pending.postClangPlayed = true;
+    playPostHit(result.post);
+  }
+  state.phase = "flight";
+  state.ball.t = u;
+  state.ball.x = pos.x;
+  state.ball.y = pos.y;
+  state.ball.scale = flightBallScale(u, result, pos.scaleMul ?? 1);
+  state.ball.spinY = u * pending.spinYaw * (pos.spinMul ?? 1);
+  state.ball.spinX = u * pending.spinPitch * (pos.spinMul ?? 1);
+  pushBallTrail(
+    state.ball.trail,
+    state.ball.x,
+    state.ball.y,
+    1,
+    state.ball.spinY,
+    state.ball.spinX,
+    state.ball.scale
+  );
+  applyKickerMotion(state.kicker, {
+    elapsed: runMs + kickMs,
+    runMs,
+    kickMs,
+    runFrom,
+    runTo,
+    runDist,
+    approach,
+    flightElapsed,
+    airborne: true,
+    side,
+  });
+  if (side === "cpu") {
+    state.keeperProgress = clamp(0.9 + keeperDiveEase(clamp((u - 0.02) / 0.32, 0, 1)) * 0.1, 0, 1);
+  } else {
+    state.keeperProgress = clamp(0.8 + keeperDiveEase(clamp((u - 0.02) / 0.36, 0, 1)) * 0.2, 0, 1);
+  }
+  if (u >= 1) {
+    state.ball.x = end.x;
+    state.ball.y = end.y;
+    state.ball.t = 1;
+    state.keeperProgress = 1;
+    const resultFinal = pending.result;
+    state.pendingStrike = null;
+    finishKick(resultFinal, side);
+    return true;
+  }
+  return false;
 }
 
 /** CPUキック：助走開始。ダイブはキック瞬間のクリックで決定 */
@@ -2090,10 +2240,7 @@ function startCpuRunup() {
   const cpuPower = 0.55 + Math.random() * 0.35;
 
   const { runMs, kickMs } = strikeTiming(runDist, approach.kickStyle);
-  const flightMs = 820;
-  const aimOpen = runMs * 0.72;
-  const aimClose = runMs + kickMs * 0.75;
-  const perfectHit = runMs + kickMs * 0.5;
+  const aimWindow = strikeAimWindow(runMs, kickMs);
 
   state.phase = "runup";
   state.diveLocked = false;
@@ -2109,10 +2256,7 @@ function startCpuRunup() {
     runDist,
     runMs,
     kickMs,
-    flightMs,
-    aimOpen,
-    aimClose,
-    perfectHit,
+    ...aimWindow,
     ballSpot,
     approach,
     started: performance.now(),
@@ -2125,30 +2269,8 @@ function startCpuRunup() {
     cpuPower,
   };
 
-  state.ball = {
-    x: ballSpot.x,
-    y: ballSpot.y,
-    start: ballSpot,
-    end: ballSpot,
-    t: 0,
-    scale: 1,
-    spinY: 0,
-    spinX: 0,
-    trail: [],
-    airborne: false,
-  };
-  state.kicker = {
-    side: "cpu",
-    x: runFrom.x,
-    y: runFrom.y,
-    run: 0,
-    stride: 0,
-    kick: 0,
-    pose: "run",
-    facing: approach.facing,
-    idlePose: approach.idlePose,
-    kickStyle: approach.kickStyle,
-  };
+  state.ball = initStrikeBall(ballSpot);
+  state.kicker = initStrikeKicker("cpu", runFrom, approach);
   state.keeperDir = "center";
   state.keeperHeight = "mid";
   state.keeperProgress = 0;
@@ -2175,11 +2297,7 @@ function lockPlayerDive(clientX, clientY, elapsed) {
   state.shot = result;
   pending.result = result;
   bindFlightPath(pending, result);
-  const dx = pending.end.x - pending.ballSpot.x;
-  const dy = pending.end.y - pending.ballSpot.y;
-  const dist = Math.hypot(dx, dy) || 1;
-  pending.spinYaw = (dx / dist) * Math.PI * 5.2;
-  pending.spinPitch = (dy / dist) * Math.PI * 3.4 + Math.PI * 2.2;
+  assignPendingSpin(pending);
 
   showControls("none");
   setPrompt(inside ? "ダイブ！" : "反応遅れ…");
@@ -2199,11 +2317,7 @@ function autoLockMissedDive() {
   state.shot = result;
   pending.result = result;
   bindFlightPath(pending, result);
-  const dx = pending.end.x - pending.ballSpot.x;
-  const dy = pending.end.y - pending.ballSpot.y;
-  const dist = Math.hypot(dx, dy) || 1;
-  pending.spinYaw = (dx / dist) * Math.PI * 5.2;
-  pending.spinPitch = (dy / dist) * Math.PI * 3.4 + Math.PI * 2.2;
+  assignPendingSpin(pending);
   showControls("none");
   setPrompt("反応遅れ…");
 }
@@ -2267,56 +2381,7 @@ function stepCpuShot(now) {
   }
 
   if (state.diveLocked && state.ball.airborne && pending.result) {
-    const flightElapsed = now - pending.flightStartedAt;
-    const u = clamp(flightElapsed / flightMs, 0, 1);
-    const result = pending.result;
-    const end = pending.end;
-    const pos = sampleFlightPosition(ballSpot, end, pending.postHit, result, u, state.h);
-    if (result.post && (pos.atImpact || u >= 0.52) && !pending.postClangPlayed) {
-      pending.postClangPlayed = true;
-      playPostHit(result.post);
-    }
-    state.phase = "flight";
-    state.ball.t = u;
-    state.ball.x = pos.x;
-    state.ball.y = pos.y;
-    state.ball.scale = flightBallScale(u, result, pos.scaleMul ?? 1);
-    state.ball.spinY = u * pending.spinYaw * (pos.spinMul ?? 1);
-    state.ball.spinX = u * pending.spinPitch * (pos.spinMul ?? 1);
-    pushBallTrail(
-      state.ball.trail,
-      state.ball.x,
-      state.ball.y,
-      1,
-      state.ball.spinY,
-      state.ball.spinX,
-      state.ball.scale
-    );
-
-    applyKickerMotion(state.kicker, {
-      elapsed: runMs + kickMs,
-      runMs,
-      kickMs,
-      runFrom,
-      runTo,
-      runDist,
-      approach,
-      flightElapsed,
-      airborne: true,
-      side: "cpu",
-    });
-    state.keeperProgress = clamp(0.9 + keeperDiveEase(clamp((u - 0.02) / 0.32, 0, 1)) * 0.1, 0, 1);
-
-    if (u >= 1) {
-      state.ball.x = end.x;
-      state.ball.y = end.y;
-      state.ball.t = 1;
-      state.keeperProgress = 1;
-      const resultFinal = pending.result;
-      state.pendingStrike = null;
-      finishKick(resultFinal, "cpu");
-      return;
-    }
+    stepStrikeFlight(pending, now, "cpu");
   }
 }
 
@@ -2369,7 +2434,7 @@ function signalAndStartRunup(kind) {
     /* ignore */
   }
 
-  const delay = 480;
+  const delay = STRIKE.WHISTLE_DELAY_MS;
   state.whistleTimerId = setTimeout(() => {
     state.whistleTimerId = null;
     state.whistlePending = false;
@@ -2389,7 +2454,6 @@ function startPlayerRunup() {
   if (state.turn !== "you-shoot") return;
   if (state.phase !== "ready" && state.phase !== "whistle") return;
 
-  const isYou = true;
   const approach = state.approach?.from ? state.approach : rollApproach(true);
   state.approach = approach;
   const runFrom = { ...approach.from };
@@ -2398,11 +2462,7 @@ function startPlayerRunup() {
   const ballSpot = penaltyLayout().spot;
 
   const { runMs, kickMs } = strikeTiming(runDist, approach.kickStyle);
-  const flightMs = 820;
-  // 狙いクリック受付：助走終盤〜キック接触あたり
-  const aimOpen = runMs * 0.72;
-  const aimClose = runMs + kickMs * 0.75;
-  const perfectHit = runMs + kickMs * 0.5;
+  const aimWindow = strikeAimWindow(runMs, kickMs);
 
   state.phase = "runup";
   state.aimLocked = false;
@@ -2415,10 +2475,7 @@ function startPlayerRunup() {
     runDist,
     runMs,
     kickMs,
-    flightMs,
-    aimOpen,
-    aimClose,
-    perfectHit,
+    ...aimWindow,
     ballSpot,
     approach,
     started: performance.now(),
@@ -2429,51 +2486,11 @@ function startPlayerRunup() {
     flightStartedAt: 0,
   };
 
-  state.ball = {
-    x: ballSpot.x,
-    y: ballSpot.y,
-    start: ballSpot,
-    end: ballSpot,
-    t: 0,
-    scale: 1,
-    spinY: 0,
-    spinX: 0,
-    trail: [],
-    airborne: false,
-  };
-  state.kicker = {
-    side: "you",
-    x: runFrom.x,
-    y: runFrom.y,
-    run: 0,
-    stride: 0,
-    kick: 0,
-    pose: "run",
-    facing: approach.facing,
-    idlePose: approach.idlePose,
-    kickStyle: approach.kickStyle,
-  };
+  state.ball = initStrikeBall(ballSpot);
+  state.kicker = initStrikeKicker("you", runFrom, approach);
   state.keeperProgress = 0;
   showControls("none");
   setPrompt("助走！キックの瞬間にゴールをクリック");
-}
-
-const ballTrailPool = [];
-
-function pushBallTrail(trail, x, y, a, spinY, spinX, scale) {
-  let slot = ballTrailPool[trail.length];
-  if (!slot) {
-    slot = {};
-    ballTrailPool.push(slot);
-  }
-  slot.x = x;
-  slot.y = y;
-  slot.a = a;
-  slot.spinY = spinY;
-  slot.spinX = spinX;
-  slot.scale = scale;
-  trail.push(slot);
-  if (trail.length > maxBallTrail()) trail.shift();
 }
 
 function applyPendingEarlyAim(elapsed) {
@@ -2500,7 +2517,7 @@ function lockPlayerAim(clientX, clientY, elapsed) {
   if (elapsed < pending.aimOpen || elapsed > pending.aimClose) return;
 
   const { aim, inside } = aimFromClient(clientX, clientY);
-  const timingErr = Math.abs(elapsed - pending.perfectHit) / (pending.kickMs * 0.55);
+  const timingErr = Math.abs(elapsed - pending.perfectHit) / (pending.kickMs * STRIKE.TIMING_ERR_DIV);
   const power = inside ? clamp(0.98 - timingErr * 0.55, 0.4, 1) : 0.25;
 
   state.aim = aim;
@@ -2511,19 +2528,13 @@ function lockPlayerAim(clientX, clientY, elapsed) {
   playerAimHistory.push({ ...aim });
 
   let result = resolveShot(aim, power, dive);
-  if (!inside) {
-    result = { ...result, onTarget: false, saved: false, post: null, postIn: false, postScatter: null, goal: false };
-  }
+  if (!inside) result = forceOffTarget(result);
   applyKeeperDive(result.dive);
   pending.aimLockedAt = elapsed;
   state.shot = result;
   pending.result = result;
   bindFlightPath(pending, result);
-  const dx = pending.end.x - pending.ballSpot.x;
-  const dy = pending.end.y - pending.ballSpot.y;
-  const dist = Math.hypot(dx, dy) || 1;
-  pending.spinYaw = (dx / dist) * Math.PI * 5.2;
-  pending.spinPitch = (dy / dist) * Math.PI * 3.4 + Math.PI * 2.2;
+  assignPendingSpin(pending);
 
   showControls("none");
   setPrompt(inside ? "シュート！" : "枠を外した！");
@@ -2541,20 +2552,14 @@ function autoLockMissedAim(elapsed) {
   state.aimLocked = true;
 
   let result = resolveShot(aim, power, dive);
-  if (!inside) {
-    result = { ...result, onTarget: false, saved: false, post: null, postIn: false, postScatter: null, goal: false };
-  }
+  if (!inside) result = forceOffTarget(result);
   playerAimHistory.push({ ...aim });
   applyKeeperDive(result.dive);
   pending.aimLockedAt = elapsed;
   state.shot = result;
   pending.result = result;
   bindFlightPath(pending, result);
-  const dx = pending.end.x - pending.ballSpot.x;
-  const dy = pending.end.y - pending.ballSpot.y;
-  const dist = Math.hypot(dx, dy) || 1;
-  pending.spinYaw = (dx / dist) * Math.PI * 5.2;
-  pending.spinPitch = (dy / dist) * Math.PI * 3.4 + Math.PI * 2.2;
+  assignPendingSpin(pending);
   showControls("none");
   setPrompt(inside ? "タイミング遅れ…" : "枠を外した！");
 }
@@ -2618,56 +2623,7 @@ function stepPlayerShot(now) {
   }
 
   if (state.aimLocked && state.ball.airborne && pending.result) {
-    const flightElapsed = now - pending.flightStartedAt;
-    const u = clamp(flightElapsed / flightMs, 0, 1);
-    const result = pending.result;
-    const end = pending.end;
-    const pos = sampleFlightPosition(ballSpot, end, pending.postHit, result, u, state.h);
-    if (result.post && (pos.atImpact || u >= 0.52) && !pending.postClangPlayed) {
-      pending.postClangPlayed = true;
-      playPostHit(result.post);
-    }
-    state.phase = "flight";
-    state.ball.t = u;
-    state.ball.x = pos.x;
-    state.ball.y = pos.y;
-    state.ball.scale = flightBallScale(u, result, pos.scaleMul ?? 1);
-    state.ball.spinY = u * pending.spinYaw * (pos.spinMul ?? 1);
-    state.ball.spinX = u * pending.spinPitch * (pos.spinMul ?? 1);
-    pushBallTrail(
-      state.ball.trail,
-      state.ball.x,
-      state.ball.y,
-      1,
-      state.ball.spinY,
-      state.ball.spinX,
-      state.ball.scale
-    );
-
-    applyKickerMotion(state.kicker, {
-      elapsed: runMs + kickMs,
-      runMs,
-      kickMs,
-      runFrom,
-      runTo,
-      runDist,
-      approach,
-      flightElapsed,
-      airborne: true,
-      side: "you",
-    });
-    state.keeperProgress = clamp(0.8 + keeperDiveEase(clamp((u - 0.02) / 0.36, 0, 1)) * 0.2, 0, 1);
-
-    if (u >= 1) {
-      state.ball.x = end.x;
-      state.ball.y = end.y;
-      state.ball.t = 1;
-      state.keeperProgress = 1;
-      const resultFinal = pending.result;
-      state.pendingStrike = null;
-      finishKick(resultFinal, "you");
-      return;
-    }
+    stepStrikeFlight(pending, now, "you");
   }
 }
 
@@ -2689,7 +2645,6 @@ function finishKick(result, shooter) {
     state.scores[key] += 1;
     state.flash = 1;
     state.crowdPulse = 1;
-    // ゴールネットは揺らさない
     // 自軍ゴールは歓声、相手ゴールは残念な声
     if (shooter === "you") playCheer({ lite: state.mobileLite });
     else playMiss();
@@ -3606,44 +3561,13 @@ function drawGoal() {
   ctx.fill();
 
   ctx.save();
-  const shake = state.netShake || 0;
-  const now = performance.now();
-  const ix = g.x + (state.netImpact?.x ?? 0.5) * g.w;
-  const iy = g.y + (state.netImpact?.y ?? 0.5) * g.h;
-  // ゴール時：衝撃点から自然に波打つ
-  const amp = shake * 14;
 
-  function netOffset(px, py) {
-    if (shake <= 0.01) return { dx: 0, dy: 0 };
-    const dist = Math.hypot(px - ix, py - iy) / Math.max(g.w, g.h);
-    const falloff = Math.exp(-dist * 2.8);
-    const punch = Math.exp(-dist * 6.5) * shake;
-    const wave = Math.sin(now / 42 - dist * 12) * amp * falloff;
-    const wave2 = Math.cos(now / 52 - dist * 9) * amp * 0.55 * falloff;
-    const ang = Math.atan2(py - iy || 0.001, px - ix || 0.001);
-    const bulge = punch * 10;
-    return {
-      dx: wave * 0.5 + Math.cos(ang) * bulge,
-      dy: wave2 + wave * 0.3 + Math.sin(ang) * bulge * 0.75,
-    };
-  }
-
-  // たるみ（重力で中央が奥・下へ）＋揺れ中は少し膨らむ
+  // たるみ（重力で中央が奥・下へ）
   function sagPoint(p, u, v, amount) {
     const s = Math.sin(Math.PI * u) * Math.sin(Math.PI * Math.min(1, v * 1.05));
-    const boom = 1 + shake * 0.55;
-    const impactU = state.netImpact?.x ?? 0.5;
-    const impactV = state.netImpact?.y ?? 0.5;
-    const localPunch =
-      shake *
-      Math.exp(-((u - impactU) ** 2 * 16 + (v - impactV) ** 2 * 12)) *
-      0.22;
     return {
-      x:
-        p.x +
-        (g.x + g.w * 0.5 - p.x) * s * amount * 0.08 * boom +
-        (u - 0.5) * localPunch * g.w * 0.04,
-      y: p.y + s * amount * depth * (0.06 * boom + localPunch * 0.18),
+      x: p.x + (g.x + g.w * 0.5 - p.x) * s * amount * 0.08,
+      y: p.y + s * amount * depth * 0.06,
     };
   }
 
@@ -3720,9 +3644,7 @@ function drawGoal() {
   if (!state.mobileLite) {
   function strokeNetFace(tl, tr, blp, brp, cols, rows, sagAmt, alpha) {
     function pt(u, v) {
-      let p = facePoint(tl, tr, blp, brp, clamp(u, 0, 1), clamp(v, 0, 1), sagAmt);
-      const o = netOffset(p.x, p.y);
-      return { x: p.x + o.dx, y: p.y + o.dy };
+      return facePoint(tl, tr, blp, brp, clamp(u, 0, 1), clamp(v, 0, 1), sagAmt);
     }
 
     const ru = 0.52 / cols;
@@ -3889,7 +3811,7 @@ function drawGoal() {
 
   // キック／ダイブ瞬間のレティクル
   if (state.mode === "play" && (state.phase === "aim-click" || state.phase === "dive-click")) {
-    const pulse = 0.5 + Math.sin(performance.now() / 90) * 0.5;
+    const pulse = 0.5 + Math.sin(frameNow / 90) * 0.5;
     const col = state.phase === "dive-click" ? "125,200,255" : "232,255,106";
     ctx.strokeStyle = `rgba(${col},${0.35 + pulse * 0.45})`;
     ctx.lineWidth = 4;
@@ -5357,27 +5279,15 @@ function drawFlash() {
 function update(dt, now = performance.now()) {
   if (state.flash > 0) state.flash = Math.max(0, state.flash - dt * 1.8);
   if (state.crowdPulse > 0) state.crowdPulse = Math.max(0, state.crowdPulse - dt * 0.9);
-  if (state.netShake > 0) state.netShake = Math.max(0, state.netShake - dt * 0.9);
   if (
     state.whistlePending &&
     state.whistleStartedAt > 0 &&
-    now - state.whistleStartedAt > 2200
+    now - state.whistleStartedAt > STRIKE.WHISTLE_STUCK_MS
   ) {
     flushWhistleRunup(state.turn === "you-save" ? "save" : "shoot");
   }
   tickPendingStrike(now);
-  if (state.ball?.trail?.length) {
-    const trail = state.ball.trail;
-    let write = 0;
-    for (let i = 0; i < trail.length; i++) {
-      trail[i].a *= 0.86;
-      if (trail[i].a >= 0.05) {
-        if (write !== i) trail[write] = trail[i];
-        write++;
-      }
-    }
-    trail.length = write;
-  }
+  if (state.ball?.trail?.length) fadeBallTrail(state.ball.trail);
 }
 
 function renderBackdrop() {
@@ -5505,7 +5415,7 @@ function scheduleLayoutRefresh() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
     resize();
-  }, 32);
+  }, RESIZE_DEBOUNCE_MS);
 }
 
 window.addEventListener("resize", scheduleLayoutRefresh);

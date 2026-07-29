@@ -14,7 +14,6 @@
   --cpu: #ffb35c;
   --font-display: "Bebas Neue", "Noto Sans JP", sans-serif;
   --font-body: "Noto Sans JP", sans-serif;
-  --font-result: "Dela Gothic One", "Noto Sans JP", sans-serif;
   /* PK結果コメント：日本語の可読性優先 */
   --font-prompt-result: "Noto Sans JP", sans-serif;
 }
@@ -429,6 +428,11 @@ button {
   margin: 18px 0 0;
   font-size: 0.82rem;
   color: rgba(244, 247, 241, 0.5);
+}
+
+.boot-error {
+  color: #ff8a7a;
+  margin-top: 12px;
 }
 
 .btn {

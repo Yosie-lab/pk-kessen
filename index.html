@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Dela+Gothic+One&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2" />
+    <link rel="stylesheet" href="styles.css?v=3" />
   </head>
   <body>
     <div id="app">
@@ -58,7 +58,7 @@
             <button type="button" class="btn primary" id="btn-start">キックオフ</button>
           </div>
           <p class="hint">キックオフのあと、ピッチをクリックするとホイッスルが鳴り助走が始まります。</p>
-          <p class="hint" id="boot-error" hidden style="color:#ff8a7a;margin-top:12px"></p>
+          <p class="hint boot-error" id="boot-error" hidden>ゲーム脚本の読み込みに失敗しました。</p>
         </div>
       </section>
 
@@ -75,7 +75,7 @@
         <div class="aim-hint" id="aim-hint">クリックで助走開始</div>
       </div>
     </div>
-    <script type="module" src="./game.js?v=19"></script>
+    <script type="module" src="./game.js?v=20"></script>
     <script>
       setTimeout(function () {
         if (window.__PK_LOADED) return;
