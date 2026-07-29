@@ -884,14 +884,18 @@ function keeperDiveAim(dir, height = "mid") {
 
 const KEEPER_LOCAL_FOOT_Y = 82;
 const KEEPER_LOCAL_HEAD_TOP = -14;
-const BALL_REF_GOAL_H = 160;
-const BALL_REF_RADIUS = 13;
+/** キーパーローカル座標での頭半径（drawKeeper の ctx.arc 9.5 と一致） */
+const KEEPER_HEAD_LOCAL_R = 9.5;
+/** ペナルティ地点のボールはゴール前より手前なので、頭よりわずかに小さめ */
+const BALL_SPOT_HEAD_RATIO = 0.94;
+
+function keeperHeadRadius(g = goalRect()) {
+  return KEEPER_HEAD_LOCAL_R * keeperScaleForGoal(g);
+}
 
 function ballBaseRadius(g = goalRect()) {
-  const mobileBoost = state.mobileLite ? 1.18 : 1;
-  const minR = state.mobileLite ? 10.5 : 7;
-  const maxR = state.mobileLite ? 17 : 14.5;
-  return clamp((g.h / BALL_REF_GOAL_H) * BALL_REF_RADIUS * mobileBoost, minR, maxR);
+  const headR = keeperHeadRadius(g);
+  return clamp(headR * BALL_SPOT_HEAD_RATIO, 5.5, headR * 1.02);
 }
 
 function keeperScaleForGoal(g = goalRect()) {
@@ -1775,10 +1779,31 @@ function shotEndPoint(result, ballSpot) {
  * ポスト／バー時: 接近（減速）→ 密着の一瞬 → 跳ね返り（落下・スピン変化）
  */
 function flightBallScale(u, result, scaleMul = 1) {
-  // ゴール到達時はネット奥で少し小さく（蹴る瞬間の baseR より大きく見えないよう調整）
-  const end = result?.goal ? 0.68 : result?.saved ? 0.76 : result?.post ? 0.76 : 0.62;
+  const g = goalRect();
+  const baseR = ballBaseRadius(g);
+  const flightR = Math.max(baseR * (13 / 12), 1);
+  const headR = keeperHeadRadius(g);
+  // ゴール到達時の見かけ半径 ≈ キーパーの頭
+  const goalEnd = clamp(headR / flightR, 0.62, 0.95);
+  const goalStart = clamp(goalEnd * 1.1, goalEnd, 1.06);
+
+  let end;
+  let start;
+  if (result?.goal) {
+    end = goalEnd;
+    start = goalStart;
+  } else if (result?.saved) {
+    end = clamp(goalEnd * 1.04, goalEnd, 0.88);
+    start = 1.1;
+  } else if (result?.post) {
+    end = clamp(goalEnd * 1.02, goalEnd, 0.86);
+    start = 1.1;
+  } else {
+    end = clamp(goalEnd * 0.9, 0.55, 0.76);
+    start = 1.12;
+  }
+
   const travelU = result?.saved ? Math.min(u / 0.84, 1) : u;
-  const start = result?.goal ? 1.03 : 1.14;
   return lerp(start, end, travelU) * scaleMul;
 }
 
