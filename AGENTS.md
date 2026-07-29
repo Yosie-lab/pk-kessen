@@ -81,3 +81,24 @@
 - Commit / push only when the user asks
 - Prefer short why-focused commit messages (existing style on `master`)
 - Remote: https://github.com/Yosie-lab/pk-kessen.git (`master` → GitHub Pages)
+
+## Performance & Optimization Rules
+
+### 1. 描画・ループ処理の高速化（GCハザード防止）
+- `requestAnimationFrame`（描画ループ）内での `new` 演算子、オブジェクト生成、配列の即席生成（`.map`, `.filter` 等）を厳禁とすること。
+- ループ内で繰り返し使用するベクトル・行列・計算用一時変数は、ループ外で事前生成（オブジェクトプール化）して再利用すること。
+- パーティクルや数値データの保持には通常のArrayではなく、TypedArray（Float32Array / Int32Array 等）を使用すること。
+
+### 2. メモリ管理 & リーク防止
+- タイマー（setInterval / setTimeout）、アニメーションループ、イベントリスナーは、コンポーネントやクラスの破棄（Dispose）時に必ず確実に削除・解除すること。
+- CanvasやWebGL/WebGPUのテクスチャ・バッファ・シェーダープログラム等のグラフィックリソースは、不要になった時点で明示的にメモリ解放（`dispose()` 等）を行うこと。
+
+### 3. イベント・計算負荷の制御
+- `resize`, `scroll`, `mousemove`, `touchmove` などの高頻度発火イベントには、必ずスロットル（Throttle）またはデバウンス（Debounce）を適用すること。
+- 重い物理演算や数値シミュレーション処理は、可能な限り描画処理と切り離し、Web Workerへオフロードするか、計算頻度（FPS）を描画周波数より低く抑える設計にすること。
+
+### 4. AIコード生成時の制約
+- ループ処理を記述する際は、必ずメモリ効率と実行速度（計算量 O(N)）を最優先したコードを生成すること。
+- コード変更時には、既存の描画ループ内にパフォーマンス低下を招くコード（メモリ確保や無駄な計算）が混入していないか自己チェックしてから提示すること。
+
+

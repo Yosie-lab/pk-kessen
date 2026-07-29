@@ -5158,13 +5158,13 @@ function drawPlayerFigure(opts) {
 function kickerDrawScale(y, isNear) {
   const { h } = state;
   const g = goalRect();
-  // ゴール高さ基準＋手前ほど少し大きく
-  const goalRef = clamp((g.h * 0.78) / 78, 1.12, 1.48);
+  // ゴール高さ基準＋手前ほど少し大きく（PC大画面でゴールサイズに合わせてスケールするように上限を拡張）
+  const goalRef = clamp((g.h * 0.78) / 78, 1.12, 2.4);
   const t = clamp((y - h * 0.48) / (h * 0.48), 0, 1);
   const depthBoost = lerp(1.02, 1.36, t * t * (3 - 2 * t));
   const base = goalRef * depthBoost;
   const size = isNear ? base * 1.12 : base * 1.05;
-  return size * 0.9;
+  return size * 0.95;
 }
 
 function drawShooter() {
