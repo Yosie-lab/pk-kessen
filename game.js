@@ -760,6 +760,9 @@ function clearSessionLayout() {
 }
 
 function measureFlexCanvasSize() {
+  if (sessionLayout) {
+    return { w: sessionLayout.w, h: sessionLayout.h };
+  }
   unpinCanvasCss();
   // レイアウト再計算を強制してから測る
   void canvas.offsetHeight;
