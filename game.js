@@ -5289,7 +5289,7 @@ function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = tru
 /** 3D投影の白黒サッカーボール（spinX / spinY で球体回転） */
 function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
   if (state.mobileLite) {
-    drawSoccerBallFast(x, y, radius, spinY);
+    drawSoccerBallLite(x, y, radius, spinY, spinX, false);
     return;
   }
   ctx.save();
