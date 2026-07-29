@@ -49,7 +49,8 @@ button {
   display: flex;
   flex-direction: column;
   width: 100vw;
-  height: 100dvh;
+  height: 100vh;
+  height: 100svh;
   overflow: hidden;
   background:
     radial-gradient(ellipse 80% 50% at 50% 0%, rgba(243, 226, 168, 0.18), transparent 55%),
@@ -68,6 +69,13 @@ button {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+}
+
+#pitch.pitch-locked {
+  flex: 0 0 var(--pitch-lock-h);
+  height: var(--pitch-lock-h);
+  min-height: var(--pitch-lock-h);
+  max-height: var(--pitch-lock-h);
 }
 
 .hud {

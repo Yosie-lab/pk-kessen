@@ -542,7 +542,11 @@ const state = {
   mobileLite: false,
 };
 
-const LAYOUT_LOCK_DEBOUNCE_MS = 120;
+/** ページ内セッションで1回だけ確定するレイアウト（もう一度でも同じ寸法を使う） */
+let sessionLayout = null;
+
+const LAYOUT_LOCK_DEBOUNCE_MS = 160;
+const LAYOUT_RELOCK_DRIFT = 0.12;
 const RESIZE_DEBOUNCE_MS = 32;
 const STRIKE = {
   FLIGHT_MS: 820,
@@ -712,38 +716,126 @@ function rand(min, max) {
   return min + Math.random() * (max - min);
 }
 
-function resize() {
-  // CSS(flex) にサイズを任せ、backing store だけ合わせる。
-  // style に px を書くと「もう一度」後に flex と食い違って拡大・縮小する。
-  if (canvas.style.width) canvas.style.width = "";
-  if (canvas.style.height) canvas.style.height = "";
-
-  const rect = canvas.getBoundingClientRect();
-  const w = Math.max(1, rect.width);
-  const h = Math.max(1, rect.height);
-  const mobileLite = detectMobileLite(w, h);
-  const rawDpr = window.devicePixelRatio || 1;
-  const dpr = mobileLite ? 1 : Math.min(rawDpr, 2);
+function applyCanvasBacking(w, h, dpr, mobileLite) {
   const cw = Math.floor(w * dpr);
   const ch = Math.floor(h * dpr);
-  if (
-    w === state.w &&
-    h === state.h &&
-    dpr === state.dpr &&
-    cw === canvas.width &&
-    ch === canvas.height
-  ) {
-    return;
-  }
+  const changed =
+    w !== state.w ||
+    h !== state.h ||
+    dpr !== state.dpr ||
+    mobileLite !== state.mobileLite ||
+    cw !== canvas.width ||
+    ch !== canvas.height;
   state.w = w;
   state.h = h;
-  state.mobileLite = mobileLite;
   state.dpr = dpr;
+  state.mobileLite = mobileLite;
+  if (!changed) return false;
   canvas.width = cw;
   canvas.height = ch;
   ctx = mainCtx;
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   invalidateBgCache();
+  return true;
+}
+
+function pinCanvasCss(w, h) {
+  canvas.style.width = `${w}px`;
+  canvas.style.height = `${h}px`;
+  canvas.classList.add("pitch-locked");
+  document.documentElement.style.setProperty("--pitch-lock-h", `${h}px`);
+}
+
+function unpinCanvasCss() {
+  canvas.style.width = "";
+  canvas.style.height = "";
+  canvas.classList.remove("pitch-locked");
+  document.documentElement.style.removeProperty("--pitch-lock-h");
+}
+
+function clearSessionLayout() {
+  sessionLayout = null;
+  state.fixedGoalRatio = null;
+  unpinCanvasCss();
+}
+
+function measureFlexCanvasSize() {
+  unpinCanvasCss();
+  // レイアウト再計算を強制してから測る
+  void canvas.offsetHeight;
+  const rect = canvas.getBoundingClientRect();
+  return {
+    w: Math.max(1, rect.width),
+    h: Math.max(1, rect.height),
+  };
+}
+
+function resize(opts = {}) {
+  const forceRemeasure = !!opts.forceRemeasure;
+
+  if (sessionLayout && !forceRemeasure) {
+    // セッション確定済み：Safari のアドレスバー揺れを無視して同じ寸法を維持
+    pinCanvasCss(sessionLayout.w, sessionLayout.h);
+    applyCanvasBacking(
+      sessionLayout.w,
+      sessionLayout.h,
+      sessionLayout.dpr,
+      sessionLayout.mobileLite
+    );
+    state.fixedGoalRatio = sessionLayout.goalRatio;
+    return;
+  }
+
+  const { w, h } = measureFlexCanvasSize();
+  const mobileLite = detectMobileLite(w, h);
+  const rawDpr = window.devicePixelRatio || 1;
+  const dpr = mobileLite ? 1 : Math.min(rawDpr, 2);
+  applyCanvasBacking(w, h, dpr, mobileLite);
+}
+
+/** 現在の flex 寸法でセッションレイアウトを確定（1 回だけ） */
+function captureSessionLayout() {
+  if (state.mode !== "play") return;
+  const { w, h } = measureFlexCanvasSize();
+  const mobileLite = detectMobileLite(w, h);
+  const rawDpr = window.devicePixelRatio || 1;
+  const dpr = mobileLite ? 1 : Math.min(rawDpr, 2);
+  applyCanvasBacking(w, h, dpr, mobileLite);
+  const g = computeGoalRect();
+  const goalRatio = {
+    x: g.x / w,
+    y: g.y / h,
+    w: g.w / w,
+    h: g.h / h,
+  };
+  state.fixedGoalRatio = goalRatio;
+  sessionLayout = {
+    w,
+    h,
+    dpr,
+    mobileLite,
+    goalRatio,
+    winW: window.innerWidth,
+    winH: window.innerHeight,
+  };
+  pinCanvasCss(w, h);
+  invalidateBgCache();
+}
+
+function clearFixedGoal() {
+  // セッション固定中はクリアしない（もう一度でサイズが変わらないようにする）
+  if (sessionLayout) return;
+  state.fixedGoalRatio = null;
+}
+
+function lockFixedGoal() {
+  if (sessionLayout) {
+    state.fixedGoalRatio = sessionLayout.goalRatio;
+    return;
+  }
+  if (state.mode !== "play") return;
+  if (state.w <= 0 || state.h <= 0) return;
+  captureSessionLayout();
 }
 
 let safeProbe = null;
@@ -818,38 +910,11 @@ function goalRectFromRatio() {
   };
 }
 
-function lockFixedGoal() {
-  if (state.mode !== "play") return;
-  if (state.w <= 0 || state.h <= 0) return;
-  const g = computeGoalRect();
-  const nextRatio = {
-    x: g.x / state.w,
-    y: g.y / state.h,
-    w: g.w / state.w,
-    h: g.h / state.h,
-  };
-  const prev = state.fixedGoalRatio;
-  const same =
-    prev &&
-    Math.abs(prev.x - nextRatio.x) < 0.001 &&
-    Math.abs(prev.y - nextRatio.y) < 0.001 &&
-    Math.abs(prev.w - nextRatio.w) < 0.001 &&
-    Math.abs(prev.h - nextRatio.h) < 0.001;
-  state.fixedGoalRatio = nextRatio;
-  if (!same) invalidateBgCache();
-}
-
-function clearFixedGoal() {
-  state.fixedGoalRatio = null;
-}
-
 function goalRect() {
   if (goalRectFrame === frameId) return goalRectScratch;
   goalRectFrame = frameId;
-  const g =
-    state.mode === "play" && state.fixedGoalRatio
-      ? goalRectFromRatio()
-      : computeGoalRect();
+  // セッション／試合中は比率固定。結果画面でも同じ寸法を使う
+  const g = state.fixedGoalRatio ? goalRectFromRatio() : computeGoalRect();
   goalRectScratch.x = g.x;
   goalRectScratch.y = g.y;
   goalRectScratch.w = g.w;
@@ -1371,16 +1436,29 @@ function clearMatchTimers() {
 }
 
 function scheduleLockFixedGoal() {
+  // すでにセッション確定済みなら測り直さず復元するだけ
+  if (sessionLayout) {
+    resize();
+    return;
+  }
   clearTimeout(lockGoalTimer);
   lockGoalTimer = setTimeout(() => {
     lockGoalTimer = 0;
-    if (state.mode !== "play") return;
-    // 結果画面→HUD のレイアウトが落ち着いてから測る（もう一度でサイズがズレる対策）
+    if (state.mode !== "play" || sessionLayout) return;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (state.mode !== "play") return;
-        resize();
-        lockFixedGoal();
+        if (state.mode !== "play" || sessionLayout) return;
+        const a = measureFlexCanvasSize();
+        requestAnimationFrame(() => {
+          if (state.mode !== "play" || sessionLayout) return;
+          const b = measureFlexCanvasSize();
+          // HUD 表示直後など、まだ揺れているならもう一度待つ
+          if (Math.abs(a.w - b.w) > 1.5 || Math.abs(a.h - b.h) > 1.5) {
+            scheduleLockFixedGoal();
+            return;
+          }
+          captureSessionLayout();
+        });
       });
     });
   }, LAYOUT_LOCK_DEBOUNCE_MS);
@@ -1398,6 +1476,7 @@ function startMatch() {
     clearMatchTimers();
     resetMatchAudio();
     playerAimHistory.length = 0;
+    // sessionLayout がある場合は clearFixedGoal は何もしない（サイズ維持）
     clearFixedGoal();
     state.mode = "play";
     state.suddenDeath = false;
@@ -5552,14 +5631,34 @@ let resizeTimer = 0;
 function scheduleLayoutRefresh() {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
+    if (!sessionLayout) {
+      resize({ forceRemeasure: true });
+      return;
+    }
+    // ピン留め中は canvas を外して測らない（再入場ループになる）。
+    // ウィンドウの大きな変化だけセッションを作り直す。
+    const drift = Math.max(
+      Math.abs(window.innerWidth - sessionLayout.winW) / Math.max(1, sessionLayout.winW),
+      Math.abs(window.innerHeight - sessionLayout.winH) / Math.max(1, sessionLayout.winH)
+    );
+    if (drift >= LAYOUT_RELOCK_DRIFT) {
+      clearSessionLayout();
+      if (state.mode === "play") scheduleLockFixedGoal();
+      else resize({ forceRemeasure: true });
+      return;
+    }
     resize();
   }, RESIZE_DEBOUNCE_MS);
 }
 
 window.addEventListener("resize", scheduleLayoutRefresh);
+window.addEventListener("orientationchange", () => {
+  clearSessionLayout();
+  scheduleLayoutRefresh();
+});
 const layoutObserver = new ResizeObserver(scheduleLayoutRefresh);
 layoutObserver.observe(canvas);
-resize();
+resize({ forceRemeasure: true });
 requestAnimationFrame(loop);
 
 window.__PK_LOADED = true;
