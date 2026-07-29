@@ -409,6 +409,7 @@ html.viewport-locked body {
   max-width: 90vw;
   animation: rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
   pointer-events: auto;
+  zoom: 1.12;
 }
 
 @keyframes rise {
@@ -499,6 +500,7 @@ html.viewport-locked body {
   text-align: center;
   padding: 36px 28px;
   animation: rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  zoom: 1.12;
 }
 
 .result-kicker {
