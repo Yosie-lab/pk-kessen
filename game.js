@@ -736,9 +736,6 @@ function resize() {
   ctx = mainCtx;
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   invalidateBgCache();
-  if (state.mode === "play" && state.fixedGoalRatio) {
-    lockFixedGoal();
-  }
 }
 
 let safeProbe = null;
@@ -1365,10 +1362,11 @@ function clearMatchTimers() {
 }
 
 function scheduleLockFixedGoal() {
+  if (state.fixedGoalRatio) return;
   clearTimeout(lockGoalTimer);
   lockGoalTimer = setTimeout(() => {
     lockGoalTimer = 0;
-    if (state.mode !== "play") return;
+    if (state.mode !== "play" || state.fixedGoalRatio) return;
     resize();
     lockFixedGoal();
   }, LAYOUT_LOCK_DEBOUNCE_MS);
@@ -1408,6 +1406,7 @@ function startMatch() {
     hideOverlayScreens();
     updateHud();
     beginYouShoot();
+    resize();
     scheduleLockFixedGoal();
   } catch (err) {
     console.error(err);
