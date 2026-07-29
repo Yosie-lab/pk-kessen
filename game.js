@@ -1775,24 +1775,10 @@ function shotEndPoint(result, ballSpot) {
  * ポスト／バー時: 接近（減速）→ 密着の一瞬 → 跳ね返り（落下・スピン変化）
  */
 function flightBallScale(u, result, scaleMul = 1) {
-  const mobile = state.mobileLite;
-  const end = result?.goal
-    ? mobile
-      ? 0.9
-      : 0.72
-    : result?.saved
-      ? mobile
-        ? 0.92
-        : 0.78
-      : result?.post
-        ? mobile
-          ? 0.92
-          : 0.78
-        : mobile
-          ? 0.86
-          : 0.62;
+  // ゴール到達時はネット奥で少し小さく（蹴る瞬間の baseR より大きく見えないよう調整）
+  const end = result?.goal ? 0.68 : result?.saved ? 0.76 : result?.post ? 0.76 : 0.62;
   const travelU = result?.saved ? Math.min(u / 0.84, 1) : u;
-  const start = result?.goal ? (mobile ? 1.1 : 1.05) : mobile ? 1.18 : 1.2;
+  const start = result?.goal ? 1.03 : 1.14;
   return lerp(start, end, travelU) * scaleMul;
 }
 
@@ -4778,32 +4764,12 @@ function norm3(p) {
   return [p[0] / len, p[1] / len, p[2] / len];
 }
 
-/** 2D五角形（モバイルでも柄がはっきり見える） */
-function fillPentagon2D(cx, cy, r, rot, fill, stroke) {
-  ctx.beginPath();
-  for (let i = 0; i < 5; i++) {
-    const a = rot + (i * Math.PI * 2) / 5 - Math.PI / 2;
-    const px = cx + Math.cos(a) * r;
-    const py = cy + Math.sin(a) * r;
-    if (i === 0) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-  ctx.fillStyle = fill;
-  ctx.fill();
-  if (stroke) {
-    ctx.strokeStyle = stroke;
-    ctx.lineWidth = Math.max(1, r * 0.14);
-    ctx.stroke();
-  }
-}
-
-/** モバイル向け：白地＋太めの黒パネル（ハイライトで柄が消えない） */
+/** モバイル向け：3Dパネル投影（柄はデスクトップと同系統） */
 function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = true) {
   if (withShadow) {
     ctx.beginPath();
-    ctx.ellipse(x, y + radius * 0.12, radius * 0.92, radius * 0.3, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.ellipse(x, y + radius * 0.1, radius * 0.9, radius * 0.28, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
     ctx.fill();
   }
 
@@ -4813,44 +4779,53 @@ function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = tru
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.clip();
 
-  const body = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, radius * 0.05, 0, 0, radius);
+  const body = ctx.createRadialGradient(-radius * 0.28, -radius * 0.32, radius * 0.06, 0, 0, radius);
   body.addColorStop(0, "#ffffff");
-  body.addColorStop(0.62, "#eceee9");
-  body.addColorStop(1, "#c5c9c2");
+  body.addColorStop(0.55, "#f0f2ee");
+  body.addColorStop(1, "#b8bdb6");
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fillStyle = body;
   ctx.fill();
 
-  const rot = spinY + spinX * 0.55;
-  const patch = radius * 0.3;
-  fillPentagon2D(0, -radius * 0.08, patch, rot, "#101010", "rgba(0,0,0,0.65)");
-  for (let i = 0; i < 5; i++) {
-    const a = rot + (i * Math.PI * 2) / 5;
-    fillPentagon2D(
-      Math.cos(a) * radius * 0.5,
-      Math.sin(a) * radius * 0.5,
-      patch * 0.78,
-      rot + i * 0.55,
-      "#181818",
-      "rgba(0,0,0,0.55)"
-    );
+  const panels = [];
+  for (const base of SOCCER_PANELS) {
+    let p = rotY3(base, spinY);
+    p = rotX3(p, spinX);
+    if (p[2] <= 0.05) continue;
+
+    const n = p;
+    const u = norm3(cross3(Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0], n));
+    const v = norm3(cross3(n, u));
+    const size = radius * 0.28;
+    const pts = [];
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
+      const wx = n[0] * radius * 0.9 + (u[0] * Math.cos(a) + v[0] * Math.sin(a)) * size;
+      const wy = n[1] * radius * 0.9 + (u[1] * Math.cos(a) + v[1] * Math.sin(a)) * size;
+      if (n[2] > 0.04) pts.push([wx, wy]);
+    }
+    if (pts.length >= 3) panels.push({ pts, z: p[2] });
   }
-  for (let i = 0; i < 3; i++) {
-    const a = rot + Math.PI + i * 1.4;
-    fillPentagon2D(
-      Math.cos(a) * radius * 0.72,
-      Math.sin(a) * radius * 0.72,
-      patch * 0.55,
-      rot + i * 0.35,
-      "#222222",
-      null
-    );
+  panels.sort((a, b) => a.z - b.z);
+
+  for (const panel of panels) {
+    const shade = 0.35 + panel.z * 0.65;
+    ctx.beginPath();
+    panel.pts.forEach((pt, i) => {
+      if (i === 0) ctx.moveTo(pt[0], pt[1]);
+      else ctx.lineTo(pt[0], pt[1]);
+    });
+    ctx.closePath();
+    ctx.fillStyle = `rgb(${Math.round(14 * shade)},${Math.round(14 * shade)},${Math.round(14 * shade)})`;
+    ctx.fill();
+    ctx.strokeStyle = "rgba(0,0,0,0.42)";
+    ctx.lineWidth = Math.max(0.65, radius * 0.038);
+    ctx.stroke();
   }
 
-  // 柄の上に薄いハイライトだけ
-  const shine = ctx.createRadialGradient(-radius * 0.35, -radius * 0.4, 0, -radius * 0.1, -radius * 0.12, radius * 0.55);
-  shine.addColorStop(0, "rgba(255,255,255,0.22)");
+  const shine = ctx.createRadialGradient(-radius * 0.36, -radius * 0.4, 0, -radius * 0.1, -radius * 0.14, radius * 0.5);
+  shine.addColorStop(0, "rgba(255,255,255,0.18)");
   shine.addColorStop(1, "rgba(255,255,255,0)");
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -4861,8 +4836,8 @@ function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = tru
 
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(0,0,0,0.45)";
-  ctx.lineWidth = Math.max(1.1, radius * 0.06);
+  ctx.strokeStyle = "rgba(0,0,0,0.4)";
+  ctx.lineWidth = Math.max(0.9, radius * 0.05);
   ctx.stroke();
 }
 
@@ -4988,7 +4963,7 @@ function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
 function drawBall() {
   const g = goalRect();
   const baseR = ballBaseRadius(g);
-  const flightR = baseR * (15 / 12);
+  const flightR = baseR * (13 / 12);
   const shadowRX = baseR * (10 / 12);
   const shadowRY = baseR * (3.5 / 12);
   const shadowDrop = baseR;
@@ -5022,15 +4997,11 @@ function drawBall() {
 
   for (const t of state.ball.trail) {
     if (t.a < 0.05) continue;
-    ctx.globalAlpha = t.a * 0.28;
-    drawSoccerBallLite(
-      t.x,
-      t.y,
-      baseR * 0.82 * (t.scale || state.ball.scale),
-      state.ball.spinY || 0,
-      state.ball.spinX || 0,
-      false
-    );
+    ctx.globalAlpha = t.a * 0.26;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, baseR * 0.78 * (t.scale || state.ball.scale), 0, Math.PI * 2);
+    ctx.fillStyle = "#e6e9e4";
+    ctx.fill();
     ctx.globalAlpha = 1;
   }
 
