@@ -2943,7 +2943,7 @@ let matchStartedAt = 0;
 
 function onPointerDown(e) {
   if (state.mode !== "play") return;
-  if (performance.now() - matchStartedAt < 350) return;
+  if (performance.now() - matchStartedAt < 500) return;
   if (e.target && e.target.closest && e.target.closest("button")) return;
   unlockAudio();
 
@@ -5608,15 +5608,33 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-els.btnStart.addEventListener("click", (e) => {
-  e.preventDefault();
-  e.stopPropagation();
+const handleStartBtnClick = (e) => {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
   startMatch();
-});
-els.btnRetry.addEventListener("click", (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  startMatch();
+};
+
+["pointerdown", "pointerup", "click", "touchend"].forEach((evtType) => {
+  els.btnStart.addEventListener(evtType, (e) => {
+    e.stopPropagation();
+    if (evtType === "click" || evtType === "touchend") {
+      e.preventDefault();
+      if (state.mode !== "play") {
+        handleStartBtnClick(e);
+      }
+    }
+  });
+  els.btnRetry.addEventListener(evtType, (e) => {
+    e.stopPropagation();
+    if (evtType === "click" || evtType === "touchend") {
+      e.preventDefault();
+      if (state.mode !== "play") {
+        handleStartBtnClick(e);
+      }
+    }
+  });
 });
 
 window.addEventListener("keydown", (e) => {
