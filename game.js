@@ -1476,9 +1476,11 @@ function startMatch() {
     clearMatchTimers();
     resetMatchAudio();
     playerAimHistory.length = 0;
-    // 毎試合レイアウトを再測定して正確なキャンバス寸法を取得する
-    // （HUD 高さが確定してからキャンバスサイズが変わるため）
-    clearSessionLayout();
+    // ページ読み込み後、一度確定したセッションレイアウトはそのまま使用
+    // （試合開始ごとに再測定すると iPhone Safari の UI 揺れでサイズが変化するのを防ぐ）
+    if (!sessionLayout) {
+      clearSessionLayout();
+    }
     state.mode = "play";
     state.suddenDeath = false;
     state.kickIndex = 0;
