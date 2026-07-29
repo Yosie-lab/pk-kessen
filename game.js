@@ -825,22 +825,6 @@ function captureSessionLayout() {
   invalidateBgCache();
 }
 
-function clearFixedGoal() {
-  // セッション固定中はクリアしない（もう一度でサイズが変わらないようにする）
-  if (sessionLayout) return;
-  state.fixedGoalRatio = null;
-}
-
-function lockFixedGoal() {
-  if (sessionLayout) {
-    state.fixedGoalRatio = sessionLayout.goalRatio;
-    return;
-  }
-  if (state.mode !== "play") return;
-  if (state.w <= 0 || state.h <= 0) return;
-  captureSessionLayout();
-}
-
 let safeProbe = null;
 
 function readSafeAreaInsets() {
@@ -1342,7 +1326,6 @@ function setPrompt(text, opts = {}) {
 
   els.prompt.textContent = "";
   els.prompt.classList.toggle("prompt-result", !!opts.result);
-  els.prompt.classList.toggle("prompt-matchup", !!headline);
 
   if (headline) {
     const head = document.createElement("span");
@@ -5186,27 +5169,6 @@ function cross3(a, b) {
 function norm3(p) {
   const len = Math.hypot(p[0], p[1], p[2]) || 1;
   return [p[0] / len, p[1] / len, p[2] / len];
-}
-
-/** 飛翔中モバイル向け：パネル投影なしの軽量ボール */
-function drawSoccerBallFast(x, y, radius, spinY = 0) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.beginPath();
-  ctx.arc(0, 0, radius, 0, Math.PI * 2);
-  ctx.fillStyle = "#f2f4ef";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.38)";
-  ctx.lineWidth = Math.max(0.75, radius * 0.042);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(0,0,0,0.5)";
-  ctx.lineWidth = Math.max(0.65, radius * 0.034);
-  for (let i = 0; i < 3; i++) {
-    ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.9, spinY + i * 2.05, spinY + i * 2.05 + 1.15);
-    ctx.stroke();
-  }
-  ctx.restore();
 }
 
 /** モバイル向け：3Dパネル投影（柄はデスクトップと同系統） */
