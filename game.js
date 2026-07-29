@@ -1068,13 +1068,13 @@ function keeperHeadRadius(g = goalRect()) {
   return KEEPER_HEAD_LOCAL_R * keeperScaleForGoal(g);
 }
 
-/** ペナルティ地点のボール描画倍率（遠景補正。ゴール到達サイズは flightBallScale のまま） */
-const BALL_SPOT_DRAW_RATIO = 1.28;
+/** ペナルティ地点のボール描画倍率（手前視点：キッカーの足元・ゴール対比で自然な大きさ） */
+const BALL_SPOT_DRAW_RATIO = 1.62;
 
 /** ペナルティ地点のボール描画用 */
 function ballSpotDrawRadius(g = goalRect()) {
   const headR = keeperHeadRadius(g);
-  return clamp(headR * BALL_SPOT_DRAW_RATIO, 6.5, headR * 1.34);
+  return clamp(headR * BALL_SPOT_DRAW_RATIO, 9.5, headR * 1.8);
 }
 
 function penaltySpotMarkRadius() {
