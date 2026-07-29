@@ -388,7 +388,8 @@ button {
 .title-content {
   position: relative;
   text-align: center;
-  padding: 24px;
+  padding: 16px 20px;
+  max-width: 90vw;
   animation: rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
   pointer-events: auto;
 }
@@ -405,39 +406,39 @@ button {
 }
 
 .eyebrow {
-  margin: 0 0 8px;
-  font-size: 0.78rem;
+  margin: 0 0 4px;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.32em;
+  letter-spacing: 0.28em;
   color: var(--flood);
 }
 
 .brand {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(5.5rem, 22vw, 9.5rem);
-  line-height: 0.86;
-  letter-spacing: 0.06em;
+  font-size: clamp(3.2rem, 14vw, 5.8rem);
+  line-height: 0.9;
+  letter-spacing: 0.05em;
   color: var(--ink);
   text-shadow:
-    0 0 40px rgba(232, 255, 106, 0.25),
-    0 8px 40px rgba(0, 0, 0, 0.45);
+    0 0 30px rgba(232, 255, 106, 0.25),
+    0 6px 30px rgba(0, 0, 0, 0.45);
 }
 
 .tagline {
-  margin: 18px 0 0;
-  font-size: 1.05rem;
+  margin: 10px 0 0;
+  font-size: clamp(0.88rem, 2.8vw, 1rem);
   font-weight: 500;
   color: var(--muted);
 }
 
 .cta-row {
-  margin-top: 28px;
+  margin-top: 18px;
 }
 
 .hint {
-  margin: 18px 0 0;
-  font-size: 0.82rem;
+  margin: 12px 0 0;
+  font-size: 0.78rem;
   color: rgba(244, 247, 241, 0.5);
 }
 
@@ -603,7 +604,7 @@ button {
   }
 
   .brand {
-    font-size: clamp(4.6rem, 24vw, 7rem);
+    font-size: clamp(3rem, 15vw, 4.5rem);
   }
 }
 
