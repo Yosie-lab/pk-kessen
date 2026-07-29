@@ -1045,6 +1045,8 @@ const KEEPER_LOCAL_FOOT_Y = 82;
 const KEEPER_LOCAL_HEAD_TOP = -14;
 /** キーパーローカル座標での頭半径（drawKeeper の ctx.arc 9.5 と一致） */
 const KEEPER_HEAD_LOCAL_R = 9.5;
+/** キーパー全体の描画倍率 */
+const KEEPER_SIZE_MUL = 1.2;
 /** 飛翔ベース半径（キーパー頭径比・全体1.2倍） */
 const BALL_SPOT_HEAD_RATIO = 1.18;
 
@@ -1096,7 +1098,7 @@ function keeperScaleForGoal(g = goalRect()) {
   // ゴール高さに比例（h=160 で約1.05）。小画面ではフレーム内に収まるよう上限もかける
   const ref = (g.h * 0.65625) / 100;
   const maxFit = (g.h * 0.98) / (KEEPER_LOCAL_FOOT_Y - KEEPER_LOCAL_HEAD_TOP);
-  return clamp(Math.min(ref, maxFit), 0.52, 1.32);
+  return clamp(Math.min(ref, maxFit) * KEEPER_SIZE_MUL, 0.52 * KEEPER_SIZE_MUL, 1.32 * KEEPER_SIZE_MUL);
 }
 
 /** 待機ポーズの足元までのアンカーからの距離（スケール後） */
