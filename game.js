@@ -1476,8 +1476,9 @@ function startMatch() {
     clearMatchTimers();
     resetMatchAudio();
     playerAimHistory.length = 0;
-    // sessionLayout がある場合は clearFixedGoal は何もしない（サイズ維持）
-    clearFixedGoal();
+    // 毎試合レイアウトを再測定して正確なキャンバス寸法を取得する
+    // （HUD 高さが確定してからキャンバスサイズが変わるため）
+    clearSessionLayout();
     state.mode = "play";
     state.suddenDeath = false;
     state.kickIndex = 0;
