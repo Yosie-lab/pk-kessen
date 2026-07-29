@@ -1472,6 +1472,7 @@ function hideOverlayScreens() {
 
 function startMatch() {
   try {
+    matchStartedAt = performance.now();
     unlockAudio();
     clearMatchTimers();
     resetMatchAudio();
@@ -2935,8 +2936,11 @@ function endMatch(winner) {
   else playMiss();
 }
 
+let matchStartedAt = 0;
+
 function onPointerDown(e) {
   if (state.mode !== "play") return;
+  if (performance.now() - matchStartedAt < 350) return;
   if (e.target && e.target.closest && e.target.closest("button")) return;
   unlockAudio();
 
