@@ -3882,10 +3882,10 @@ function drawGoal() {
   const barH = 11;
 
   function drawPost(x, y, hgt, side) {
-    // 接地の小さなベース
+    // 接地の小さなベース（ゴールライン足元 g.y + g.h）
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath();
-    ctx.ellipse(x + postW * 0.35, y + hgt + 3, postW * 0.7, 3.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + postW * 0.5, y + hgt, postW * 0.7, 3.2, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // 奥面（暗）
@@ -3917,8 +3917,9 @@ function drawGoal() {
     ctx.fillRect(side < 0 ? x + postW - 3 : x, y, 3, hgt);
   }
 
-  drawPost(g.x - 3, g.y, g.h, -1);
-  drawPost(g.x + g.w - postW + 3, g.y, g.h, 1);
+  // ポストの内側エッジがちょうど g.x および g.x + g.w（ゴールの枠幅）に重なるように配置
+  drawPost(g.x - postW, g.y, g.h, -1);
+  drawPost(g.x + g.w, g.y, g.h, 1);
 
   // クロスバー上面
   ctx.fillStyle = "#e8eee5";
