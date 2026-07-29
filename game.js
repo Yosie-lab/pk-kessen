@@ -624,6 +624,12 @@ function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
+/** キーパーダイブ：初速を速く、伸び切りは滑らかに */
+function keeperDiveEase(t) {
+  const u = clamp(t, 0, 1);
+  return 1 - Math.pow(1 - u, 2.65);
+}
+
 function randChoice(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -959,13 +965,13 @@ function sampleKeeperFeint(now = performance.now()) {
   const f = state.keeperFeint;
   if (!f) return blank;
   // ダイブが始まったらフェードアウト
-  const fade = 1 - clamp(state.keeperProgress / 0.12, 0, 1);
+  const fade = 1 - clamp(state.keeperProgress / 0.08, 0, 1);
   if (fade <= 0.01) return blank;
 
   const t = (now - f.startedAt) / 1000;
   const g = goalRect();
-  const stepX = g.w * 0.055;
-  const stepY = g.h * 0.04;
+  const stepX = g.w * 0.068;
+  const stepY = g.h * 0.052;
   let m = { ...blank };
 
   switch (f.id) {
@@ -1440,38 +1446,38 @@ function applyKeeperDive(dive) {
 /** キックごとに助走・踏み込み・蹴りの型を抽選 */
 function rollKickStyle() {
   const presets = [
-    { name: "calm", plantAt: 0.52, decelPow: 2.55, strideMul: 0.88, legAmp: 0.84, kickMsMul: 1.1, runMsMul: 1.08, launchU: 0.27, followMs: 430, swingSpan: 0.68, slideAmp: 4.0 },
-    { name: "snap", plantAt: 0.43, decelPow: 2.05, strideMul: 1.14, legAmp: 1.06, kickMsMul: 0.86, runMsMul: 0.9, launchU: 0.2, followMs: 300, swingSpan: 0.6, slideAmp: 5.6 },
-    { name: "long", plantAt: 0.57, decelPow: 2.8, strideMul: 0.7, legAmp: 0.92, kickMsMul: 1.16, runMsMul: 1.14, launchU: 0.3, followMs: 470, swingSpan: 0.74, slideAmp: 3.6 },
-    { name: "stutter", plantAt: 0.49, decelPow: 2.35, strideMul: 1.02, legAmp: 1.0, kickMsMul: 0.96, runMsMul: 1.02, launchU: 0.24, followMs: 360, swingSpan: 0.64, slideAmp: 4.6, stutter: true },
-    { name: "power", plantAt: 0.47, decelPow: 2.42, strideMul: 0.94, legAmp: 1.2, kickMsMul: 1.04, runMsMul: 1.0, launchU: 0.25, followMs: 410, swingSpan: 0.7, slideAmp: 5.4 },
-    { name: "short", plantAt: 0.4, decelPow: 1.95, strideMul: 1.18, legAmp: 0.98, kickMsMul: 0.82, runMsMul: 0.86, launchU: 0.19, followMs: 290, swingSpan: 0.58, slideAmp: 5.0 },
-    { name: "lefty", plantAt: 0.5, decelPow: 2.38, strideMul: 0.9, legAmp: 1.02, kickMsMul: 1.0, runMsMul: 1.0, launchU: 0.24, followMs: 390, swingSpan: 0.66, slideAmp: 4.4, leftFooted: true },
+    { name: "drive", plantAt: 0.46, decelPow: 2.05, strideMul: 1.1, legAmp: 1.1, kickMsMul: 0.88, runMsMul: 0.86, launchU: 0.21, followMs: 330, swingSpan: 0.56, slideAmp: 6.0 },
+    { name: "snap", plantAt: 0.4, decelPow: 1.82, strideMul: 1.24, legAmp: 1.14, kickMsMul: 0.8, runMsMul: 0.82, launchU: 0.17, followMs: 270, swingSpan: 0.52, slideAmp: 6.8 },
+    { name: "surge", plantAt: 0.5, decelPow: 2.22, strideMul: 1.02, legAmp: 1.08, kickMsMul: 0.92, runMsMul: 0.9, launchU: 0.23, followMs: 360, swingSpan: 0.6, slideAmp: 5.6 },
+    { name: "stutter", plantAt: 0.47, decelPow: 2.08, strideMul: 1.12, legAmp: 1.06, kickMsMul: 0.86, runMsMul: 0.88, launchU: 0.2, followMs: 310, swingSpan: 0.56, slideAmp: 5.8, stutter: true },
+    { name: "power", plantAt: 0.44, decelPow: 2.18, strideMul: 1.0, legAmp: 1.3, kickMsMul: 0.94, runMsMul: 0.88, launchU: 0.22, followMs: 370, swingSpan: 0.6, slideAmp: 6.4 },
+    { name: "burst", plantAt: 0.38, decelPow: 1.78, strideMul: 1.26, legAmp: 1.04, kickMsMul: 0.78, runMsMul: 0.8, launchU: 0.16, followMs: 260, swingSpan: 0.5, slideAmp: 6.6 },
+    { name: "lefty", plantAt: 0.47, decelPow: 2.12, strideMul: 1.06, legAmp: 1.1, kickMsMul: 0.9, runMsMul: 0.88, launchU: 0.2, followMs: 340, swingSpan: 0.58, slideAmp: 5.8, leftFooted: true },
   ];
   const base = randChoice(presets);
   return {
     ...base,
-    plantAt: clamp(base.plantAt + rand(-0.035, 0.035), 0.38, 0.6),
-    legAmp: clamp(base.legAmp + rand(-0.09, 0.09), 0.72, 1.28),
-    kickMsMul: clamp(base.kickMsMul + rand(-0.07, 0.07), 0.8, 1.22),
-    runMsMul: clamp(base.runMsMul + rand(-0.06, 0.06), 0.84, 1.2),
-    followMs: clamp((base.followMs + rand(-45, 45)) | 0, 260, 520),
-    strideMul: clamp(base.strideMul + rand(-0.1, 0.1), 0.62, 1.28),
-    slideAmp: base.slideAmp + rand(-0.8, 0.8),
-    sideJitter: rand(-0.18, 0.18),
+    plantAt: clamp(base.plantAt + rand(-0.03, 0.03), 0.36, 0.54),
+    legAmp: clamp(base.legAmp + rand(-0.06, 0.06), 0.94, 1.34),
+    kickMsMul: clamp(base.kickMsMul + rand(-0.05, 0.05), 0.76, 1.02),
+    runMsMul: clamp(base.runMsMul + rand(-0.05, 0.05), 0.76, 1.02),
+    followMs: clamp((base.followMs + rand(-35, 35)) | 0, 240, 420),
+    strideMul: clamp(base.strideMul + rand(-0.08, 0.08), 0.9, 1.34),
+    slideAmp: base.slideAmp + rand(-0.4, 0.5),
+    sideJitter: rand(-0.16, 0.16),
   };
 }
 
 function strikeTiming(runDist, kickStyle = {}) {
-  const runMs = clamp((480 + runDist * 0.48) * (kickStyle.runMsMul ?? 1), 500, 980);
-  const kickMs = clamp(300 * (kickStyle.kickMsMul ?? 1), 235, 390);
+  const runMs = clamp((395 + runDist * 0.38) * (kickStyle.runMsMul ?? 1), 410, 820);
+  const kickMs = clamp(255 * (kickStyle.kickMsMul ?? 1), 200, 320);
   return { runMs, kickMs };
 }
 
 /** 走り始め位置の型（PK でよく見るスタート地点） */
 function rollStartSpot(isYou, ballX, ballY, w, h, side, kickStyle) {
   const depthMul =
-    kickStyle.name === "long" ? 1.28 : kickStyle.name === "short" ? 0.68 : kickStyle.name === "snap" ? 0.82 : 1;
+    kickStyle.name === "surge" ? 1.22 : kickStyle.name === "burst" ? 0.72 : kickStyle.name === "snap" ? 0.8 : 1;
   const spots = isYou
     ? [
         { id: "center_deep", lx: 0.02, depth: 0.155, arc: 0 },
@@ -1524,7 +1530,7 @@ function rollApproach(isYou) {
   const idlePose = randChoice(["sides", "hips", "front", "focus", "bounce"]);
   const kickStyle = rollKickStyle();
   const side = clamp((Math.random() - 0.5) * 2 + kickStyle.sideJitter, -1, 1);
-  const steps = 3.2 + Math.random() * 1.5 + (kickStyle.runMsMul - 1) * 2;
+  const steps = 3.8 + Math.random() * 1.6 + (kickStyle.runMsMul - 1) * 1.6;
   const start = rollStartSpot(isYou, ballX, ballY, w, h, side, kickStyle);
   const plantOffset = kickStyle.leftFooted ? 14 : 16;
 
@@ -1583,14 +1589,14 @@ function sampleKickerMotion({
   const decelPow = style.decelPow ?? 2.35;
   const strideMul = style.strideMul ?? 1;
   const swingSpan = style.swingSpan ?? 0.68;
-  const slideAmp = style.slideAmp ?? 4.5;
+  const slideAmp = style.slideAmp ?? 5.6;
 
   if (airborne) {
     const fu = clamp(flightElapsed / followMs, 0, 1);
     const sideBias = approach?.side ?? 0;
     const followDir = side === "you" ? 1 : -1;
-    const drift = 6 + Math.abs(sideBias) * 4 + slideAmp * 0.6;
-    const ease = 1 - Math.pow(1 - fu, 2.1);
+    const drift = 8 + Math.abs(sideBias) * 5 + slideAmp * 0.72;
+    const ease = 1 - Math.pow(1 - fu, 2.35);
     return {
       x: lerp(runTo.x, runTo.x + followDir * drift, ease),
       y: runTo.y - Math.sin(fu * Math.PI) * (1.8 + slideAmp * 0.08),
@@ -1603,10 +1609,11 @@ function sampleKickerMotion({
 
   if (elapsed < runMs) {
     const u = elapsed / runMs;
-    let moveEase = 1 - Math.pow(1 - u, decelPow);
-    if (style.stutter && u > 0.32 && u < 0.52) {
-      const st = (u - 0.32) / 0.2;
-      moveEase *= 0.9 + 0.1 * Math.sin(st * Math.PI);
+    const burst = u < 0.16 ? Math.pow(u / 0.16, 0.62) * 0.16 : 0;
+    let moveEase = burst + (1 - burst) * (1 - Math.pow(1 - u, decelPow));
+    if (style.stutter && u > 0.3 && u < 0.48) {
+      const st = (u - 0.3) / 0.18;
+      moveEase *= 0.92 + 0.08 * Math.sin(st * Math.PI);
     }
     let x = lerp(runFrom.x, runTo.x, moveEase);
     let y = lerp(runFrom.y, runTo.y, moveEase);
@@ -1618,8 +1625,8 @@ function sampleKickerMotion({
       x += perpX * arcOff;
       y += perpY * arcOff;
     }
-    const strideFreq = (2.8 + runDist / 130) * strideMul * (1 - u * 0.62);
-    let stride = (elapsed / 1000) * Math.PI * strideFreq * 2.15;
+    const strideFreq = (3.15 + runDist / 112) * strideMul * (1 - u * 0.52);
+    let stride = (elapsed / 1000) * Math.PI * strideFreq * 2.55;
     if (style.stutter) {
       stride += Math.sin(elapsed / 95) * 0.18;
     }
@@ -1640,11 +1647,11 @@ function sampleKickerMotion({
   }
 
   const ku = clamp((elapsed - runMs) / kickMs, 0, 1);
-  const swingEase = ku < swingSpan ? 1 - Math.pow(1 - ku / swingSpan, 2.15) : 1;
+  const swingEase = ku < swingSpan ? 1 - Math.pow(1 - ku / swingSpan, 2.5) : 1;
   const kickT = lerp(plantKickTEnd, 1, swingEase);
   const slideDir = side === "you" ? -1 : 1;
-  const x = runTo.x + slideDir * lerp(0, slideAmp, Math.sin(ku * Math.PI * 0.9));
-  const y = runTo.y + lerp(0, 1.2 + slideAmp * 0.06, Math.sin(ku * Math.PI));
+  const x = runTo.x + slideDir * lerp(0, slideAmp, Math.sin(ku * Math.PI * 0.95));
+  const y = runTo.y + lerp(0, 1.6 + slideAmp * 0.08, Math.sin(ku * Math.PI));
 
   return {
     x,
@@ -1696,8 +1703,8 @@ function shotPostHitPoint(result) {
   return worldFromAim(result.aim);
 }
 
-/** セーブ時：ボールはキーパー（手・腹）で止まり、ネット奥へは行かない */
-function keeperSavePoint(result) {
+/** セーブ時：キーパー（手・腹）での接触点 */
+function keeperCatchPoint(result) {
   const dive = result.dive || { dir: "center", height: "mid" };
   const diveAim = keeperDiveAim(dive.dir, dive.height);
   const isSideLow = dive.height === "low" && dive.dir !== "center";
@@ -1715,6 +1722,23 @@ function keeperSavePoint(result) {
     p.y = Math.max(p.y, g.y + g.h * 0.4);
   }
   return p;
+}
+
+/** セーブ後：キーパー正面のゴールライン手前へこぼれる */
+function keeperSpillPoint(result, catchPt) {
+  const g = goalRect();
+  const layout = penaltyLayout();
+  const gy = layout.gy;
+  const dive = result.dive || { dir: "center", height: "mid" };
+  const diveAim = keeperDiveAim(dive.dir, dive.height);
+  const keeperX = g.x + diveAim.x * g.w;
+  const scatter = (result.saveScatter ?? 0) * g.w * 0.11;
+  const lane = layout.spot.y - gy;
+  const forward = lane * (0.06 + Math.abs(result.saveScatter ?? 0.35) * 0.09);
+  return {
+    x: clamp(keeperX + scatter, g.x - g.w * 0.03, g.x + g.w * 1.03),
+    y: gy + forward,
+  };
 }
 
 /** ゴール時：ネット奥まで入る（キーパー位置で止めない） */
@@ -1769,7 +1793,10 @@ function shotEndPoint(result, ballSpot) {
     // バー → 上に跳ねて外側へ落ちる
     return { x: hit.x + scatter * 1.1, y: hit.y - g.h * 0.08 };
   }
-  if (result.saved) return keeperSavePoint(result);
+  if (result.saved) {
+    const catchPt = result.saveCatch ?? keeperCatchPoint(result);
+    return keeperSpillPoint(result, catchPt);
+  }
   if (result.goal) return goalNetPoint(result);
   return worldFromAim(result.aim);
 }
@@ -1793,7 +1820,7 @@ function flightBallScale(u, result, scaleMul = 1) {
     end = goalEnd;
     start = goalStart;
   } else if (result?.saved) {
-    end = clamp(goalEnd * 1.04, goalEnd, 0.88);
+    end = clamp(goalEnd * 0.9, 0.56, 0.8);
     start = 1.1;
   } else if (result?.post) {
     end = clamp(goalEnd * 1.02, goalEnd, 0.86);
@@ -1803,7 +1830,7 @@ function flightBallScale(u, result, scaleMul = 1) {
     start = 1.12;
   }
 
-  const travelU = result?.saved ? Math.min(u / 0.84, 1) : u;
+  const travelU = result?.saved ? Math.min(u / 0.68, 1) : u;
   return lerp(start, end, travelU) * scaleMul;
 }
 
@@ -1871,22 +1898,55 @@ function sampleFlightPosition(from, end, postHit, result, u, h) {
   }
 
   if (result.saved) {
-    const catchU = 0.84;
-    const flyU = Math.min(u / catchU, 1);
-    const ease = 1 - Math.pow(1 - flyU, 2.8);
-    const arc = h * 0.035;
-    let x = lerp(from.x, end.x, ease);
-    let y = lerp(from.y, end.y, ease) - Math.sin(ease * Math.PI) * arc;
-    if (u > catchU) {
-      const settle = (u - catchU) / (1 - catchU);
-      y += settle * settle * h * 0.014;
+    const catchPt = result.saveCatch ?? end;
+    const spillPt = end;
+    const catchU = 0.66;
+    const dwellU = 0.07;
+    const spillStart = catchU + dwellU;
+
+    if (u <= catchU) {
+      const flyU = u / catchU;
+      const ease = 1 - Math.pow(1 - flyU, 2.8);
+      const arc = h * 0.032;
+      return {
+        x: lerp(from.x, catchPt.x, ease),
+        y: lerp(from.y, catchPt.y, ease) - Math.sin(ease * Math.PI) * arc,
+        spinMul: 1,
+        scaleMul: 1,
+        atImpact: false,
+      };
+    }
+
+    if (u <= spillStart) {
+      const t = (u - catchU) / dwellU;
+      const push = Math.sin(t * Math.PI);
+      const dx = catchPt.x - from.x;
+      const dy = catchPt.y - from.y;
+      const len = Math.hypot(dx, dy) || 1;
+      return {
+        x: catchPt.x - (dx / len) * push * 3.5,
+        y: catchPt.y - (dy / len) * push * 2 + t * h * 0.005,
+        spinMul: 0.3,
+        scaleMul: 1 - push * 0.07,
+        atImpact: t > 0.45,
+      };
+    }
+
+    const t = (u - spillStart) / (1 - spillStart);
+    const drop = 1 - Math.pow(1 - t, 2.35);
+    const gravity = t * t * h * 0.024;
+    let x = lerp(catchPt.x, spillPt.x, drop);
+    let y = lerp(catchPt.y, spillPt.y, drop) + gravity;
+    if (t > 0.58) {
+      const bt = (t - 0.58) / 0.42;
+      y -= Math.sin(bt * Math.PI) * (1 - bt) * h * 0.013;
     }
     return {
       x,
       y,
-      spinMul: u > catchU ? 0.12 : 1,
+      spinMul: 0.06,
       scaleMul: 1,
-      atImpact: u >= catchU && u < catchU + 0.06,
+      atImpact: t < 0.04,
     };
   }
 
@@ -1906,12 +1966,19 @@ function bindFlightPath(pending, result) {
   if (result.post && result.postScatter == null) {
     result.postScatter = (Math.random() - 0.5) * 0.12;
   }
+  if (result.saved) {
+    if (result.saveScatter == null) result.saveScatter = (Math.random() - 0.5) * 1.2;
+    result.saveCatch = keeperCatchPoint(result);
+  }
   pending.end = shotEndPoint(result, pending.ballSpot);
   pending.postHit = shotPostHitPoint(result);
   pending.postClangPlayed = false;
   // バウンドが見えるよう飛翔を少し長く
   if (result.post && pending.flightMs) {
     pending.flightMs = pending.flightMs * 1.4;
+  }
+  if (result.saved && pending.flightMs) {
+    pending.flightMs = Math.round(pending.flightMs * 1.32);
   }
 }
 
@@ -2102,8 +2169,8 @@ function stepCpuShot(now) {
 
   // ダイブが決まったらキーパーを伸ばす（飛翔前から）
   if (state.diveLocked) {
-    const diveT = clamp((elapsed - aimOpen) / (runMs + kickMs * 0.5 - aimOpen), 0, 1);
-    if (!state.ball.airborne) state.keeperProgress = diveT * 0.85;
+    const diveT = clamp((elapsed - aimOpen) / (runMs + kickMs * 0.45 - aimOpen), 0, 1);
+    if (!state.ball.airborne) state.keeperProgress = keeperDiveEase(diveT) * 0.9;
   }
 
   if (state.diveLocked && state.ball.airborne && pending.result) {
@@ -2145,7 +2212,7 @@ function stepCpuShot(now) {
       airborne: true,
       side: "cpu",
     });
-    state.keeperProgress = clamp(0.85 + u * 0.15, 0, 1);
+    state.keeperProgress = clamp(0.9 + keeperDiveEase(clamp((u - 0.02) / 0.32, 0, 1)) * 0.1, 0, 1);
 
     if (u >= 1) {
       state.ball.x = end.x;
@@ -2291,6 +2358,7 @@ function lockPlayerAim(clientX, clientY, elapsed) {
     result = { ...result, onTarget: false, saved: false, post: null, postIn: false, postScatter: null, goal: false };
   }
   applyKeeperDive(result.dive);
+  pending.aimLockedAt = elapsed;
   state.shot = result;
   pending.result = result;
   bindFlightPath(pending, result);
@@ -2321,6 +2389,7 @@ function autoLockMissedAim(elapsed) {
   }
   playerAimHistory.push({ ...aim });
   applyKeeperDive(result.dive);
+  pending.aimLockedAt = elapsed;
   state.shot = result;
   pending.result = result;
   bindFlightPath(pending, result);
@@ -2382,6 +2451,12 @@ function stepPlayerShot(now) {
       state.phase = "flight";
       showControls("none");
     }
+
+    if (state.aimLocked && pending.result) {
+      const lockAt = pending.aimLockedAt ?? runMs;
+      const preFlight = clamp((elapsed - lockAt) / Math.max(kickMs * 0.86, 1), 0, 1);
+      state.keeperProgress = keeperDiveEase(preFlight) * 0.8;
+    }
   }
 
   if (state.aimLocked && state.ball.airborne && pending.result) {
@@ -2423,7 +2498,7 @@ function stepPlayerShot(now) {
       airborne: true,
       side: "you",
     });
-    state.keeperProgress = clamp((u - 0.08) / 0.65, 0, 1);
+    state.keeperProgress = clamp(0.8 + keeperDiveEase(clamp((u - 0.02) / 0.36, 0, 1)) * 0.2, 0, 1);
 
     if (u >= 1) {
       state.ball.x = end.x;
@@ -3690,8 +3765,8 @@ function drawKeeper() {
   const target = worldFromAim(keeperDiveAim(dir, height));
   const diveSide = dir === "left" ? -1 : dir === "right" ? 1 : 0;
   const diveLift = height === "high" ? -1 : height === "low" ? 1 : 0;
-  const stretch = t * t * (3 - 2 * t);
-  const idle = stretch < 0.05 ? Math.sin(performance.now() / 320) * 0.35 : 0;
+  const stretch = keeperDiveEase(t);
+  const idle = stretch < 0.05 ? Math.sin(performance.now() / 280) * 0.42 : 0;
   const isLowCatch = height === "low" && stretch > 0.02;
   const isHighDive = height === "high" && diveSide !== 0 && stretch > 0.02;
   const isCenterCatch = height === "mid" && diveSide === 0 && stretch > 0.02;
@@ -3702,12 +3777,12 @@ function drawKeeper() {
   if (isLowCatch) {
     slideDrop = stretch * (diveSide !== 0 ? 6 : 4);
   } else if (isHighDive) {
-    const plant = Math.sin(clamp(t / 0.32, 0, 1) * Math.PI) * 1.2 * (1 - stretch);
-    const leap = -Math.pow(stretch, 1.8) * 7;
+    const plant = Math.sin(clamp(t / 0.26, 0, 1) * Math.PI) * 1.5 * (1 - stretch);
+    const leap = -Math.pow(stretch, 1.55) * 10;
     slideDrop = plant + leap;
   } else if (isSideMidDive) {
-    const plantPhase = Math.sin(clamp(t / 0.32, 0, 1) * Math.PI) * (1 - stretch);
-    slideDrop = -plantPhase * 3 + stretch * 3;
+    const plantPhase = Math.sin(clamp(t / 0.26, 0, 1) * Math.PI) * (1 - stretch);
+    slideDrop = -plantPhase * 3.8 + stretch * 3.8;
   }
   const moveT = isHighDive || isSideDive ? stretch : t;
   const x = lerp(rest.x, target.x, moveT);
@@ -3760,7 +3835,7 @@ function drawKeeper() {
       bodyRot = 0;
     } else {
       // 約55°まで：板のように真横へは倒さない
-      bodyRot = side * tipEase * 0.95;
+      bodyRot = side * tipEase * 1.05;
 
       const settle = tipEase;
       hipX = side * lerp(2, 8, settle);
@@ -3799,7 +3874,7 @@ function drawKeeper() {
       }
 
       // 両手はボール方向へ（伸ばしすぎない）
-      const catchX = side * lerp(24, 36, settle);
+      const catchX = side * lerp(26, 42, settle);
       const catchY = lerp(10, 17, settle);
       const handLead = {
         x: lerp(side > 0 ? 24 : -24, catchX + side * 1, tipEase),
@@ -3834,12 +3909,12 @@ function drawKeeper() {
     const side = diveSide;
     const tipEase = stretch * stretch * (3 - 2 * stretch);
     // 真横に倒れすぎず、斜め45°前後
-    bodyRot = side * tipEase * 0.62;
+    bodyRot = side * tipEase * 0.72;
 
     // 腰→肩→頭：横へ倒れて腕で届く（体全体は浮かない）
     hipX = side * tipEase * 6;
     hipY = lerp(46, 44, tipEase);
-    shoulderX = side * tipEase * 24;
+    shoulderX = side * tipEase * 28;
     shoulderY = lerp(12, 5, tipEase);
     headX = shoulderX + side * tipEase * 5;
     headY = shoulderY - lerp(12, 10, tipEase);
@@ -3874,9 +3949,9 @@ function drawKeeper() {
     }
 
     // 両手を広げた上でコーナー方向へ（ワイドな上げ狙い）
-    const cornerX = side * lerp(24, 42, tipEase);
-    const cornerY = lerp(4, -16, tipEase);
-    const armSpread = lerp(10, 16, tipEase);
+    const cornerX = side * lerp(28, 48, tipEase);
+    const cornerY = lerp(4, -18, tipEase);
+    const armSpread = lerp(11, 18, tipEase);
     const handLead = {
       x: lerp(side > 0 ? 22 : -22, cornerX + side * armSpread * 0.45, tipEase),
       y: lerp(6, cornerY - 3, tipEase),
@@ -3947,11 +4022,11 @@ function drawKeeper() {
     const tipEase = stretch * stretch * (3 - 2 * stretch);
     const plantPhase = Math.sin(clamp(t / 0.32, 0, 1) * Math.PI) * (1 - stretch);
     const vertShift = -plantPhase * 3 + stretch * 3;
-    bodyRot = side * tipEase * 0.78;
+    bodyRot = side * tipEase * 0.88;
 
     hipX = side * tipEase * 8;
     hipY = 46 + vertShift;
-    shoulderX = side * tipEase * 26;
+    shoulderX = side * tipEase * 30;
     shoulderY = 12 + vertShift * 0.6;
     headX = shoulderX + side * tipEase * 5;
     headY = shoulderY - 12;
@@ -3984,7 +4059,7 @@ function drawKeeper() {
       footR = trailFoot;
     }
 
-    const catchX = side * lerp(24, 38, tipEase);
+    const catchX = side * lerp(28, 44, tipEase);
     const catchY = lerp(10, 11, tipEase);
     const handLead = {
       x: lerp(side > 0 ? 22 : -22, catchX + side * 2, tipEase),
@@ -4357,62 +4432,62 @@ function drawPlayerFigure(opts) {
   if (pose === "run") {
     const s = Math.sin(stride);
     const c = Math.cos(stride);
-    lean = -0.14 - Math.max(0, -s) * 0.05;
-    bob = Math.max(0, s) * 1.8;
-    hipSwingL = s * 0.88;
-    hipSwingR = -s * 0.88;
-    kneeL = 0.1 + Math.max(0, -s) * 0.62;
-    kneeR = 0.1 + Math.max(0, s) * 0.62;
-    plantFootLift = Math.max(0, -s) * 2.5;
-    kickFootLift = Math.max(0, s) * 3.2;
-    armL = c * 0.42;
-    armR = -c * 0.42;
-    elbowL = 0.35 + Math.abs(c) * 0.2;
-    elbowR = 0.35 + Math.abs(c) * 0.2;
-    torsoTwist = s * 0.07;
+    lean = -0.2 - Math.max(0, -s) * 0.07;
+    bob = Math.max(0, s) * 2.6;
+    hipSwingL = s * 1.05;
+    hipSwingR = -s * 1.05;
+    kneeL = 0.1 + Math.max(0, -s) * 0.78;
+    kneeR = 0.1 + Math.max(0, s) * 0.78;
+    plantFootLift = Math.max(0, -s) * 3.2;
+    kickFootLift = Math.max(0, s) * 4.8;
+    armL = c * 0.54;
+    armR = -c * 0.54;
+    elbowL = 0.32 + Math.abs(c) * 0.24;
+    elbowR = 0.32 + Math.abs(c) * 0.24;
+    torsoTwist = s * 0.09;
   } else if (pose === "plant") {
     const p = clamp(kt / 0.36, 0, 1);
-    lean = lerp(-0.1, -0.03, p);
-    bob = lerp(0.8, 0, p);
-    hipSwingL = lerp(0.12, 0.04, p);
-    hipSwingR = lerp(-0.22, -1.32, p);
+    lean = lerp(-0.12, -0.04, p);
+    bob = lerp(1.1, 0, p);
+    hipSwingL = lerp(0.14, 0.05, p);
+    hipSwingR = lerp(-0.26, -1.48, p);
     kneeL = lerp(0.16, 0.08, p);
-    kneeR = lerp(0.28, 1.02, p);
-    kickFootLift = lerp(0, 7.5, p);
-    armL = lerp(0.18, -0.08, p);
-    armR = lerp(-0.1, 0.32, p);
-    elbowL = lerp(0.48, 0.38, p);
-    elbowR = lerp(0.42, 0.34, p);
-    torsoTwist = lerp(0.04, -0.12, p);
+    kneeR = lerp(0.3, 1.14, p);
+    kickFootLift = lerp(0, 9.5, p);
+    armL = lerp(0.22, -0.12, p);
+    armR = lerp(-0.12, 0.38, p);
+    elbowL = lerp(0.48, 0.36, p);
+    elbowR = lerp(0.42, 0.32, p);
+    torsoTwist = lerp(0.05, -0.14, p);
   } else if (pose === "kick") {
     const strike = clamp((kt - 0.36) / 0.64, 0, 1);
-    const wind = clamp(strike / 0.38, 0, 1);
-    const thru = clamp((strike - 0.38) / 0.62, 0, 1);
-    lean = lerp(-0.03, -0.38, wind * 0.5 + thru * 0.5);
-    bob = thru > 0.2 ? -2.4 : lerp(0, -1.0, wind);
-    hipSwingL = lerp(0.04, 0.18, thru);
-    hipSwingR = lerp(-1.32, 1.28, wind * 0.35 + thru * 0.65);
-    kneeL = lerp(0.08, 0.3, thru);
-    kneeR = lerp(1.02, 0.05, wind);
-    kickFootLift = lerp(7.5, -5.5, wind) + thru * 3.5;
-    armL = lerp(-0.08, -0.45, wind);
-    armR = lerp(0.32, -0.06, thru);
-    elbowL = lerp(0.38, 0.55, wind);
-    elbowR = lerp(0.34, 0.44, thru);
-    torsoTwist = lerp(-0.12, 0.16, thru);
+    const wind = clamp(strike / 0.34, 0, 1);
+    const thru = clamp((strike - 0.34) / 0.66, 0, 1);
+    lean = lerp(-0.04, -0.48, wind * 0.5 + thru * 0.5);
+    bob = thru > 0.18 ? -3.0 : lerp(0, -1.4, wind);
+    hipSwingL = lerp(0.05, 0.22, thru);
+    hipSwingR = lerp(-1.48, 1.45, wind * 0.35 + thru * 0.65);
+    kneeL = lerp(0.08, 0.34, thru);
+    kneeR = lerp(1.14, 0.04, wind);
+    kickFootLift = lerp(9.5, -6.5, wind) + thru * 4.2;
+    armL = lerp(-0.12, -0.52, wind);
+    armR = lerp(0.38, -0.1, thru);
+    elbowL = lerp(0.36, 0.58, wind);
+    elbowR = lerp(0.32, 0.46, thru);
+    torsoTwist = lerp(-0.14, 0.18, thru);
   } else if (pose === "follow") {
-    lean = lerp(-0.34, -0.1, kt);
-    bob = lerp(-1.8, 0, kt);
-    hipSwingL = lerp(0.18, 0.08, kt);
-    hipSwingR = lerp(1.28, -0.12, kt);
-    kneeL = lerp(0.3, 0.22, kt);
-    kneeR = lerp(0.05, 0.28, kt);
-    kickFootLift = lerp(2, 0, kt);
-    armL = lerp(-0.45, -0.18, kt);
-    armR = lerp(-0.06, 0.18, kt);
-    elbowL = lerp(0.55, 0.42, kt);
-    elbowR = lerp(0.44, 0.38, kt);
-    torsoTwist = lerp(0.16, 0, kt);
+    lean = lerp(-0.42, -0.12, kt);
+    bob = lerp(-2.2, 0, kt);
+    hipSwingL = lerp(0.22, 0.08, kt);
+    hipSwingR = lerp(1.45, -0.14, kt);
+    kneeL = lerp(0.34, 0.24, kt);
+    kneeR = lerp(0.04, 0.32, kt);
+    kickFootLift = lerp(2.6, 0, kt);
+    armL = lerp(-0.52, -0.2, kt);
+    armR = lerp(-0.1, 0.22, kt);
+    elbowL = lerp(0.58, 0.44, kt);
+    elbowR = lerp(0.46, 0.4, kt);
+    torsoTwist = lerp(0.18, 0, kt);
   } else {
     // ready：待機ポーズをバリエーション（常にゴールへ前傾）
     const idle = Math.sin(performance.now() / 380);
