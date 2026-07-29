@@ -885,10 +885,13 @@ function keeperDiveAim(dir, height = "mid") {
 const KEEPER_LOCAL_FOOT_Y = 82;
 const KEEPER_LOCAL_HEAD_TOP = -14;
 const BALL_REF_GOAL_H = 160;
-const BALL_REF_RADIUS = 11;
+const BALL_REF_RADIUS = 13;
 
 function ballBaseRadius(g = goalRect()) {
-  return clamp((g.h / BALL_REF_GOAL_H) * BALL_REF_RADIUS, 6.5, 13.5);
+  const mobileBoost = state.mobileLite ? 1.18 : 1;
+  const minR = state.mobileLite ? 10.5 : 7;
+  const maxR = state.mobileLite ? 17 : 14.5;
+  return clamp((g.h / BALL_REF_GOAL_H) * BALL_REF_RADIUS * mobileBoost, minR, maxR);
 }
 
 function keeperScaleForGoal(g = goalRect()) {
@@ -1772,9 +1775,24 @@ function shotEndPoint(result, ballSpot) {
  * ポスト／バー時: 接近（減速）→ 密着の一瞬 → 跳ね返り（落下・スピン変化）
  */
 function flightBallScale(u, result, scaleMul = 1) {
-  const end = result?.goal ? 0.72 : result?.saved ? 0.78 : result?.post ? 0.78 : 0.62;
+  const mobile = state.mobileLite;
+  const end = result?.goal
+    ? mobile
+      ? 0.9
+      : 0.72
+    : result?.saved
+      ? mobile
+        ? 0.92
+        : 0.78
+      : result?.post
+        ? mobile
+          ? 0.92
+          : 0.78
+        : mobile
+          ? 0.86
+          : 0.62;
   const travelU = result?.saved ? Math.min(u / 0.84, 1) : u;
-  const start = result?.goal ? 1.05 : 1.2;
+  const start = result?.goal ? (mobile ? 1.1 : 1.05) : mobile ? 1.18 : 1.2;
   return lerp(start, end, travelU) * scaleMul;
 }
 
@@ -4760,12 +4778,34 @@ function norm3(p) {
   return [p[0] / len, p[1] / len, p[2] / len];
 }
 
-/** モバイル向け：白地＋黒パネルで柄が分かる軽量ボール */
-function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0) {
+/** 2D五角形（モバイルでも柄がはっきり見える） */
+function fillPentagon2D(cx, cy, r, rot, fill, stroke) {
   ctx.beginPath();
-  ctx.ellipse(x, y + radius * 0.1, radius * 0.9, radius * 0.28, 0, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
+  for (let i = 0; i < 5; i++) {
+    const a = rot + (i * Math.PI * 2) / 5 - Math.PI / 2;
+    const px = cx + Math.cos(a) * r;
+    const py = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fillStyle = fill;
   ctx.fill();
+  if (stroke) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = Math.max(1, r * 0.14);
+    ctx.stroke();
+  }
+}
+
+/** モバイル向け：白地＋太めの黒パネル（ハイライトで柄が消えない） */
+function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = true) {
+  if (withShadow) {
+    ctx.beginPath();
+    ctx.ellipse(x, y + radius * 0.12, radius * 0.92, radius * 0.3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fill();
+  }
 
   ctx.save();
   ctx.translate(x, y);
@@ -4773,53 +4813,44 @@ function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0) {
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.clip();
 
-  const body = ctx.createRadialGradient(
-    -radius * 0.28,
-    -radius * 0.32,
-    radius * 0.08,
-    0,
-    0,
-    radius
-  );
+  const body = ctx.createRadialGradient(-radius * 0.25, -radius * 0.3, radius * 0.05, 0, 0, radius);
   body.addColorStop(0, "#ffffff");
-  body.addColorStop(0.55, "#f0f2ee");
-  body.addColorStop(1, "#b8bdb6");
+  body.addColorStop(0.62, "#eceee9");
+  body.addColorStop(1, "#c5c9c2");
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
   ctx.fillStyle = body;
   ctx.fill();
 
-  const panels = [];
-  for (const base of SOCCER_PANELS) {
-    let p = rotY3(base, spinY);
-    p = rotX3(p, spinX);
-    if (p[2] <= 0.06) continue;
-    panels.push({ x: p[0] * radius * 0.86, y: p[1] * radius * 0.86, z: p[2] });
+  const rot = spinY + spinX * 0.55;
+  const patch = radius * 0.3;
+  fillPentagon2D(0, -radius * 0.08, patch, rot, "#101010", "rgba(0,0,0,0.65)");
+  for (let i = 0; i < 5; i++) {
+    const a = rot + (i * Math.PI * 2) / 5;
+    fillPentagon2D(
+      Math.cos(a) * radius * 0.5,
+      Math.sin(a) * radius * 0.5,
+      patch * 0.78,
+      rot + i * 0.55,
+      "#181818",
+      "rgba(0,0,0,0.55)"
+    );
   }
-  panels.sort((a, b) => a.z - b.z);
-
-  const patchR = radius * 0.26;
-  for (const panel of panels) {
-    const shade = 0.42 + panel.z * 0.58;
-    ctx.beginPath();
-    for (let i = 0; i < 5; i++) {
-      const a = -Math.PI / 2 + (i * Math.PI * 2) / 5 + spinY * 0.25;
-      const px = panel.x + Math.cos(a) * patchR;
-      const py = panel.y + Math.sin(a) * patchR;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fillStyle = `rgb(${Math.round(10 * shade)},${Math.round(10 * shade)},${Math.round(10 * shade)})`;
-    ctx.fill();
-    ctx.strokeStyle = "rgba(0,0,0,0.55)";
-    ctx.lineWidth = Math.max(0.75, radius * 0.05);
-    ctx.stroke();
+  for (let i = 0; i < 3; i++) {
+    const a = rot + Math.PI + i * 1.4;
+    fillPentagon2D(
+      Math.cos(a) * radius * 0.72,
+      Math.sin(a) * radius * 0.72,
+      patch * 0.55,
+      rot + i * 0.35,
+      "#222222",
+      null
+    );
   }
 
-  const shine = ctx.createRadialGradient(-radius * 0.38, -radius * 0.42, 0, -radius * 0.12, -radius * 0.16, radius * 0.7);
-  shine.addColorStop(0, "rgba(255,255,255,0.42)");
-  shine.addColorStop(0.45, "rgba(255,255,255,0.1)");
+  // 柄の上に薄いハイライトだけ
+  const shine = ctx.createRadialGradient(-radius * 0.35, -radius * 0.4, 0, -radius * 0.1, -radius * 0.12, radius * 0.55);
+  shine.addColorStop(0, "rgba(255,255,255,0.22)");
   shine.addColorStop(1, "rgba(255,255,255,0)");
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -4830,15 +4861,15 @@ function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0) {
 
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(0,0,0,0.38)";
-  ctx.lineWidth = Math.max(0.85, radius * 0.055);
+  ctx.strokeStyle = "rgba(0,0,0,0.45)";
+  ctx.lineWidth = Math.max(1.1, radius * 0.06);
   ctx.stroke();
 }
 
 /** 3D投影の白黒サッカーボール（spinX / spinY で球体回転） */
 function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
   if (state.mobileLite) {
-    drawSoccerBallLite(x, y, radius);
+    drawSoccerBallLite(x, y, radius, spinY, spinX);
     return;
   }
   ctx.save();
@@ -4903,7 +4934,7 @@ function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
       else ctx.lineTo(pt[0], pt[1]);
     });
     ctx.closePath();
-    ctx.fillStyle = `rgb(${Math.round(8 * shade)},${Math.round(8 * shade)},${Math.round(8 * shade)})`;
+    ctx.fillStyle = `rgb(${Math.round(12 + 18 * shade)},${Math.round(12 + 18 * shade)},${Math.round(12 + 18 * shade)})`;
     ctx.fill();
     ctx.strokeStyle = "rgba(0,0,0,0.52)";
     ctx.lineWidth = Math.max(0.75, radius * 0.042);
@@ -4922,8 +4953,8 @@ function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
 
   // 固定ハイライト（光源は画面左上）
   const shine = ctx.createRadialGradient(-radius * 0.42, -radius * 0.48, 0, -radius * 0.15, -radius * 0.2, radius * 0.75);
-  shine.addColorStop(0, "rgba(255,255,255,0.46)");
-  shine.addColorStop(0.3, "rgba(255,255,255,0.12)");
+  shine.addColorStop(0, "rgba(255,255,255,0.34)");
+  shine.addColorStop(0.3, "rgba(255,255,255,0.08)");
   shine.addColorStop(1, "rgba(255,255,255,0)");
   ctx.beginPath();
   ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -4957,7 +4988,7 @@ function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
 function drawBall() {
   const g = goalRect();
   const baseR = ballBaseRadius(g);
-  const flightR = baseR * (14 / 12);
+  const flightR = baseR * (15 / 12);
   const shadowRX = baseR * (10 / 12);
   const shadowRY = baseR * (3.5 / 12);
   const shadowDrop = baseR;
@@ -4991,17 +5022,15 @@ function drawBall() {
 
   for (const t of state.ball.trail) {
     if (t.a < 0.05) continue;
-    ctx.globalAlpha = t.a * 0.32;
-    ctx.beginPath();
-    ctx.arc(
+    ctx.globalAlpha = t.a * 0.28;
+    drawSoccerBallLite(
       t.x,
       t.y,
-      baseR * 0.85 * (t.scale || state.ball.scale),
-      0,
-      Math.PI * 2
+      baseR * 0.82 * (t.scale || state.ball.scale),
+      state.ball.spinY || 0,
+      state.ball.spinX || 0,
+      false
     );
-    ctx.fillStyle = "#f0f2ee";
-    ctx.fill();
     ctx.globalAlpha = 1;
   }
 
