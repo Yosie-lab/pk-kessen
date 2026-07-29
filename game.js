@@ -539,10 +539,13 @@ const state = {
   h: 0,
   /** 試合中の画面↔ゴール比率（{ x,y,w,h } を 0〜1 で保持） */
   fixedGoalRatio: null,
+  /** 連プレイ時のサイズドリフト防止：初回ロック時のキャンバス＋ゴール実寸 */
+  layoutLock: null,
   mobileLite: false,
 };
 
 const LAYOUT_LOCK_DEBOUNCE_MS = 120;
+const LAYOUT_DRIFT_TOLERANCE = 0.04;
 const RESIZE_DEBOUNCE_MS = 32;
 const STRIKE = {
   FLIGHT_MS: 820,
@@ -611,7 +614,21 @@ function detectMobileLite(width = state.w, height = state.h) {
     width = window.innerWidth;
     height = window.innerHeight;
   }
+  // 閾値付近で dpr が切り替わるとサイズが連プレイごとに変わるのでヒステリシス
+  if (state.mobileLite) {
+    if (width > 660 && height > 780) return false;
+    return true;
+  }
   return width <= 600 || height <= 720;
+}
+
+function layoutDrift(w, h) {
+  const lock = state.layoutLock;
+  if (!lock) return 1;
+  return Math.max(
+    Math.abs(w - lock.canvasW) / Math.max(1, lock.canvasW),
+    Math.abs(h - lock.canvasH) / Math.max(1, lock.canvasH)
+  );
 }
 
 function maxBallTrail() {
@@ -709,11 +726,26 @@ function rand(min, max) {
 
 function resize() {
   const rect = canvas.getBoundingClientRect();
-  const w = Math.max(1, rect.width);
-  const h = Math.max(1, rect.height);
-  const mobileLite = detectMobileLite(w, h);
+  let w = Math.max(1, rect.width);
+  let h = Math.max(1, rect.height);
+  const lock = state.layoutLock;
+  const drift = layoutDrift(w, h);
+  // 試合中：アドレスバー等の微小リサイズは初回ロック寸法に固定
+  if (state.mode === "play" && lock && drift < LAYOUT_DRIFT_TOLERANCE) {
+    w = lock.canvasW;
+    h = lock.canvasH;
+  }
+  const mobileLite =
+    state.mode === "play" && lock && drift < LAYOUT_DRIFT_TOLERANCE
+      ? lock.mobileLite
+      : detectMobileLite(w, h);
   const rawDpr = window.devicePixelRatio || 1;
-  const dpr = mobileLite ? 1 : Math.min(rawDpr, 2);
+  const dpr =
+    state.mode === "play" && lock && drift < LAYOUT_DRIFT_TOLERANCE
+      ? lock.dpr
+      : mobileLite
+        ? 1
+        : Math.min(rawDpr, 2);
   const cw = Math.floor(w * dpr);
   const ch = Math.floor(h * dpr);
   if (
@@ -736,6 +768,9 @@ function resize() {
   ctx = mainCtx;
   ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
   invalidateBgCache();
+  if (state.mode === "play" && drift >= LAYOUT_DRIFT_TOLERANCE) {
+    lockFixedGoal();
+  }
 }
 
 let safeProbe = null;
@@ -812,6 +847,7 @@ function goalRectFromRatio() {
 
 function lockFixedGoal() {
   if (state.mode !== "play") return;
+  if (state.w <= 0 || state.h <= 0) return;
   const g = computeGoalRect();
   const nextRatio = {
     x: g.x / state.w,
@@ -827,20 +863,41 @@ function lockFixedGoal() {
     Math.abs(prev.w - nextRatio.w) < 0.001 &&
     Math.abs(prev.h - nextRatio.h) < 0.001;
   state.fixedGoalRatio = nextRatio;
+  state.layoutLock = {
+    canvasW: state.w,
+    canvasH: state.h,
+    dpr: state.dpr,
+    mobileLite: state.mobileLite,
+    goalX: g.x,
+    goalY: g.y,
+    goalW: g.w,
+    goalH: g.h,
+  };
   if (!same) invalidateBgCache();
 }
 
 function clearFixedGoal() {
   state.fixedGoalRatio = null;
+  state.layoutLock = null;
 }
 
 function goalRect() {
   if (goalRectFrame === frameId) return goalRectScratch;
   goalRectFrame = frameId;
-  const g =
-    state.mode === "play" && state.fixedGoalRatio
-      ? goalRectFromRatio()
-      : computeGoalRect();
+  const lock = state.layoutLock;
+  let g;
+  if (state.mode === "play" && lock && layoutDrift(state.w, state.h) < LAYOUT_DRIFT_TOLERANCE) {
+    g = {
+      x: lock.goalX,
+      y: lock.goalY,
+      w: lock.goalW,
+      h: lock.goalH,
+    };
+  } else if (state.mode === "play" && state.fixedGoalRatio) {
+    g = goalRectFromRatio();
+  } else {
+    g = computeGoalRect();
+  }
   goalRectScratch.x = g.x;
   goalRectScratch.y = g.y;
   goalRectScratch.w = g.w;
@@ -1384,7 +1441,6 @@ function startMatch() {
     clearMatchTimers();
     resetMatchAudio();
     playerAimHistory.length = 0;
-    invalidateBgCache();
     state.mode = "play";
     state.suddenDeath = false;
     state.kickIndex = 0;
