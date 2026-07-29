@@ -520,6 +520,49 @@ export function playVictoryCelebration() {
   }, holdMs);
 }
 
+/** 相手キーパーに阻まれたとき：小さめのスタジアム反応（必ず聞こえる音量） */
+export function playBlockedByKeeper() {
+  unlockAudio();
+  stopCheer();
+  const gen = cheerGen;
+
+  const sting = playClone("cheerShort", rand(0.55, 0.72), rand(0.94, 1.06), 0, 0);
+  activeCheer.push(sting);
+  const crowd = playClone("crowdStadium", rand(0.42, 0.58), rand(0.74, 0.9), rand(0, 1.4), rand(0, 40));
+  activeCheer.push(crowd);
+
+  if (Math.random() > 0.3) {
+    const clap = playClone(
+      pick(APPLAUSE),
+      rand(0.3, 0.46),
+      rand(0.92, 1.06),
+      rand(0, 1.2),
+      rand(30, 110)
+    );
+    activeCheer.push(clap);
+  }
+
+  playCrowdSwell({
+    intensity: rand(0.3, 0.5),
+    bright: rand(0.42, 0.72),
+    dur: rand(1.0, 1.65),
+    rise: rand(0.04, 0.1),
+  });
+  playApplauseTexture({
+    intensity: rand(0.32, 0.52),
+    dur: rand(1.1, 1.7),
+    density: rand(0.45, 0.75),
+  });
+
+  const holdMs = rand(950, 1450) | 0;
+  const fadeMs = rand(360, 560) | 0;
+  cheerTimer = setTimeout(() => {
+    if (gen !== cheerGen) return;
+    for (const a of activeCheer) fadeOut(a, fadeMs);
+    cheerTimer = null;
+  }, holdMs);
+}
+
 /** 枠外・セーブ失敗など、外れたときの残念な声（毎回変化） */
 export function playMiss() {
   unlockAudio();

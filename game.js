@@ -1,4 +1,4 @@
-import { unlockAudio, playKick, playCheer, playMiss, playPostHit, playWhistle, playVictoryCelebration } from "./audio.js";
+import { unlockAudio, playKick, playCheer, playMiss, playBlockedByKeeper, playPostHit, playWhistle, playVictoryCelebration } from "./audio.js";
 
 const canvas = document.getElementById("pitch");
 const mainCtx = canvas.getContext("2d");
@@ -2583,9 +2583,9 @@ function finishKick(result, shooter) {
     }
   } else if (result.saved) {
     state.flash = 0.45;
-    // 自軍キーパーのセーブは歓声、自軍シュート被セーブは残念な声
+    // 自軍キーパーのセーブは歓声、相手キーパーに阻まれたら小さめのスタジアム反応
     if (shooter === "cpu") playCheer();
-    else playMiss();
+    else playBlockedByKeeper();
     setPrompt(shooter === "you" ? "阻まれた！" : "セーブ！", { result: true });
   } else if (result.post) {
     state.flash = 0.7;
