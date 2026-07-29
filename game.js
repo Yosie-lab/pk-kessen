@@ -899,10 +899,39 @@ function keeperHeadRadius(g = goalRect()) {
   return KEEPER_HEAD_LOCAL_R * keeperScaleForGoal(g);
 }
 
-/** ペナルティ地点のボール描画用（飛翔計算とは別。ゴール到達サイズ≈キーパー頭） */
+/** ペナルティ地点のボール描画倍率（遠景補正。ゴール到達サイズは flightBallScale のまま） */
+const BALL_SPOT_DRAW_RATIO = 1.18;
+
+/** ペナルティ地点のボール描画用 */
 function ballSpotDrawRadius(g = goalRect()) {
   const headR = keeperHeadRadius(g);
-  return clamp(headR, 5.5, headR * 1.06);
+  return clamp(headR * BALL_SPOT_DRAW_RATIO, 6, headR * 1.24);
+}
+
+function penaltySpotMarkRadius() {
+  const { w, h } = state;
+  return clamp(Math.min(w, h) * 0.0055, 3.8, 6.2);
+}
+
+/** 白マークをボールよりキッカー側（手前）へずらす */
+function penaltySpotMarkForwardY(spot, ballR = ballSpotDrawRadius()) {
+  const markR = penaltySpotMarkRadius();
+  return spot.y + clamp(ballR * 0.5 + markR * 0.38, 6, 17);
+}
+
+function drawPenaltySpotMark() {
+  const spot = penaltyLayout().spot;
+  const markR = penaltySpotMarkRadius();
+  const markY = penaltySpotMarkForwardY(spot);
+  ctx.beginPath();
+  ctx.arc(spot.x, markY, markR + 1.1, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255,255,255,0.42)";
+  ctx.lineWidth = 1.1;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(spot.x, markY, markR, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.94)";
+  ctx.fill();
 }
 
 function ballBaseRadius(g = goalRect()) {
@@ -3308,18 +3337,6 @@ function drawPitch() {
 
   drawBoxLines();
   ctx.restore();
-
-  const spot = layout.spot;
-  const spotR = clamp(Math.min(w, h) * 0.0055, 3.8, 6.2);
-  ctx.beginPath();
-  ctx.arc(spot.x, spot.y, spotR + 1.1, 0, Math.PI * 2);
-  ctx.strokeStyle = "rgba(255,255,255,0.42)";
-  ctx.lineWidth = 1.1;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(spot.x, spot.y, spotR, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,255,255,0.94)";
-  ctx.fill();
 }
 
 /** ピッチ上のゴールエリア・ペナルティエリアライン */
@@ -5210,6 +5227,11 @@ function render() {
       ballY = spot.y;
     }
     if (ballY != null) layers.push({ y: ballY, tie: 1, draw: drawBall });
+
+    if (state.mode === "play") {
+      const markY = penaltySpotMarkForwardY(spot);
+      layers.push({ y: markY, tie: 1, draw: drawPenaltySpotMark });
+    }
 
     let shooterY = null;
     if (state.kicker) shooterY = state.kicker.y;
