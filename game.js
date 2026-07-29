@@ -1061,20 +1061,20 @@ const KEEPER_LOCAL_FOOT_Y = 82;
 const KEEPER_LOCAL_HEAD_TOP = -14;
 /** キーパーローカル座標での頭半径（drawKeeper の ctx.arc 9.5 と一致） */
 const KEEPER_HEAD_LOCAL_R = 9.5;
-/** ペナルティ地点のボールはゴール前より手前なので、頭よりわずかに小さめ */
-const BALL_SPOT_HEAD_RATIO = 0.94;
+/** ペナルティ地点のボールはゴール前より手前なので、頭より大きめ */
+const BALL_SPOT_HEAD_RATIO = 1.35;
 
 function keeperHeadRadius(g = goalRect()) {
   return KEEPER_HEAD_LOCAL_R * keeperScaleForGoal(g);
 }
 
 /** ペナルティ地点のボール描画倍率（手前視点：キッカーの足元・ゴール対比で自然な大きさ） */
-const BALL_SPOT_DRAW_RATIO = 1.62;
+const BALL_SPOT_DRAW_RATIO = 1.75;
 
 /** ペナルティ地点のボール描画用 */
 function ballSpotDrawRadius(g = goalRect()) {
   const headR = keeperHeadRadius(g);
-  return clamp(headR * BALL_SPOT_DRAW_RATIO, 9.5, headR * 1.8);
+  return clamp(headR * BALL_SPOT_DRAW_RATIO, 14, headR * 2.2);
 }
 
 function penaltySpotMarkRadius() {
@@ -1105,7 +1105,7 @@ function drawPenaltySpotMark() {
 
 function ballBaseRadius(g = goalRect()) {
   const headR = keeperHeadRadius(g);
-  return clamp(headR * BALL_SPOT_HEAD_RATIO, 5.5, headR * 1.02);
+  return clamp(headR * BALL_SPOT_HEAD_RATIO, 11, headR * 1.55);
 }
 
 function keeperScaleForGoal(g = goalRect()) {
@@ -2063,9 +2063,9 @@ function flightBallScale(u, result, scaleMul = 1) {
   const baseR = ballBaseRadius(g);
   const flightR = Math.max(baseR * (13 / 12), 1);
   const headR = keeperHeadRadius(g);
-  // ゴール到達時の見かけ半径 ≈ キーパーの頭
-  const goalEnd = clamp(headR / flightR, 0.62, 0.95);
-  const goalStart = clamp(goalEnd * 1.1, goalEnd, 1.06);
+  // ゴール到達時の見かけ半径
+  const goalEnd = clamp(headR / flightR * 1.3, 0.9, 1.38);
+  const goalStart = clamp(goalEnd * 1.15, goalEnd, 1.48);
 
   let end;
   let start;
@@ -2073,14 +2073,14 @@ function flightBallScale(u, result, scaleMul = 1) {
     end = goalEnd;
     start = goalStart;
   } else if (result?.saved) {
-    end = clamp(goalEnd * 0.9, 0.56, 0.8);
-    start = 1.1;
+    end = clamp(goalEnd * 0.95, 0.8, 1.2);
+    start = 1.25;
   } else if (result?.post) {
-    end = clamp(goalEnd * 1.02, goalEnd, 0.86);
-    start = 1.1;
+    end = clamp(goalEnd * 1.05, goalEnd, 1.28);
+    start = 1.25;
   } else {
-    end = clamp(goalEnd * 0.9, 0.55, 0.76);
-    start = 1.12;
+    end = clamp(goalEnd * 0.95, 0.8, 1.18);
+    start = 1.28;
   }
 
   const travelU = result?.saved ? Math.min(u / 0.68, 1) : u;
