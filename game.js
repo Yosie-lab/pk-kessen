@@ -957,7 +957,10 @@ function computeGoalRect() {
   const maxGhByHeight = playableH * 0.32;
   const maxGhByWidth = (availW * 0.96) / 2.92;
   const ghCap = h <= 300 ? 104 : h <= 380 ? 142 : h <= 460 ? 172 : 216;
-  const gh = Math.min(maxGhByHeight, maxGhByWidth, ghCap);
+  let gh = Math.min(maxGhByHeight, maxGhByWidth, ghCap);
+  if (w <= 375 && h <= 667) {
+    gh *= 0.9;
+  }
 
   const gw = Math.min(availW * 0.96, gh * 3.0);
   const x = inset.left + (availW - gw) * 0.5;

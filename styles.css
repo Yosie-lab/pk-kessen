@@ -672,3 +672,10 @@ html.viewport-locked body {
     font-size: clamp(1.38rem, 4.4vw, 1.85rem);
   }
 }
+
+/* iPhone SE3世代 / 小画面（375px × 667px 以下）での全体画面表示を0.9倍に縮小 */
+@media (max-width: 375px) and (max-height: 667px) {
+  html {
+    font-size: 90%;
+  }
+}
