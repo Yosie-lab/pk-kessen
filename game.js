@@ -576,7 +576,7 @@ function thawViewportTracking() {
   observeLayoutRoot();
 }
 
-const LAYOUT_LOCK_DEBOUNCE_MS = 160;
+const LAYOUT_LOCK_DEBOUNCE_MS = 350;
 const LAYOUT_WIDTH_RELOCK_DRIFT = 0.05;
 const RESIZE_DEBOUNCE_MS = 32;
 const STRIKE = {
@@ -1548,11 +1548,8 @@ function startMatch() {
     clearMatchTimers();
     resetMatchAudio();
     playerAimHistory.length = 0;
-    // ページ読み込み後、一度確定したセッションレイアウトはそのまま使用
-    // （試合開始ごとに再測定すると iPhone Safari の UI 揺れでサイズが変化するのを防ぐ）
-    if (!sessionLayout) {
-      clearSessionLayout("startMatch-no-session");
-    }
+    // セッションレイアウトは一切リセットしない（試合をまたいでも同じ寸法を保持）
+    // sessionLayout == null の場合は scheduleLockFixedGoal が初回キャプチャする
     state.mode = "play";
     state.suddenDeath = false;
     state.kickIndex = 0;
@@ -5761,12 +5758,17 @@ function canvasDriftsFromSession() {
 
 function scheduleLayoutRefresh(source = "unknown") {
   if (sessionLayout) {
+    // play中はいかなるリサイズでもセッションを破棄しない
+    // （Safariアドレスバーの出し入りでサイズが変わるのを防ぐ）
+    if (state.mode === "play") {
+      resize(); // pinCanvasCssを再適用するだけ
+      return;
+    }
     const widthDrift =
       Math.abs(window.innerWidth - sessionLayout.winW) / Math.max(1, sessionLayout.winW);
     if (widthDrift >= LAYOUT_WIDTH_RELOCK_DRIFT) {
       clearSessionLayout("width-drift");
-      if (state.mode === "play") scheduleLockFixedGoal();
-      else resize({ forceRemeasure: true });
+      resize({ forceRemeasure: true });
       return;
     }
     if (!canvasDriftsFromSession()) return;
@@ -5790,6 +5792,8 @@ function onWinResize() {
 }
 
 function onVvResize() {
+  // play中は visualViewport の変化（アドレスバーの出し入り）を無視
+  if (state.mode === "play") return;
   if (sessionLayout && canvasDriftsFromSession()) scheduleLayoutRefresh("vv-resize");
 }
 
