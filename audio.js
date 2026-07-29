@@ -413,12 +413,8 @@ export function resetMatchAudio() {
   }
   playingClones.length = 0;
 
-  // AudioContext を封じて作り直す：試合ごとに蓄積する
-  // BufferSource / BiquadFilter / GainNode グラフを一括解放（重さの主因）
-  if (audioCtx) {
-    try { audioCtx.close(); } catch (_) {}
-    audioCtx = null;
-  }
+  // ※ audioCtx.close() は iOS Safari でスレッドブロック・再生拒否を引き起こすため
+  // クローズせず、クローン音源の停止のみ行う
 }
 
 /** ゴール直後に必ず鳴る短いアクセント（歓声レイヤーの遅延・失敗対策） */
