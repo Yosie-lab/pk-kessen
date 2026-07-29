@@ -5629,6 +5629,19 @@ canvas.addEventListener("pointermove", onPointerMove, { passive: true });
 
 let resizeTimer = 0;
 function scheduleLayoutRefresh() {
+  // セッション確定中：ウィンドウサイズのドリフトが閾値未満なら無視
+  // （canvas の width/height 変更で ResizeObserver が再発火→ループになるのを防ぐ）
+  if (sessionLayout) {
+    const drift = Math.max(
+      Math.abs(window.innerWidth - sessionLayout.winW) / Math.max(1, sessionLayout.winW),
+      Math.abs(window.innerHeight - sessionLayout.winH) / Math.max(1, sessionLayout.winH)
+    );
+    if (drift < LAYOUT_RELOCK_DRIFT) {
+      // ドリフトなし → ピンを維持するだけで OK。タイマー不要
+      return;
+    }
+    // 大きな変化 → セッションリセット（タイマーへ）
+  }
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => {
     if (!sessionLayout) {
@@ -5657,7 +5670,9 @@ window.addEventListener("orientationchange", () => {
   scheduleLayoutRefresh();
 });
 const layoutObserver = new ResizeObserver(scheduleLayoutRefresh);
-layoutObserver.observe(canvas);
+// キャンバス自体を監視すると applyCanvasBacking で width/height を変えるたびに
+// ResizeObserver が再発火してリサイズループになるため、親要素を監視する
+layoutObserver.observe(canvas.parentElement || document.documentElement);
 resize({ forceRemeasure: true });
 requestAnimationFrame(loop);
 

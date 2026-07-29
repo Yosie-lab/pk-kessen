@@ -607,6 +607,16 @@ button {
   }
 }
 
+/* PC・タブレット横：スコアボードフォントが最大値になり HUD からプロンプトがはみ出るため高めにする */
+/* ※ max-height: 667px クエリが後続するため、短い画面では上書きされる */
+@media (min-width: 561px) {
+  .hud:not([hidden]) {
+    height: 13.5rem;
+    min-height: 13.5rem;
+    max-height: 13.5rem;
+  }
+}
+
 @media (max-height: 667px) {
   .hud:not([hidden]) {
     height: 10.25rem;
