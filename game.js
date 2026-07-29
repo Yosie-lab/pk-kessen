@@ -3302,9 +3302,15 @@ function drawPitch() {
   ctx.restore();
 
   const spot = layout.spot;
+  const spotR = clamp(Math.min(w, h) * 0.0055, 3.8, 6.2);
   ctx.beginPath();
-  ctx.arc(spot.x, spot.y, 8, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(236,245,232,0.5)";
+  ctx.arc(spot.x, spot.y, spotR + 1.1, 0, Math.PI * 2);
+  ctx.strokeStyle = "rgba(255,255,255,0.42)";
+  ctx.lineWidth = 1.1;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(spot.x, spot.y, spotR, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.94)";
   ctx.fill();
 }
 
@@ -4758,7 +4764,8 @@ function kickerDrawScale(y, isNear) {
   const t = clamp((y - h * 0.48) / (h * 0.48), 0, 1);
   const depthBoost = lerp(1.02, 1.36, t * t * (3 - 2 * t));
   const base = goalRef * depthBoost;
-  return isNear ? base * 1.12 : base * 1.05;
+  const size = isNear ? base * 1.12 : base * 1.05;
+  return size * 0.9;
 }
 
 function drawShooter() {
