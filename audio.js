@@ -46,7 +46,13 @@ let unlocked = false;
 let cheerTimer = null;
 let activeCheer = [];
 let cheerGen = 0;
+let playGen = 0;
 let audioCtx = null;
+/** cloneNode した HTMLAudioElement の上限（溜まると iOS Safari が重くなる） */
+const MAX_PLAYING_CLONES = 18;
+const playingClones = [];
+const activeFadeCancels = new Set();
+const pendingPlayTimers = new Set();
 
 function rand(a, b) {
   return a + Math.random() * (b - a);
@@ -84,14 +90,59 @@ function preloadSounds() {
 }
 preloadSounds();
 
+function trackPlayTimer(id) {
+  pendingPlayTimers.add(id);
+  return id;
+}
+
+function clearPlayTimers() {
+  for (const id of pendingPlayTimers) clearTimeout(id);
+  pendingPlayTimers.clear();
+}
+
+function releaseClone(a) {
+  const idx = playingClones.indexOf(a);
+  if (idx >= 0) playingClones.splice(idx, 1);
+}
+
+function trimPlayingClones() {
+  while (playingClones.length > MAX_PLAYING_CLONES) {
+    const old = playingClones.shift();
+    try {
+      old.pause();
+      old.currentTime = 0;
+    } catch (_) {}
+  }
+}
+
+function trackClone(a) {
+  playingClones.push(a);
+  trimPlayingClones();
+  a.addEventListener(
+    "ended",
+    () => releaseClone(a),
+    { once: true }
+  );
+  a.addEventListener(
+    "pause",
+    () => {
+      if (a.currentTime <= 0.01 || a.ended) releaseClone(a);
+    },
+    { once: true }
+  );
+}
+
 function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
   const base = getAudio(key);
   const a = base.cloneNode();
   a.volume = Math.max(0, Math.min(1, volume));
   a.playbackRate = rate;
   a.preload = "auto";
+  trackClone(a);
+  const gen = playGen;
 
   const tryPlay = (attempt = 0) => {
+    if (gen !== playGen) return;
     try {
       const dur = a.duration;
       if (Number.isFinite(dur) && dur > 0.4) {
@@ -102,22 +153,29 @@ function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
     const p = a.play();
     if (p && p.catch) {
       p.catch(() => {
-        if (attempt < 2) {
-          setTimeout(() => tryPlay(attempt + 1), 60 + attempt * 80);
+        if (gen === playGen && attempt < 2) {
+          trackPlayTimer(setTimeout(() => tryPlay(attempt + 1), 60 + attempt * 80));
         }
       });
     }
   };
 
-  const start = () => tryPlay(0);
+  const start = () => {
+    if (gen !== playGen) return;
+    tryPlay(0);
+  };
   if (a.readyState >= 2) {
-    if (delayMs > 8) setTimeout(start, delayMs);
-    else start();
+    if (delayMs > 8) {
+      trackPlayTimer(setTimeout(start, delayMs));
+    } else {
+      start();
+    }
   } else {
     a.addEventListener(
       "canplay",
       () => {
-        if (delayMs > 8) setTimeout(start, delayMs);
+        if (gen !== playGen) return;
+        if (delayMs > 8) trackPlayTimer(setTimeout(start, delayMs));
         else start();
       },
       { once: true }
@@ -331,6 +389,8 @@ function stopCheer() {
     clearTimeout(cheerTimer);
     cheerTimer = null;
   }
+  for (const cancel of activeFadeCancels) cancel();
+  activeFadeCancels.clear();
   for (const a of activeCheer) {
     try {
       a.pause();
@@ -338,6 +398,20 @@ function stopCheer() {
     } catch (_) {}
   }
   activeCheer = [];
+}
+
+/** 試合開始時：再生中サウンドと clone を一括停止（連プレイ時のメモリ・rAF 溜まり対策） */
+export function resetMatchAudio() {
+  playGen++;
+  clearPlayTimers();
+  stopCheer();
+  for (const a of playingClones) {
+    try {
+      a.pause();
+      a.currentTime = 0;
+    } catch (_) {}
+  }
+  playingClones.length = 0;
 }
 
 /** ゴール直後に必ず鳴る短いアクセント（歓声レイヤーの遅延・失敗対策） */
@@ -540,7 +614,8 @@ export function playVictoryCelebration() {
 }
 
 /** 相手キーパーに阻まれたとき：小さめのスタジアム反応（必ず聞こえる音量） */
-export function playBlockedByKeeper() {
+export function playBlockedByKeeper(opts = {}) {
+  const lite = opts?.lite;
   unlockAudio();
   stopCheer();
   const gen = cheerGen;
@@ -561,17 +636,19 @@ export function playBlockedByKeeper() {
     activeCheer.push(clap);
   }
 
-  playCrowdSwell({
-    intensity: rand(0.3, 0.5),
-    bright: rand(0.42, 0.72),
-    dur: rand(1.0, 1.65),
-    rise: rand(0.04, 0.1),
-  });
-  playApplauseTexture({
-    intensity: rand(0.32, 0.52),
-    dur: rand(1.1, 1.7),
-    density: rand(0.45, 0.75),
-  });
+  if (!lite) {
+    playCrowdSwell({
+      intensity: rand(0.3, 0.5),
+      bright: rand(0.42, 0.72),
+      dur: rand(1.0, 1.65),
+      rise: rand(0.04, 0.1),
+    });
+    playApplauseTexture({
+      intensity: rand(0.32, 0.52),
+      dur: rand(1.1, 1.7),
+      density: rand(0.45, 0.75),
+    });
+  }
 
   const holdMs = rand(950, 1450) | 0;
   const fadeMs = rand(360, 560) | 0;
@@ -764,15 +841,38 @@ function fadeOut(audio, duration) {
   if (!audio) return;
   const start = performance.now();
   const startVol = audio.volume;
+  let rafId = 0;
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    activeFadeCancels.delete(cancel);
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch (_) {}
+    releaseClone(audio);
+  };
   function step(now) {
+    if (done) return;
     const t = Math.min(1, (now - start) / duration);
     audio.volume = Math.max(0, startVol * (1 - t));
     if (t < 1) {
-      requestAnimationFrame(step);
+      rafId = requestAnimationFrame(step);
     } else {
-      audio.pause();
-      audio.currentTime = 0;
+      finish();
     }
   }
-  requestAnimationFrame(step);
+  const cancel = () => {
+    if (done) return;
+    done = true;
+    cancelAnimationFrame(rafId);
+    activeFadeCancels.delete(cancel);
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch (_) {}
+  };
+  activeFadeCancels.add(cancel);
+  rafId = requestAnimationFrame(step);
 }

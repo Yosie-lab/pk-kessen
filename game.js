@@ -1,4 +1,4 @@
-import { unlockAudio, playKick, playCheer, playMiss, playBlockedByKeeper, playPostHit, playWhistle, playVictoryCelebration } from "./audio.js";
+import { unlockAudio, playKick, playCheer, playMiss, playBlockedByKeeper, playPostHit, playWhistle, playVictoryCelebration, resetMatchAudio } from "./audio.js";
 
 const canvas = document.getElementById("pitch");
 const mainCtx = canvas.getContext("2d", { alpha: true, desynchronized: true }) || canvas.getContext("2d");
@@ -568,6 +568,37 @@ let layoutCacheKey = "";
 const renderLayers = [];
 let loopRunning = true;
 let frameNow = 0;
+const feintScratch = {
+  ox: 0, oy: 0, lean: 0, hipX: 0, hipY: 0, shoulderY: 0, plant: 0,
+  handSpread: 0, handLY: 0, handRY: 0, handLX: 0, handRX: 0,
+};
+const keeperPts = {
+  kneeL: { x: 0, y: 0 }, kneeR: { x: 0, y: 0 },
+  footL: { x: 0, y: 0 }, footR: { x: 0, y: 0 },
+  handL: { x: 0, y: 0 }, handR: { x: 0, y: 0 },
+  shoulderL: { x: 0, y: 0 }, shoulderR: { x: 0, y: 0 },
+  elbowL: { x: 0, y: 0 }, elbowR: { x: 0, y: 0 },
+  downKnee: { x: 0, y: 0 }, upKnee: { x: 0, y: 0 },
+  downFoot: { x: 0, y: 0 }, upFoot: { x: 0, y: 0 },
+  trailKnee: { x: 0, y: 0 }, leadKnee: { x: 0, y: 0 },
+  trailFoot: { x: 0, y: 0 }, leadFoot: { x: 0, y: 0 },
+  handLead: { x: 0, y: 0 }, handTrail: { x: 0, y: 0 },
+};
+const goalRectScratch = { x: 0, y: 0, w: 0, h: 0 };
+let goalRectFrame = -1;
+let frameId = 0;
+const renderLayerPool = [
+  { y: 0, tie: 0, draw: null },
+  { y: 0, tie: 0, draw: null },
+  { y: 0, tie: 0, draw: null },
+  { y: 0, tie: 0, draw: null },
+];
+
+function setPt(out, x, y) {
+  out.x = x;
+  out.y = y;
+  return out;
+}
 
 function invalidateBgCache() {
   bgCache.key = "";
@@ -584,7 +615,7 @@ function detectMobileLite(width = state.w, height = state.h) {
 }
 
 function maxBallTrail() {
-  return state.mobileLite ? 4 : 8;
+  return state.mobileLite ? 3 : 8;
 }
 
 function bgCacheKey() {
@@ -805,10 +836,17 @@ function clearFixedGoal() {
 }
 
 function goalRect() {
-  if (state.mode === "play" && state.fixedGoalRatio) {
-    return goalRectFromRatio();
-  }
-  return computeGoalRect();
+  if (goalRectFrame === frameId) return goalRectScratch;
+  goalRectFrame = frameId;
+  const g =
+    state.mode === "play" && state.fixedGoalRatio
+      ? goalRectFromRatio()
+      : computeGoalRect();
+  goalRectScratch.x = g.x;
+  goalRectScratch.y = g.y;
+  goalRectScratch.w = g.w;
+  goalRectScratch.h = g.h;
+  return goalRectScratch;
 }
 
 /** 9マスの中心点。狙い・ボール着地・キーパー・セーブ判定はすべてここを基準にする */
@@ -1038,31 +1076,28 @@ function rollKeeperFeint() {
 
 /** 相手が蹴るまでのフェイント姿勢（ワールド／ボディオフセット） */
 function sampleKeeperFeint(now = performance.now()) {
-  const blank = {
-    ox: 0,
-    oy: 0,
-    lean: 0,
-    hipX: 0,
-    hipY: 0,
-    shoulderY: 0,
-    plant: 0,
-    handSpread: 0,
-    handLY: 0,
-    handRY: 0,
-    handLX: 0,
-    handRX: 0,
-  };
+  const m = feintScratch;
+  m.ox = 0;
+  m.oy = 0;
+  m.lean = 0;
+  m.hipX = 0;
+  m.hipY = 0;
+  m.shoulderY = 0;
+  m.plant = 0;
+  m.handSpread = 0;
+  m.handLY = 0;
+  m.handRY = 0;
+  m.handLX = 0;
+  m.handRX = 0;
   const f = state.keeperFeint;
-  if (!f) return blank;
-  // ダイブが始まったらフェードアウト
+  if (!f) return m;
   const fade = 1 - clamp(state.keeperProgress / 0.08, 0, 1);
-  if (fade <= 0.01) return blank;
+  if (fade <= 0.01) return m;
 
   const t = (now - f.startedAt) / 1000;
   const g = goalRect();
   const stepX = g.w * 0.068;
   const stepY = g.h * 0.052;
-  let m = { ...blank };
 
   switch (f.id) {
     case "shuffle": {
@@ -1193,20 +1228,19 @@ function sampleKeeperFeint(now = performance.now()) {
   }
 
   const scale = fade;
-  return {
-    ox: m.ox * scale,
-    oy: m.oy * scale,
-    lean: m.lean * scale,
-    hipX: m.hipX * scale,
-    hipY: m.hipY * scale,
-    shoulderY: m.shoulderY * scale,
-    plant: m.plant * scale,
-    handSpread: m.handSpread * scale,
-    handLY: m.handLY * scale,
-    handRY: m.handRY * scale,
-    handLX: m.handLX * scale,
-    handRX: m.handRX * scale,
-  };
+  m.ox *= scale;
+  m.oy *= scale;
+  m.lean *= scale;
+  m.hipX *= scale;
+  m.hipY *= scale;
+  m.shoulderY *= scale;
+  m.plant *= scale;
+  m.handSpread *= scale;
+  m.handLY *= scale;
+  m.handRY *= scale;
+  m.handLX *= scale;
+  m.handRX *= scale;
+  return m;
 }
 
 function clearTextSelection() {
@@ -1309,6 +1343,24 @@ function showControls(mode) {
 }
 
 let lockGoalTimer = 0;
+let resultBeatTimer = 0;
+let suddenDeathTimer = 0;
+
+function clearMatchTimers() {
+  if (lockGoalTimer) {
+    clearTimeout(lockGoalTimer);
+    lockGoalTimer = 0;
+  }
+  if (resultBeatTimer) {
+    clearTimeout(resultBeatTimer);
+    resultBeatTimer = 0;
+  }
+  if (suddenDeathTimer) {
+    clearTimeout(suddenDeathTimer);
+    suddenDeathTimer = 0;
+  }
+  clearWhistleTimer();
+}
 
 function scheduleLockFixedGoal() {
   clearTimeout(lockGoalTimer);
@@ -1329,6 +1381,9 @@ function hideOverlayScreens() {
 function startMatch() {
   try {
     unlockAudio();
+    clearMatchTimers();
+    resetMatchAudio();
+    playerAimHistory.length = 0;
     clearFixedGoal();
     invalidateBgCache();
     state.mode = "play";
@@ -1338,13 +1393,14 @@ function startMatch() {
     state.history = { you: [], cpu: [] };
     pickOpponentKit();
     state.flash = 0;
+    state.crowdPulse = 0;
     state.ball = null;
     state.kicker = null;
     state.approach = null;
     state.shot = null;
     state.pendingStrike = null;
     state.whistlePending = false;
-    clearWhistleTimer();
+    state.keeperFeint = null;
     state.keeperDir = "center";
     state.keeperHeight = "mid";
     state.keeperProgress = 0;
@@ -2141,11 +2197,9 @@ function initStrikeKicker(side, runFrom, approach) {
 const ballTrailPool = [];
 
 function pushBallTrail(trail, x, y, a, spinY, spinX, scale) {
-  let slot = ballTrailPool[trail.length];
-  if (!slot) {
-    slot = {};
-    ballTrailPool.push(slot);
-  }
+  const cap = maxBallTrail() + 1;
+  while (ballTrailPool.length < cap) ballTrailPool.push({});
+  const slot = ballTrailPool[trail.length % cap];
   slot.x = x;
   slot.y = y;
   slot.a = a;
@@ -2667,7 +2721,7 @@ function finishKick(result, shooter) {
     state.flash = 0.45;
     // 自軍キーパーのセーブは歓声、相手キーパーに阻まれたら小さめのスタジアム反応
     if (shooter === "cpu") playCheer({ lite: state.mobileLite });
-    else playBlockedByKeeper();
+    else playBlockedByKeeper({ lite: state.mobileLite });
     setPrompt(shooter === "you" ? "阻まれた！" : "セーブ！", { result: true });
   } else if (result.post) {
     state.flash = 0.7;
@@ -2683,7 +2737,8 @@ function finishKick(result, shooter) {
   updateHud();
   state.phase = "result-beat";
 
-  setTimeout(() => {
+  resultBeatTimer = setTimeout(() => {
+    resultBeatTimer = 0;
     state.ball = null;
     state.kicker = null;
     state.pendingStrike = null;
@@ -2760,7 +2815,10 @@ function advanceTurn(lastShooter) {
     state.kickIndex = 0;
     showControls("none");
     setPrompt("サドンデス！");
-    setTimeout(() => beginYouShoot(), 700);
+    suddenDeathTimer = setTimeout(() => {
+      suddenDeathTimer = 0;
+      beginYouShoot();
+    }, 700);
     return;
   }
 
@@ -3307,8 +3365,9 @@ function drawCrowd() {
 }
 
 function drawWeatherOverlay() {
-  const { w, h } = state;
   const v = activeVenue();
+  if (v.fog <= 0.01 && (state.mobileLite || v.rain <= 0.05)) return;
+  const { w, h } = state;
   if (v.fog > 0.01) {
     ctx.fillStyle = `rgba(200,210,220,${v.fog * 0.55})`;
     ctx.fillRect(0, 0, w, h * 0.55);
@@ -3321,7 +3380,7 @@ function drawWeatherOverlay() {
     }
   }
   if (v.rain > 0.05 && !state.mobileLite) {
-    const now = performance.now();
+    const now = frameNow;
     ctx.strokeStyle = `rgba(200,220,240,${0.12 + v.rain * 0.18})`;
     ctx.lineWidth = 1.2;
     const n = Math.min(40, Math.floor(50 + v.rain * 70));
@@ -3808,35 +3867,37 @@ function drawGoal() {
   }
 
   ctx.restore();
+}
 
-  // キック／ダイブ瞬間のレティクル
-  if (state.mode === "play" && (state.phase === "aim-click" || state.phase === "dive-click")) {
-    const pulse = 0.5 + Math.sin(frameNow / 90) * 0.5;
-    const col = state.phase === "dive-click" ? "125,200,255" : "232,255,106";
-    ctx.strokeStyle = `rgba(${col},${0.35 + pulse * 0.45})`;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(g.x - 2, g.y - 2, g.w + 4, g.h + 4);
+/** キック／ダイブ瞬間のゴールレティクル（毎フレーム・背景キャッシュの外） */
+function drawGoalReticle() {
+  if (state.mode !== "play" || (state.phase !== "aim-click" && state.phase !== "dive-click")) return;
+  const g = goalRect();
+  const pulse = 0.5 + Math.sin(frameNow / 90) * 0.5;
+  const col = state.phase === "dive-click" ? "125,200,255" : "232,255,106";
+  ctx.strokeStyle = `rgba(${col},${0.35 + pulse * 0.45})`;
+  ctx.lineWidth = 4;
+  ctx.strokeRect(g.x - 2, g.y - 2, g.w + 4, g.h + 4);
 
-    const locked = state.phase === "aim-click" ? state.aimLocked : state.diveLocked;
-    if (state.pointerAim || locked) {
-      const target = locked
-        ? state.phase === "dive-click"
-          ? cellCenter(state.keeperDir, state.keeperHeight)
-          : state.aim
-        : state.pointerAim || state.aim;
-      const p = worldFromAim(target);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(${col},0.95)`;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(p.x - 22, p.y);
-      ctx.lineTo(p.x + 22, p.y);
-      ctx.moveTo(p.x, p.y - 22);
-      ctx.lineTo(p.x, p.y + 22);
-      ctx.stroke();
-    }
+  const locked = state.phase === "aim-click" ? state.aimLocked : state.diveLocked;
+  if (state.pointerAim || locked) {
+    const target = locked
+      ? state.phase === "dive-click"
+        ? cellCenter(state.keeperDir, state.keeperHeight)
+        : state.aim
+      : state.pointerAim || state.aim;
+    const p = worldFromAim(target);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(${col},0.95)`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(p.x - 22, p.y);
+    ctx.lineTo(p.x + 22, p.y);
+    ctx.moveTo(p.x, p.y - 22);
+    ctx.lineTo(p.x, p.y + 22);
+    ctx.stroke();
   }
 }
 
@@ -3867,10 +3928,12 @@ function drawKeeper() {
   const t = state.keeperProgress;
   const feint = sampleKeeperFeint(frameNow);
   const g = goalRect();
-  const rest = worldFromAim(keeperReadyAim());
-  rest.x += feint.ox;
-  rest.y = Math.min(rest.y + feint.oy, g.y + g.h - keeperFootDrop(g));
-  const target = worldFromAim(keeperDiveAim(dir, height));
+  const wRest = worldFromAim(keeperReadyAim());
+  const wTarget = worldFromAim(keeperDiveAim(dir, height));
+  const restX = wRest.x + feint.ox;
+  const restY = Math.min(wRest.y + feint.oy, g.y + g.h - keeperFootDrop(g));
+  const targetX = wTarget.x;
+  const targetY = wTarget.y;
   const diveSide = dir === "left" ? -1 : dir === "right" ? 1 : 0;
   const diveLift = height === "high" ? -1 : height === "low" ? 1 : 0;
   const stretch = keeperDiveEase(t);
@@ -3893,8 +3956,20 @@ function drawKeeper() {
     slideDrop = -plantPhase * 3.8 + stretch * 3.8;
   }
   const moveT = isHighDive || isSideDive ? stretch : t;
-  const x = lerp(rest.x, target.x, moveT);
-  const y = isSideMidDive ? rest.y + slideDrop : lerp(rest.y, target.y, t) + slideDrop;
+  const x = lerp(restX, targetX, moveT);
+  const y = isSideMidDive ? restY + slideDrop : lerp(restY, targetY, t) + slideDrop;
+
+  const kp = keeperPts;
+  const kneeL = kp.kneeL;
+  const kneeR = kp.kneeR;
+  const footL = kp.footL;
+  const footR = kp.footR;
+  const handL = kp.handL;
+  const handR = kp.handR;
+  const shoulderL = kp.shoulderL;
+  const shoulderR = kp.shoulderR;
+  const elbowL = kp.elbowL;
+  const elbowR = kp.elbowR;
 
   let hipX;
   let hipY;
@@ -3902,16 +3977,6 @@ function drawKeeper() {
   let shoulderY;
   let headX;
   let headY;
-  let kneeL;
-  let kneeR;
-  let footL;
-  let footR;
-  let handL;
-  let handR;
-  let shoulderL;
-  let shoulderR;
-  let elbowL;
-  let elbowR;
   let bodyRot;
 
   if (isLowCatch) {
@@ -3930,16 +3995,17 @@ function drawKeeper() {
       shoulderY = lerp(12, 20, c);
       headX = 0;
       headY = shoulderY - 12;
-      kneeL = { x: -12, y: hipY + lerp(18, 14, c) };
-      kneeR = { x: 12, y: hipY + lerp(18, 14, c) };
-      footL = { x: -14, y: kneeL.y + lerp(14, 11, c) };
-      footR = { x: 14, y: kneeR.y + lerp(14, 11, c) };
-      handL = { x: lerp(-22, -10, c), y: lerp(10, 20, c) };
-      handR = { x: lerp(22, 10, c), y: lerp(11, 20, c) };
-      shoulderL = { x: -11, y: shoulderY + 1 };
-      shoulderR = { x: 11, y: shoulderY + 1 };
-      elbowL = { x: -12, y: (shoulderL.y + handL.y) * 0.55 + 5 };
-      elbowR = { x: 12, y: (shoulderR.y + handR.y) * 0.55 + 5 };
+      const kneeY = hipY + lerp(18, 14, c);
+      setPt(kneeL, -12, kneeY);
+      setPt(kneeR, 12, kneeY);
+      setPt(footL, -14, kneeY + lerp(14, 11, c));
+      setPt(footR, 14, kneeY + lerp(14, 11, c));
+      setPt(handL, lerp(-22, -10, c), lerp(10, 20, c));
+      setPt(handR, lerp(22, 10, c), lerp(11, 20, c));
+      setPt(shoulderL, -11, shoulderY + 1);
+      setPt(shoulderR, 11, shoulderY + 1);
+      setPt(elbowL, -12, (shoulderL.y + handL.y) * 0.55 + 5);
+      setPt(elbowR, 12, (shoulderR.y + handR.y) * 0.55 + 5);
       bodyRot = 0;
     } else {
       // 約55°まで：板のように真横へは倒さない
@@ -3953,64 +4019,79 @@ function drawKeeper() {
       headX = shoulderX + side * 3 * settle;
       headY = shoulderY - 12;
 
-      const downKnee = {
-        x: hipX + side * lerp(8, 14, settle),
-        y: hipY + lerp(18, 16, settle),
-      };
-      const upKnee = {
-        x: hipX - side * lerp(12, 16, settle),
-        y: hipY + lerp(18, 14, settle),
-      };
-      const downFoot = {
-        x: downKnee.x + side * lerp(5, 8, settle),
-        y: downKnee.y + lerp(12, 10, settle),
-      };
-      const upFoot = {
-        x: upKnee.x - side * lerp(4, 10, settle),
-        y: upKnee.y + lerp(14, 11, settle),
-      };
+      const downKnee = kp.downKnee;
+      const upKnee = kp.upKnee;
+      const downFoot = kp.downFoot;
+      const upFoot = kp.upFoot;
+      const handLead = kp.handLead;
+      const handTrail = kp.handTrail;
+
+      setPt(
+        downKnee,
+        hipX + side * lerp(8, 14, settle),
+        hipY + lerp(18, 16, settle)
+      );
+      setPt(
+        upKnee,
+        hipX - side * lerp(12, 16, settle),
+        hipY + lerp(18, 14, settle)
+      );
+      setPt(
+        downFoot,
+        downKnee.x + side * lerp(5, 8, settle),
+        downKnee.y + lerp(12, 10, settle)
+      );
+      setPt(
+        upFoot,
+        upKnee.x - side * lerp(4, 10, settle),
+        upKnee.y + lerp(14, 11, settle)
+      );
       if (side > 0) {
-        kneeL = upKnee;
-        kneeR = downKnee;
-        footL = upFoot;
-        footR = downFoot;
+        setPt(kneeL, upKnee.x, upKnee.y);
+        setPt(kneeR, downKnee.x, downKnee.y);
+        setPt(footL, upFoot.x, upFoot.y);
+        setPt(footR, downFoot.x, downFoot.y);
       } else {
-        kneeL = downKnee;
-        kneeR = upKnee;
-        footL = downFoot;
-        footR = upFoot;
+        setPt(kneeL, downKnee.x, downKnee.y);
+        setPt(kneeR, upKnee.x, upKnee.y);
+        setPt(footL, downFoot.x, downFoot.y);
+        setPt(footR, upFoot.x, upFoot.y);
       }
 
       // 両手はボール方向へ（伸ばしすぎない）
       const catchX = side * lerp(26, 42, settle);
       const catchY = lerp(10, 17, settle);
-      const handLead = {
-        x: lerp(side > 0 ? 24 : -24, catchX + side * 1, tipEase),
-        y: lerp(8, catchY - 1, tipEase),
-      };
-      const handTrail = {
-        x: lerp(side > 0 ? -24 : 24, catchX - side * 4, tipEase * tipEase),
-        y: lerp(9, catchY + 2, tipEase * 0.9),
-      };
+      setPt(
+        handLead,
+        lerp(side > 0 ? 24 : -24, catchX + side * 1, tipEase),
+        lerp(8, catchY - 1, tipEase)
+      );
+      setPt(
+        handTrail,
+        lerp(side > 0 ? -24 : 24, catchX - side * 4, tipEase * tipEase),
+        lerp(9, catchY + 2, tipEase * 0.9)
+      );
       if (side > 0) {
-        handR = handLead;
-        handL = handTrail;
+        setPt(handR, handLead.x, handLead.y);
+        setPt(handL, handTrail.x, handTrail.y);
       } else {
-        handL = handLead;
-        handR = handTrail;
+        setPt(handL, handLead.x, handLead.y);
+        setPt(handR, handTrail.x, handTrail.y);
       }
 
-      shoulderL = { x: shoulderX - 10, y: shoulderY + 1 };
-      shoulderR = { x: shoulderX + 10, y: shoulderY + 1 };
+      setPt(shoulderL, shoulderX - 10, shoulderY + 1);
+      setPt(shoulderR, shoulderX + 10, shoulderY + 1);
       // 肘を曲げて腕の見かけの長さを抑える
-      elbowL = {
-        x: shoulderL.x * 0.55 + handL.x * 0.45,
-        y: shoulderL.y * 0.4 + handL.y * 0.6 + 5,
-      };
-      elbowR = {
-        x: shoulderR.x * 0.55 + handR.x * 0.45,
-        y: shoulderR.y * 0.4 + handR.y * 0.6 + 5,
-      };
+      setPt(
+        elbowL,
+        shoulderL.x * 0.55 + handL.x * 0.45,
+        shoulderL.y * 0.4 + handL.y * 0.6 + 5
+      );
+      setPt(
+        elbowR,
+        shoulderR.x * 0.55 + handR.x * 0.45,
+        shoulderR.y * 0.4 + handR.y * 0.6 + 5
+      );
     }
   } else if (isHighDive) {
     // 左右上枠：斜め上へのコーナーダイブ（体のラインを揃えた自然な姿勢）
@@ -4027,66 +4108,80 @@ function drawKeeper() {
     headX = shoulderX + side * tipEase * 5;
     headY = shoulderY - lerp(12, 10, tipEase);
 
-    // 押し脚は後ろ下へ、もう一方は軽く後方に流す
-    const trailKnee = {
-      x: hipX - side * lerp(10, 26, tipEase),
-      y: hipY + lerp(20, 16, tipEase),
-    };
-    const leadKnee = {
-      x: hipX + side * lerp(4, 14, tipEase),
-      y: hipY + lerp(18, 12, tipEase),
-    };
-    const trailFoot = {
-      x: trailKnee.x - side * lerp(6, 14, tipEase),
-      y: trailKnee.y + lerp(14, 10, tipEase),
-    };
-    const leadFoot = {
-      x: leadKnee.x + side * lerp(2, 8, tipEase),
-      y: leadKnee.y + lerp(14, 11, tipEase),
-    };
+    const trailKnee = kp.trailKnee;
+    const leadKnee = kp.leadKnee;
+    const trailFoot = kp.trailFoot;
+    const leadFoot = kp.leadFoot;
+    const handLead = kp.handLead;
+    const handTrail = kp.handTrail;
+
+    setPt(
+      trailKnee,
+      hipX - side * lerp(10, 26, tipEase),
+      hipY + lerp(20, 16, tipEase)
+    );
+    setPt(
+      leadKnee,
+      hipX + side * lerp(4, 14, tipEase),
+      hipY + lerp(18, 12, tipEase)
+    );
+    setPt(
+      trailFoot,
+      trailKnee.x - side * lerp(6, 14, tipEase),
+      trailKnee.y + lerp(14, 10, tipEase)
+    );
+    setPt(
+      leadFoot,
+      leadKnee.x + side * lerp(2, 8, tipEase),
+      leadKnee.y + lerp(14, 11, tipEase)
+    );
     if (side > 0) {
-      kneeL = trailKnee;
-      kneeR = leadKnee;
-      footL = trailFoot;
-      footR = leadFoot;
+      setPt(kneeL, trailKnee.x, trailKnee.y);
+      setPt(kneeR, leadKnee.x, leadKnee.y);
+      setPt(footL, trailFoot.x, trailFoot.y);
+      setPt(footR, leadFoot.x, leadFoot.y);
     } else {
-      kneeL = leadKnee;
-      kneeR = trailKnee;
-      footL = leadFoot;
-      footR = trailFoot;
+      setPt(kneeL, leadKnee.x, leadKnee.y);
+      setPt(kneeR, trailKnee.x, trailKnee.y);
+      setPt(footL, leadFoot.x, leadFoot.y);
+      setPt(footR, trailFoot.x, trailFoot.y);
     }
 
     // 両手を広げた上でコーナー方向へ（ワイドな上げ狙い）
     const cornerX = side * lerp(28, 48, tipEase);
     const cornerY = lerp(4, -18, tipEase);
     const armSpread = lerp(11, 18, tipEase);
-    const handLead = {
-      x: lerp(side > 0 ? 22 : -22, cornerX + side * armSpread * 0.45, tipEase),
-      y: lerp(6, cornerY - 3, tipEase),
-    };
-    const handTrail = {
-      x: lerp(side > 0 ? -22 : 22, cornerX - side * armSpread * 0.75, tipEase),
-      y: lerp(7, cornerY - 5, tipEase),
-    };
+    setPt(
+      handLead,
+      lerp(side > 0 ? 22 : -22, cornerX + side * armSpread * 0.45, tipEase),
+      lerp(6, cornerY - 3, tipEase)
+    );
+    setPt(
+      handTrail,
+      lerp(side > 0 ? -22 : 22, cornerX - side * armSpread * 0.75, tipEase),
+      lerp(7, cornerY - 5, tipEase)
+    );
     if (side > 0) {
-      handR = handLead;
-      handL = handTrail;
+      setPt(handR, handLead.x, handLead.y);
+      setPt(handL, handTrail.x, handTrail.y);
     } else {
-      handL = handLead;
-      handR = handTrail;
+      setPt(handL, handLead.x, handLead.y);
+      setPt(handR, handTrail.x, handTrail.y);
     }
 
-    shoulderL = { x: shoulderX - 10, y: shoulderY };
-    shoulderR = { x: shoulderX + 10, y: shoulderY };
+    setPt(shoulderL, shoulderX - 10, shoulderY);
+    setPt(shoulderR, shoulderX + 10, shoulderY);
     // 肘も外側へ開いて両腕を広げる
-    elbowL = {
-      x: shoulderL.x * 0.28 + handL.x * 0.72 - side * 2,
-      y: shoulderL.y * 0.22 + handL.y * 0.78,
-    };
-    elbowR = {
-      x: shoulderR.x * 0.28 + handR.x * 0.72 + side * 2,
-      y: shoulderR.y * 0.22 + handR.y * 0.78,
-    };
+    setPt(
+      elbowL,
+      shoulderL.x * 0.28 + handL.x * 0.72 - side * 2,
+      shoulderL.y * 0.22 + handL.y * 0.78
+    );
+    setPt(
+      elbowR,
+      shoulderR.x * 0.28 + handR.x * 0.72 + side * 2,
+      shoulderR.y * 0.22 + handR.y * 0.78
+    );
   } else if (isCenterCatch) {
     // 中央中段：正面から踏み込み、両手を広げて止める
     const tipEase = stretch * stretch * (3 - 2 * stretch);
@@ -4099,31 +4194,28 @@ function drawKeeper() {
     headX = 0;
     headY = shoulderY - lerp(12, 10, tipEase);
 
-    kneeL = { x: -13, y: hipY + lerp(20, 17, tipEase) };
-    kneeR = { x: 13, y: hipY + lerp(20, 17, tipEase) };
-    footL = { x: -15, y: kneeL.y + lerp(15, 13, tipEase) };
-    footR = { x: 15, y: kneeR.y + lerp(15, 13, tipEase) };
+    const midKneeY = hipY + lerp(20, 17, tipEase);
+    setPt(kneeL, -13, midKneeY);
+    setPt(kneeR, 13, midKneeY);
+    setPt(footL, -15, midKneeY + lerp(15, 13, tipEase));
+    setPt(footR, 15, midKneeY + lerp(15, 13, tipEase));
 
     const catchY = lerp(6, 12, tipEase);
-    handL = {
-      x: lerp(-24, -14, tipEase),
-      y: lerp(4, catchY, tipEase),
-    };
-    handR = {
-      x: lerp(24, 14, tipEase),
-      y: lerp(4, catchY + 1, tipEase),
-    };
+    setPt(handL, lerp(-24, -14, tipEase), lerp(4, catchY, tipEase));
+    setPt(handR, lerp(24, 14, tipEase), lerp(4, catchY + 1, tipEase));
 
-    shoulderL = { x: -10, y: shoulderY + 1 };
-    shoulderR = { x: 10, y: shoulderY + 1 };
-    elbowL = {
-      x: shoulderL.x * 0.35 + handL.x * 0.65,
-      y: shoulderL.y * 0.3 + handL.y * 0.7 + 2,
-    };
-    elbowR = {
-      x: shoulderR.x * 0.35 + handR.x * 0.65,
-      y: shoulderR.y * 0.3 + handR.y * 0.7 + 2,
-    };
+    setPt(shoulderL, -10, shoulderY + 1);
+    setPt(shoulderR, 10, shoulderY + 1);
+    setPt(
+      elbowL,
+      shoulderL.x * 0.35 + handL.x * 0.65,
+      shoulderL.y * 0.3 + handL.y * 0.7 + 2
+    );
+    setPt(
+      elbowR,
+      shoulderR.x * 0.35 + handR.x * 0.65,
+      shoulderR.y * 0.3 + handR.y * 0.7 + 2
+    );
   } else if (isSideDive) {
     // 左右中段：横伸び＋浮き上がり3・沈み込み3
     const side = diveSide;
@@ -4139,63 +4231,78 @@ function drawKeeper() {
     headX = shoulderX + side * tipEase * 5;
     headY = shoulderY - 12;
 
-    const trailKnee = {
-      x: hipX - side * lerp(10, 28, tipEase),
-      y: hipY + lerp(20, 19, tipEase),
-    };
-    const leadKnee = {
-      x: hipX + side * lerp(4, 14, tipEase),
-      y: hipY + lerp(18, 17, tipEase),
-    };
-    const trailFoot = {
-      x: trailKnee.x - side * lerp(6, 16, tipEase),
-      y: trailKnee.y + lerp(14, 13, tipEase),
-    };
-    const leadFoot = {
-      x: leadKnee.x + side * lerp(2, 8, tipEase),
-      y: leadKnee.y + lerp(14, 13, tipEase),
-    };
+    const trailKnee = kp.trailKnee;
+    const leadKnee = kp.leadKnee;
+    const trailFoot = kp.trailFoot;
+    const leadFoot = kp.leadFoot;
+    const handLead = kp.handLead;
+    const handTrail = kp.handTrail;
+
+    setPt(
+      trailKnee,
+      hipX - side * lerp(10, 28, tipEase),
+      hipY + lerp(20, 19, tipEase)
+    );
+    setPt(
+      leadKnee,
+      hipX + side * lerp(4, 14, tipEase),
+      hipY + lerp(18, 17, tipEase)
+    );
+    setPt(
+      trailFoot,
+      trailKnee.x - side * lerp(6, 16, tipEase),
+      trailKnee.y + lerp(14, 13, tipEase)
+    );
+    setPt(
+      leadFoot,
+      leadKnee.x + side * lerp(2, 8, tipEase),
+      leadKnee.y + lerp(14, 13, tipEase)
+    );
     if (side > 0) {
-      kneeL = trailKnee;
-      kneeR = leadKnee;
-      footL = trailFoot;
-      footR = leadFoot;
+      setPt(kneeL, trailKnee.x, trailKnee.y);
+      setPt(kneeR, leadKnee.x, leadKnee.y);
+      setPt(footL, trailFoot.x, trailFoot.y);
+      setPt(footR, leadFoot.x, leadFoot.y);
     } else {
-      kneeL = leadKnee;
-      kneeR = trailKnee;
-      footL = leadFoot;
-      footR = trailFoot;
+      setPt(kneeL, leadKnee.x, leadKnee.y);
+      setPt(kneeR, trailKnee.x, trailKnee.y);
+      setPt(footL, leadFoot.x, leadFoot.y);
+      setPt(footR, trailFoot.x, trailFoot.y);
     }
 
     const catchX = side * lerp(28, 44, tipEase);
     const catchY = lerp(10, 11, tipEase);
-    const handLead = {
-      x: lerp(side > 0 ? 22 : -22, catchX + side * 2, tipEase),
-      y: lerp(8, catchY - 1, tipEase) + vertShift * 0.4,
-    };
-    const handTrail = {
-      x: lerp(side > 0 ? -22 : 22, catchX - side * 8, tipEase * tipEase),
-      y: lerp(9, catchY + 1, tipEase) + vertShift * 0.35,
-    };
+    setPt(
+      handLead,
+      lerp(side > 0 ? 22 : -22, catchX + side * 2, tipEase),
+      lerp(8, catchY - 1, tipEase) + vertShift * 0.4
+    );
+    setPt(
+      handTrail,
+      lerp(side > 0 ? -22 : 22, catchX - side * 8, tipEase * tipEase),
+      lerp(9, catchY + 1, tipEase) + vertShift * 0.35
+    );
     if (side > 0) {
-      handR = handLead;
-      handL = handTrail;
+      setPt(handR, handLead.x, handLead.y);
+      setPt(handL, handTrail.x, handTrail.y);
     } else {
-      handL = handLead;
-      handR = handTrail;
+      setPt(handL, handLead.x, handLead.y);
+      setPt(handR, handTrail.x, handTrail.y);
     }
 
-    shoulderL = { x: shoulderX - 9, y: shoulderY + 1 };
-    shoulderR = { x: shoulderX + 9, y: shoulderY + 1 };
+    setPt(shoulderL, shoulderX - 9, shoulderY + 1);
+    setPt(shoulderR, shoulderX + 9, shoulderY + 1);
     const leadHand = side > 0 ? handR : handL;
-    elbowL = {
-      x: shoulderL.x * 0.38 + handL.x * 0.62,
-      y: shoulderL.y * 0.32 + handL.y * 0.68 + (handL === leadHand ? 2 : 5),
-    };
-    elbowR = {
-      x: shoulderR.x * 0.38 + handR.x * 0.62,
-      y: shoulderR.y * 0.32 + handR.y * 0.68 + (handR === leadHand ? 2 : 5),
-    };
+    setPt(
+      elbowL,
+      shoulderL.x * 0.38 + handL.x * 0.62,
+      shoulderL.y * 0.32 + handL.y * 0.68 + (handL === leadHand ? 2 : 5)
+    );
+    setPt(
+      elbowR,
+      shoulderR.x * 0.38 + handR.x * 0.62,
+      shoulderR.y * 0.32 + handR.y * 0.68 + (handR === leadHand ? 2 : 5)
+    );
   } else {
     // 中央・待機：腕をやや伸ばしたまま開閉・上下
     hipX = idle * 1.2 + feint.hipX * (1 - stretch);
@@ -4208,22 +4315,26 @@ function drawKeeper() {
     headY = shoulderY - 14;
 
     const plantSpread = 12 + idle * 1.2 + feint.plant * (1 - stretch);
-    kneeL = {
-      x: hipX - lerp(plantSpread, 14, stretch),
-      y: hipY + lerp(20, 16 + (diveLift > 0 ? 10 : 4), stretch),
-    };
-    kneeR = {
-      x: hipX + lerp(plantSpread, 14, stretch),
-      y: hipY + lerp(20, 14 + (diveLift > 0 ? 8 : 2), stretch),
-    };
-    footL = {
-      x: kneeL.x - lerp(4, 6, stretch),
-      y: kneeL.y + lerp(16, 12 + Math.abs(diveLift) * stretch * 6, stretch),
-    };
-    footR = {
-      x: kneeR.x + lerp(4, 6, stretch),
-      y: kneeR.y + lerp(16, 11 + Math.abs(diveLift) * stretch * 5, stretch),
-    };
+    setPt(
+      kneeL,
+      hipX - lerp(plantSpread, 14, stretch),
+      hipY + lerp(20, 16 + (diveLift > 0 ? 10 : 4), stretch)
+    );
+    setPt(
+      kneeR,
+      hipX + lerp(plantSpread, 14, stretch),
+      hipY + lerp(20, 14 + (diveLift > 0 ? 8 : 2), stretch)
+    );
+    setPt(
+      footL,
+      kneeL.x - lerp(4, 6, stretch),
+      kneeL.y + lerp(16, 12 + Math.abs(diveLift) * stretch * 6, stretch)
+    );
+    setPt(
+      footR,
+      kneeR.x + lerp(4, 6, stretch),
+      kneeR.y + lerp(16, 11 + Math.abs(diveLift) * stretch * 5, stretch)
+    );
 
     const nowArm = frameNow;
     const breath = Math.sin(nowArm / 520);
@@ -4254,28 +4365,24 @@ function drawKeeper() {
       openClose * 1.2 +
       (feint.handRY || 0) * readyMix;
 
-    handL = {
-      x: lerp(readyHandLX, -6, stretch),
-      y: lerp(readyHandLY, diveLift * stretch * 5 - 1, stretch),
-    };
-    handR = {
-      x: lerp(readyHandRX, 6, stretch),
-      y: lerp(readyHandRY, diveLift * stretch * 5 + 1, stretch),
-    };
-    shoulderL = { x: shoulderX - lerp(11, 9, stretch), y: shoulderY + 2 };
-    shoulderR = { x: shoulderX + lerp(11, 9, stretch), y: shoulderY + 2 };
+    setPt(handL, lerp(readyHandLX, -6, stretch), lerp(readyHandLY, diveLift * stretch * 5 - 1, stretch));
+    setPt(handR, lerp(readyHandRX, 6, stretch), lerp(readyHandRY, diveLift * stretch * 5 + 1, stretch));
+    setPt(shoulderL, shoulderX - lerp(11, 9, stretch), shoulderY + 2);
+    setPt(shoulderR, shoulderX + lerp(11, 9, stretch), shoulderY + 2);
     const readyElbowLX = shoulderL.x * 0.28 + handL.x * 0.72 + 0.8;
     const readyElbowRX = shoulderR.x * 0.28 + handR.x * 0.72 - 0.8;
     const readyElbowLY = shoulderL.y * 0.35 + handL.y * 0.65 + 2.5 + bobL * 0.35;
     const readyElbowRY = shoulderR.y * 0.35 + handR.y * 0.65 + 2.5 + bobR * 0.35;
-    elbowL = {
-      x: lerp(readyElbowLX, (shoulderL.x + handL.x) * 0.55 - 2, stretch),
-      y: lerp(readyElbowLY, (shoulderL.y + handL.y) * 0.55 + 6, stretch),
-    };
-    elbowR = {
-      x: lerp(readyElbowRX, (shoulderR.x + handR.x) * 0.55 + 2, stretch),
-      y: lerp(readyElbowRY, (shoulderR.y + handR.y) * 0.55 + 6, stretch),
-    };
+    setPt(
+      elbowL,
+      lerp(readyElbowLX, (shoulderL.x + handL.x) * 0.55 - 2, stretch),
+      lerp(readyElbowLY, (shoulderL.y + handL.y) * 0.55 + 6, stretch)
+    );
+    setPt(
+      elbowR,
+      lerp(readyElbowRX, (shoulderR.x + handR.x) * 0.55 + 2, stretch),
+      lerp(readyElbowRY, (shoulderR.y + handR.y) * 0.55 + 6, stretch)
+    );
     bodyRot = feint.lean * (1 - stretch);
   }
 
@@ -5077,13 +5184,9 @@ function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = tru
 }
 
 /** 3D投影の白黒サッカーボール（spinX / spinY で球体回転） */
-function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0, fast = false) {
+function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
   if (state.mobileLite) {
-    if (fast) {
-      drawSoccerBallFast(x, y, radius, spinY);
-    } else {
-      drawSoccerBallLite(x, y, radius, spinY, spinX);
-    }
+    drawSoccerBallFast(x, y, radius, spinY);
     return;
   }
   ctx.save();
@@ -5265,8 +5368,7 @@ function drawBall() {
     state.ball.y,
     flightR * state.ball.scale,
     state.ball.spinY || 0,
-    state.ball.spinX || 0,
-    state.mobileLite && state.ball.airborne
+    state.ball.spinX || 0
   );
 }
 
@@ -5313,12 +5415,17 @@ function render() {
     const spot = penaltyLayout().spot;
     renderLayers.length = 0;
     const layers = renderLayers;
+    let layerCount = 0;
 
     const diveAim =
       state.keeperProgress > 0.02
         ? keeperDiveAim(state.keeperDir || "center", state.keeperHeight || "mid")
         : keeperReadyAim();
-    layers.push({ y: worldFromAim(diveAim).y, tie: 0, draw: drawKeeper });
+    const keeperLayer = renderLayerPool[layerCount++];
+    keeperLayer.y = worldFromAim(diveAim).y;
+    keeperLayer.tie = 0;
+    keeperLayer.draw = drawKeeper;
+    layers.push(keeperLayer);
 
     let ballY = null;
     if (state.ball) ballY = state.ball.y;
@@ -5330,11 +5437,21 @@ function render() {
     ) {
       ballY = spot.y;
     }
-    if (ballY != null) layers.push({ y: ballY, tie: 1, draw: drawBall });
+    if (ballY != null) {
+      const ballLayer = renderLayerPool[layerCount++];
+      ballLayer.y = ballY;
+      ballLayer.tie = 1;
+      ballLayer.draw = drawBall;
+      layers.push(ballLayer);
+    }
 
     if (state.mode === "play") {
       const markY = penaltySpotMarkForwardY(spot);
-      layers.push({ y: markY, tie: 1, draw: drawPenaltySpotMark });
+      const markLayer = renderLayerPool[layerCount++];
+      markLayer.y = markY;
+      markLayer.tie = 1;
+      markLayer.draw = drawPenaltySpotMark;
+      layers.push(markLayer);
     }
 
     let shooterY = null;
@@ -5350,11 +5467,18 @@ function render() {
       if (a?.from) shooterY = a.from.y;
       else shooterY = spot.y + state.h * 0.12;
     }
-    if (shooterY != null) layers.push({ y: shooterY, tie: 2, draw: drawShooter });
+    if (shooterY != null) {
+      const shooterLayer = renderLayerPool[layerCount++];
+      shooterLayer.y = shooterY;
+      shooterLayer.tie = 2;
+      shooterLayer.draw = drawShooter;
+      layers.push(shooterLayer);
+    }
 
     layers.sort((a, b) => a.y - b.y || a.tie - b.tie);
     for (const layer of layers) layer.draw();
 
+    drawGoalReticle();
     drawWeatherOverlay();
     drawFlash();
   } catch (err) {
@@ -5365,6 +5489,7 @@ function render() {
 let last = performance.now();
 function loop(now) {
   if (!loopRunning) return;
+  frameId++;
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   update(dt, now);
