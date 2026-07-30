@@ -3622,7 +3622,7 @@ function goalBackRect() {
   };
 }
 
-/** PKスポット・エリアの配置（実寸比: 6yd / 12ydスポット / 18yd） */
+/** PKスポット・エリアの配置（IFAB国際規格実寸比: Goal 7.32m, 6yd 5.5m/18.32m, Spot 11m, 18yd 16.5m/40.32m） */
 function penaltyLayout() {
   const { w, h } = state;
   const ratio = state.fixedGoalRatio;
@@ -3632,16 +3632,19 @@ function penaltyLayout() {
   const gy = g.y + g.h;
   const gCx = g.x + g.w * 0.5;
   const goalHalf = g.w * 0.5;
-  // 実寸: スポットはゴールから11m。正面寄りカメラでは短縮しつつ、手前寄りに
+
+  // 実寸比: スポット11m、6ヤードエリア(5.5m)はスポットまでの距離の半分、18ヤードエリア(16.5m)は1.5倍
   const spotY = gy + Math.min(g.h * 1.38, (h - gy) * 0.44);
   const spotFromGoal = Math.max(36, spotY - gy);
-  // ゴールエリアは浅めだが、少し手前へ
-  const sixY = gy + spotFromGoal * 0.3;
-  // ペナ手前辺は画面のずっと手前まで
-  const penY = Math.min(h * 0.96, Math.max(spotY + (h - spotY) * 0.78, gy + (h - gy) * 0.82));
-  const penFarHalf = Math.min(goalHalf * 3.45, w * 0.52);
-  // 実寸: ゴールエリア幅 18.32m / ゴール 7.32m ≒ 2.5倍
-  const sixFarHalf = Math.min(goalHalf * 2.5, penFarHalf * 0.78);
+
+  const sixY = gy + spotFromGoal * 0.5;
+  const penY = Math.min(h * 0.98, gy + spotFromGoal * 1.5);
+
+  // 実寸比: 6ヤードエリア全幅 18.32m / ゴール 7.32m ≒ 2.503倍
+  const sixFarHalf = goalHalf * 2.503;
+  // 実寸比: 18ヤードエリア全幅 40.32m / ゴール 7.32m ≒ 5.508倍 (画面両端外にフレームアウト)
+  const penFarHalf = goalHalf * 5.508;
+
   layoutCache = {
     gy,
     gCx,
