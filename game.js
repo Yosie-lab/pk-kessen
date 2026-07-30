@@ -948,21 +948,24 @@ function computeGoalRect() {
   const availH = Math.max(140, h - inset.top - inset.bottom);
   const topOverhang = 22;
 
-  const playableH = Math.max(80, availH - topOverhang);
-  const maxGhByHeight = playableH * 0.32;
-  const maxGhByWidth = (availW * 0.96) / 2.92;
-  const ghCap = h <= 300 ? 104 : h <= 380 ? 142 : h <= 460 ? 172 : 216;
+  // PWA/スタンドアローン保存時、画面高の増大でゴールが拡大しないよう実質高さをクランプ固定
+  const effectiveH = isStandaloneMode() ? Math.min(h, 670) : h;
+
+  const playableH = Math.max(80, Math.min(availH, effectiveH - inset.top - inset.bottom) - topOverhang);
+  const maxGhByHeight = playableH * 0.30;
+  const maxGhByWidth = (availW * 0.94) / 2.92;
+  const ghCap = effectiveH <= 300 ? 104 : effectiveH <= 380 ? 135 : effectiveH <= 460 ? 155 : 175;
   let gh = Math.min(maxGhByHeight, maxGhByWidth, ghCap);
 
   const isMobilePortrait = w <= 430 && w < h;
-  if (isMobilePortrait && (h <= 932 || isStandaloneMode())) {
+  if (isMobilePortrait) {
     gh *= 0.85;
   }
 
   // 全体画面の比率を95%に設定
   gh *= 0.95;
 
-  const gw = Math.min(availW * 0.96, gh * 3.0);
+  const gw = Math.min(availW * 0.94, gh * 3.0);
   const x = Math.round(inset.left + (availW - gw) * 0.5);
   const y = Math.round(inset.top + topOverhang);
   const roundedGw = Math.round(gw);
