@@ -61,6 +61,7 @@ const activePoolSet = new Set();
 for (let i = 0; i < POOL_SIZE; i++) {
   const el = new Audio();
   el.preload = "auto";
+  el._instanceGen = 0;
   audioPool.push(el);
 }
 
@@ -69,6 +70,7 @@ function acquirePoolAudio() {
     const el = audioPool[i];
     if (!activePoolSet.has(el)) {
       activePoolSet.add(el);
+      el._instanceGen = (el._instanceGen || 0) + 1;
       return el;
     }
   }
@@ -76,6 +78,7 @@ function acquirePoolAudio() {
   const oldest = activePoolSet.values().next().value;
   if (oldest) {
     try { oldest.pause(); } catch (_) {}
+    oldest._instanceGen = (oldest._instanceGen || 0) + 1;
     return oldest;
   }
   return null;
@@ -83,6 +86,7 @@ function acquirePoolAudio() {
 
 function releasePoolAudio(el) {
   if (!el) return;
+  el._instanceGen = (el._instanceGen || 0) + 1;
   activePoolSet.delete(el);
   try {
     el.pause();
@@ -177,21 +181,27 @@ function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
   const a = acquirePoolAudio();
   if (!a) return null;
 
-  a.src = fileUrl;
-  a.volume = Math.max(0, Math.min(1, volume));
-  a.playbackRate = rate;
+  const currentGen = a._instanceGen;
+
+  try {
+    a.src = fileUrl;
+    a.volume = Math.max(0, Math.min(1, volume));
+    a.playbackRate = Math.max(0.5, Math.min(2.0, rate));
+  } catch (_) {}
   
   const gen = playGen;
 
   const onEnded = () => {
     a.removeEventListener("ended", onEnded);
-    releasePoolAudio(a);
+    if (a._instanceGen === currentGen) {
+      releasePoolAudio(a);
+    }
   };
   a.addEventListener("ended", onEnded, { once: true });
 
   const tryPlay = (attempt = 0) => {
-    if (gen !== playGen) {
-      releasePoolAudio(a);
+    if (gen !== playGen || a._instanceGen !== currentGen) {
+      if (a._instanceGen === currentGen) releasePoolAudio(a);
       return;
     }
     try {
@@ -206,9 +216,9 @@ function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
     const p = a.play();
     if (p && p.catch) {
       p.catch(() => {
-        if (gen === playGen && attempt < 2) {
+        if (gen === playGen && a._instanceGen === currentGen && attempt < 2) {
           trackPlayTimer(setTimeout(() => tryPlay(attempt + 1), 60 + attempt * 80));
-        } else {
+        } else if (a._instanceGen === currentGen) {
           releasePoolAudio(a);
         }
       });
@@ -216,8 +226,8 @@ function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
   };
 
   const start = () => {
-    if (gen !== playGen) {
-      releasePoolAudio(a);
+    if (gen !== playGen || a._instanceGen !== currentGen) {
+      if (a._instanceGen === currentGen) releasePoolAudio(a);
       return;
     }
     tryPlay(0);
@@ -1014,6 +1024,7 @@ function playDisappointedCrowd() {
 
 function fadeOut(audio, duration) {
   if (!audio) return;
+  const currentGen = audio._instanceGen;
   const STEPS = 10;
   const stepMs = Math.max(16, duration / STEPS);
   const startVol = audio.volume;
@@ -1026,14 +1037,23 @@ function fadeOut(audio, duration) {
     done = true;
     pendingPlayTimers.delete(timerId);
     activeFadeCancels.delete(cancel);
-    releasePoolAudio(audio);
+    if (audio._instanceGen === currentGen) {
+      releasePoolAudio(audio);
+    }
   };
 
   const tick = () => {
-    if (done) return;
+    if (done || audio._instanceGen !== currentGen) {
+      done = true;
+      pendingPlayTimers.delete(timerId);
+      activeFadeCancels.delete(cancel);
+      return;
+    }
     step++;
     const t = Math.min(1, step / STEPS);
-    try { audio.volume = Math.max(0, startVol * (1 - t)); } catch (_) {}
+    try {
+      audio.volume = Math.max(0, Math.min(1, startVol * (1 - t)));
+    } catch (_) {}
     if (t < 1) {
       timerId = setTimeout(tick, stepMs);
       pendingPlayTimers.add(timerId);
@@ -1048,7 +1068,9 @@ function fadeOut(audio, duration) {
     clearTimeout(timerId);
     pendingPlayTimers.delete(timerId);
     activeFadeCancels.delete(cancel);
-    releasePoolAudio(audio);
+    if (audio._instanceGen === currentGen) {
+      releasePoolAudio(audio);
+    }
   };
   activeFadeCancels.add(cancel);
   timerId = setTimeout(tick, stepMs);
