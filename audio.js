@@ -522,17 +522,21 @@ export function playCheer(opts = {}) {
     dur: rand(1.6, 2.8),
     density: rand(0.55, 1),
   };
-  setTimeout(() => {
-    if (gen !== cheerGen) return;
-    playCrowdSwell(swellOpts);
-    playApplauseTexture(textureOpts);
-  }, 0);
+  trackPlayTimer(
+    setTimeout(() => {
+      if (gen !== cheerGen) return;
+      playCrowdSwell(swellOpts);
+      playApplauseTexture(textureOpts);
+    }, 0)
+  );
 
-  cheerTimer = setTimeout(() => {
-    if (gen !== cheerGen) return;
-    for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 120) | 0));
-    cheerTimer = null;
-  }, holdMs);
+  cheerTimer = trackPlayTimer(
+    setTimeout(() => {
+      if (gen !== cheerGen) return;
+      for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 120) | 0));
+      cheerTimer = null;
+    }, holdMs)
+  );
 }
 
 /** PK戦勝利：大歓声＋拍手の声援 */
@@ -609,11 +613,13 @@ export function playVictoryCelebration() {
     density: rand(0.85, 1.2),
   });
 
-  cheerTimer = setTimeout(() => {
-    if (gen !== cheerGen) return;
-    for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 180) | 0));
-    cheerTimer = null;
-  }, holdMs);
+  cheerTimer = trackPlayTimer(
+    setTimeout(() => {
+      if (gen !== cheerGen) return;
+      for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 180) | 0));
+      cheerTimer = null;
+    }, holdMs)
+  );
 }
 
 /** 相手キーパーに阻まれたとき：小さめのスタジアム反応（必ず聞こえる音量） */
@@ -655,11 +661,13 @@ export function playBlockedByKeeper(opts = {}) {
 
   const holdMs = rand(950, 1450) | 0;
   const fadeMs = rand(360, 560) | 0;
-  cheerTimer = setTimeout(() => {
-    if (gen !== cheerGen) return;
-    for (const a of activeCheer) fadeOut(a, fadeMs);
-    cheerTimer = null;
-  }, holdMs);
+  cheerTimer = trackPlayTimer(
+    setTimeout(() => {
+      if (gen !== cheerGen) return;
+      for (const a of activeCheer) fadeOut(a, fadeMs);
+      cheerTimer = null;
+    }, holdMs)
+  );
 }
 
 /** 枠外・セーブ失敗など、外れたときの残念な声（毎回変化） */
@@ -671,7 +679,8 @@ export function playMiss() {
   const murmur = playClone(bed, rand(0.32, 0.48), rand(0.62, 0.82), rand(0, 1.5));
   activeCheer = [murmur];
   const hold = rand(700, 1100) | 0;
-  setTimeout(() => fadeOut(murmur, rand(400, 650) | 0), hold);
+  trackPlayTimer(setTimeout(() => fadeOut(murmur, rand(400, 650) | 0), hold));
+}
   playDisappointedCrowd();
 }
 
