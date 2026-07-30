@@ -1,3 +1,9 @@
+window.__PK_LOADED = true;
+try {
+  const errEl = document.getElementById("boot-error");
+  if (errEl) errEl.hidden = true;
+} catch (_) {}
+
 import { unlockAudio, playKick, playCheer, playMiss, playBlockedByKeeper, playPostHit, playWhistle, playVictoryCelebration, resetMatchAudio, playKickoffCheer } from "./audio.js";
 
 const canvas = document.getElementById("pitch");

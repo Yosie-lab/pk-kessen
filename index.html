@@ -92,6 +92,7 @@
     </div>
     <script>
       window.addEventListener("error", function (e) {
+        if (window.__PK_LOADED) return;
         var el = document.getElementById("boot-error");
         if (el) {
           el.hidden = false;
@@ -99,6 +100,7 @@
         }
       });
       window.addEventListener("unhandledrejection", function (e) {
+        if (window.__PK_LOADED) return;
         var el = document.getElementById("boot-error");
         if (el) {
           el.hidden = false;
@@ -106,7 +108,7 @@
         }
       });
     </script>
-    <script type="module" src="./game.js?v=56"></script>
+    <script type="module" src="./game.js?v=57"></script>
     <script>
       setTimeout(function () {
         if (window.__PK_LOADED) return;
@@ -117,7 +119,7 @@
           location.protocol === "file:"
             ? "このままでは動きません。ターミナルで npm start し、 http://127.0.0.1:5180/ を開いてください。"
             : "ゲーム脚本の読み込みに失敗しました。ページをハードリロードするか、 npm start で再起動してください。";
-      }, 4500);
+      }, 12000);
     </script>
   </body>
 </html>
