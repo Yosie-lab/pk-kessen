@@ -310,6 +310,9 @@ function playKickLeatherTap(intensity = 0.3) {
   g.connect(master);
   noise.start(now);
   noise.stop(now + 0.1);
+  noise.onended = () => {
+    try { noise.disconnect(); hp.disconnect(); bp.disconnect(); g.disconnect(); master.disconnect(); } catch (_) {}
+  };
 }
 
 /** ボールの胴に当たる低いトン */
@@ -329,6 +332,9 @@ function playKickBodyThump(intensity = 0.2, freq = 120) {
   g.connect(ctx.destination);
   osc.start(now);
   osc.stop(now + 0.2);
+  osc.onended = () => {
+    try { osc.disconnect(); g.disconnect(); } catch (_) {}
+  };
 }
 
 const POST_HITS = ["postHit1", "postHit2", "postHit3", "postHit4", "metalTap"];
@@ -379,6 +385,9 @@ function playWoodworkThump(intensity = 0.12, freq = 130) {
   g.connect(ctx.destination);
   osc.start(now);
   osc.stop(now + 0.18);
+  osc.onended = () => {
+    try { osc.disconnect(); g.disconnect(); } catch (_) {}
+  };
 }
 
 function stopCheer() {
@@ -720,6 +729,9 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
     g.connect(master);
     src.start(now + i * rand(0, 0.05));
     src.stop(now + dur);
+    src.onended = () => {
+      try { src.disconnect(); bp.disconnect(); g.disconnect(); } catch (_) {}
+    };
   }
 
   // たまに短い叫びの粒
@@ -743,8 +755,16 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
       g.connect(master);
       osc.start(t0);
       osc.stop(t0 + 0.4);
+      osc.onended = () => {
+        try { osc.disconnect(); f.disconnect(); g.disconnect(); } catch (_) {}
+      };
     }
   }
+
+  // master は全ノード停止後に切断
+  trackPlayTimer(setTimeout(() => {
+    try { master.disconnect(); } catch (_) {}
+  }, Math.ceil((dur + 0.3) * 1000)));
 }
 
 let sharedClapBuffer = null;
