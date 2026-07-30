@@ -1553,7 +1553,7 @@ function startMatch() {
     clearMatchTimers();
     resetMatchAudio();
     playerAimHistory.length = 0;
-    clearSessionLayout("startMatch");
+    // セッションレイアウトが未確立の場合のみ初期化
     state.mode = "play";
     state.suddenDeath = false;
     state.kickIndex = 0;
@@ -1575,24 +1575,14 @@ function startMatch() {
     hideOverlayScreens();
     updateHud();
     void els.hud.offsetHeight;
-    if (sessionLayout) {
-      resize({ source: "startMatch-restore" });
-      beginYouShoot();
-    } else {
-      layoutPending = true;
+    if (!sessionLayout) {
       resize({ forceRemeasure: true });
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (state.mode !== "play" || sessionLayout) {
-            layoutPending = false;
-            return;
-          }
-          captureSessionLayout();
-          layoutPending = false;
-          beginYouShoot();
-        });
-      });
+      captureSessionLayout();
+    } else {
+      resize({ source: "startMatch-restore" });
     }
+    layoutPending = false;
+    beginYouShoot();
   } catch (err) {
     console.error(err);
   }
