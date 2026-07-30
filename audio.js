@@ -160,13 +160,18 @@ function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
       p.catch(() => {
         if (gen === playGen && attempt < 2) {
           trackPlayTimer(setTimeout(() => tryPlay(attempt + 1), 60 + attempt * 80));
+        } else {
+          releaseClone(a);
         }
       });
     }
   };
 
   const start = () => {
-    if (gen !== playGen) return;
+    if (gen !== playGen) {
+      releaseClone(a);
+      return;
+    }
     tryPlay(0);
   };
   if (a.readyState >= 2) {
@@ -179,7 +184,10 @@ function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
     a.addEventListener(
       "canplay",
       () => {
-        if (gen !== playGen) return;
+        if (gen !== playGen) {
+          releaseClone(a);
+          return;
+        }
         if (delayMs > 8) trackPlayTimer(setTimeout(start, delayMs));
         else start();
       },
