@@ -971,10 +971,12 @@ function computeGoalRect() {
   }
 
   const gw = Math.min(availW * 0.96, gh * 3.0);
-  const x = inset.left + (availW - gw) * 0.5;
-  const y = inset.top + topOverhang;
+  const x = Math.round(inset.left + (availW - gw) * 0.5);
+  const y = Math.round(inset.top + topOverhang);
+  const roundedGw = Math.round(gw);
+  const roundedGh = Math.round(gh);
 
-  return { x, y, w: gw, h: gh };
+  return { x, y, w: roundedGw, h: roundedGh };
 }
 
 function goalRectFromRatio() {
@@ -4018,8 +4020,9 @@ function drawGoal() {
   }
 
   // ポストの内側エッジがちょうど g.x および g.x + g.w（ゴールの枠幅）に重なるように配置
-  drawPost(g.x - postW, g.y, g.h, -1);
-  drawPost(g.x + g.w, g.y, g.h, 1);
+  // ゴールライン(白線)に隙間なく接地するよう hgt を g.h + 1.2 に微調整
+  drawPost(g.x - postW, g.y, g.h + 1.2, -1);
+  drawPost(g.x + g.w, g.y, g.h + 1.2, 1);
 
   // クロスバー上面
   ctx.fillStyle = "#e8eee5";
