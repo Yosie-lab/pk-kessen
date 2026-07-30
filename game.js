@@ -658,23 +658,9 @@ function maxBallTrail() {
   return state.mobileLite ? 3 : 8;
 }
 
-function bgCacheKey() {
-  const g = goalRect();
-  return [
-    state.w,
-    state.h,
-    state.dpr,
-    state.scene?.id,
-    Math.round(g.x),
-    Math.round(g.y),
-    Math.round(g.w),
-    Math.round(g.h),
-    state.fixedGoalRatio ? 1 : 0,
-  ].join("|");
-}
-
 function ensureBgCache() {
-  const key = bgCacheKey();
+  const g = goalRect();
+  const key = `${state.w}_${state.h}_${state.dpr}_${state.scene?.id}_${(g.x + 0.5) | 0}_${(g.y + 0.5) | 0}_${(g.w + 0.5) | 0}_${(g.h + 0.5) | 0}_${state.fixedGoalRatio ? 1 : 0}`;
   if (bgCache.key === key) return;
   if (!bgCache.canvas) {
     bgCache.canvas = document.createElement("canvas");
@@ -5278,25 +5264,50 @@ function soccerPanelCenters() {
 
 const SOCCER_PANELS = soccerPanelCenters();
 
-function rotX3(p, a) {
+const _pTmp1 = new Float32Array(3);
+const _pTmp2 = new Float32Array(3);
+const _uVec = new Float32Array(3);
+const _vVec = new Float32Array(3);
+const _refVec = new Float32Array(3);
+
+const soccerPanelPool = Array.from({ length: 12 }, () => ({
+  pts: Array.from({ length: 5 }, () => new Float32Array(3)),
+  ptsCount: 0,
+  z: 0,
+}));
+const sortedPanelList = new Array(12);
+
+function rotX3Fast(out, p, a) {
   const c = Math.cos(a);
   const s = Math.sin(a);
-  return [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c];
+  out[0] = p[0];
+  out[1] = p[1] * c - p[2] * s;
+  out[2] = p[1] * s + p[2] * c;
+  return out;
 }
 
-function rotY3(p, a) {
+function rotY3Fast(out, p, a) {
   const c = Math.cos(a);
   const s = Math.sin(a);
-  return [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c];
+  out[0] = p[0] * c + p[2] * s;
+  out[1] = p[1];
+  out[2] = -p[0] * s + p[2] * c;
+  return out;
 }
 
-function cross3(a, b) {
-  return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+function cross3Fast(out, a, b) {
+  out[0] = a[1] * b[2] - a[2] * b[1];
+  out[1] = a[2] * b[0] - a[0] * b[2];
+  out[2] = a[0] * b[1] - a[1] * b[0];
+  return out;
 }
 
-function norm3(p) {
+function norm3Fast(out, p) {
   const len = Math.hypot(p[0], p[1], p[2]) || 1;
-  return [p[0] / len, p[1] / len, p[2] / len];
+  out[0] = p[0] / len;
+  out[1] = p[1] / len;
+  out[2] = p[2] / len;
+  return out;
 }
 
 /** 飛翔中モバイル向け：パネル投影なし（60fps 優先） */
@@ -5345,34 +5356,56 @@ function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = tru
   ctx.fillStyle = body;
   ctx.fill();
 
-  const panels = [];
-  for (const base of SOCCER_PANELS) {
-    let p = rotY3(base, spinY);
-    p = rotX3(p, spinX);
-    if (p[2] <= 0.05) continue;
+  let activeCount = 0;
+  for (let idx = 0; idx < SOCCER_PANELS.length; idx++) {
+    const base = SOCCER_PANELS[idx];
+    rotY3Fast(_pTmp1, base, spinY);
+    rotX3Fast(_pTmp2, _pTmp1, spinX);
+    if (_pTmp2[2] <= 0.05) continue;
 
-    const n = p;
-    const u = norm3(cross3(Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0], n));
-    const v = norm3(cross3(n, u));
+    _refVec[0] = Math.abs(_pTmp2[1]) < 0.9 ? 0 : 1;
+    _refVec[1] = Math.abs(_pTmp2[1]) < 0.9 ? 1 : 0;
+    _refVec[2] = 0;
+
+    cross3Fast(_uVec, _refVec, _pTmp2);
+    norm3Fast(_uVec, _uVec);
+    cross3Fast(_vVec, _pTmp2, _uVec);
+    norm3Fast(_vVec, _vVec);
+
     const size = radius * 0.28;
-    const pts = [];
+    const panel = soccerPanelPool[activeCount];
+    let ptCount = 0;
     for (let i = 0; i < 5; i++) {
       const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
-      const wx = n[0] * radius * 0.9 + (u[0] * Math.cos(a) + v[0] * Math.sin(a)) * size;
-      const wy = n[1] * radius * 0.9 + (u[1] * Math.cos(a) + v[1] * Math.sin(a)) * size;
-      if (n[2] > 0.04) pts.push([wx, wy]);
+      const cosA = Math.cos(a);
+      const sinA = Math.sin(a);
+      const wx = _pTmp2[0] * radius * 0.9 + (_uVec[0] * cosA + _vVec[0] * sinA) * size;
+      const wy = _pTmp2[1] * radius * 0.9 + (_uVec[1] * cosA + _vVec[1] * sinA) * size;
+      if (_pTmp2[2] > 0.04) {
+        const pt = panel.pts[ptCount++];
+        pt[0] = wx;
+        pt[1] = wy;
+      }
     }
-    if (pts.length >= 3) panels.push({ pts, z: p[2] });
+    if (ptCount >= 3) {
+      panel.ptsCount = ptCount;
+      panel.z = _pTmp2[2];
+      sortedPanelList[activeCount++] = panel;
+    }
   }
-  panels.sort((a, b) => a.z - b.z);
 
-  for (const panel of panels) {
+  sortedPanelList.length = activeCount;
+  sortedPanelList.sort((a, b) => a.z - b.z);
+
+  for (let idx = 0; idx < activeCount; idx++) {
+    const panel = sortedPanelList[idx];
     const shade = 0.35 + panel.z * 0.65;
     ctx.beginPath();
-    panel.pts.forEach((pt, i) => {
+    for (let i = 0; i < panel.ptsCount; i++) {
+      const pt = panel.pts[i];
       if (i === 0) ctx.moveTo(pt[0], pt[1]);
       else ctx.lineTo(pt[0], pt[1]);
-    });
+    }
     ctx.closePath();
     ctx.fillStyle = `rgb(${Math.round(14 * shade)},${Math.round(14 * shade)},${Math.round(14 * shade)})`;
     ctx.fill();
@@ -5398,7 +5431,7 @@ function drawSoccerBallLite(x, y, radius, spinY = 0, spinX = 0, withShadow = tru
   ctx.stroke();
 }
 
-/** 3D投影の白黒サッカーボール（spinX / spinY で球体回転） */
+/** 3D投影の白黒サッカーボール（spinX / spinY で球体回転・ゼロアロケーション） */
 function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
   if (state.mobileLite) {
     if (state.ball?.airborne) {
@@ -5435,40 +5468,57 @@ function drawSoccerBall(x, y, radius, spinY = 0, spinX = 0) {
     ctx.stroke();
   }
 
-  const panels = [];
-  for (const base of SOCCER_PANELS) {
-    let p = rotY3(base, spinY);
-    p = rotX3(p, spinX);
-    if (p[2] <= 0.05) continue;
+  let activeCount = 0;
+  for (let idx = 0; idx < SOCCER_PANELS.length; idx++) {
+    const base = SOCCER_PANELS[idx];
+    rotY3Fast(_pTmp1, base, spinY);
+    rotX3Fast(_pTmp2, _pTmp1, spinX);
+    if (_pTmp2[2] <= 0.05) continue;
 
-    // 接平面上の五角形を投影
-    const n = p;
-    let u = norm3(cross3(Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0], n));
-    const v = norm3(cross3(n, u));
+    _refVec[0] = Math.abs(_pTmp2[1]) < 0.9 ? 0 : 1;
+    _refVec[1] = Math.abs(_pTmp2[1]) < 0.9 ? 1 : 0;
+    _refVec[2] = 0;
+
+    cross3Fast(_uVec, _refVec, _pTmp2);
+    norm3Fast(_uVec, _uVec);
+    cross3Fast(_vVec, _pTmp2, _uVec);
+    norm3Fast(_vVec, _vVec);
+
     const size = radius * 0.34;
-    const pts = [];
+    const panel = soccerPanelPool[activeCount];
+    let ptCount = 0;
     for (let i = 0; i < 5; i++) {
       const a = -Math.PI / 2 + (i * Math.PI * 2) / 5;
-      const wx = n[0] * radius * 0.92 + (u[0] * Math.cos(a) + v[0] * Math.sin(a)) * size;
-      const wy = n[1] * radius * 0.92 + (u[1] * Math.cos(a) + v[1] * Math.sin(a)) * size;
-      const wz = n[2] * radius * 0.92 + (u[2] * Math.cos(a) + v[2] * Math.sin(a)) * size;
+      const cosA = Math.cos(a);
+      const sinA = Math.sin(a);
+      const wx = _pTmp2[0] * radius * 0.92 + (_uVec[0] * cosA + _vVec[0] * sinA) * size;
+      const wy = _pTmp2[1] * radius * 0.92 + (_uVec[1] * cosA + _vVec[1] * sinA) * size;
+      const wz = _pTmp2[2] * radius * 0.92 + (_uVec[2] * cosA + _vVec[2] * sinA) * size;
       if (wz < 0) continue;
-      pts.push([wx, wy, wz]);
+      const pt = panel.pts[ptCount++];
+      pt[0] = wx;
+      pt[1] = wy;
+      pt[2] = wz;
     }
-    if (pts.length >= 3) {
-      panels.push({ pts, z: p[2], nx: p[0], ny: p[1] });
+    if (ptCount >= 3) {
+      panel.ptsCount = ptCount;
+      panel.z = _pTmp2[2];
+      sortedPanelList[activeCount++] = panel;
     }
   }
 
-  panels.sort((a, b) => a.z - b.z);
+  sortedPanelList.length = activeCount;
+  sortedPanelList.sort((a, b) => a.z - b.z);
 
-  for (const panel of panels) {
+  for (let idx = 0; idx < activeCount; idx++) {
+    const panel = sortedPanelList[idx];
     const shade = 0.22 + panel.z * 0.78;
     ctx.beginPath();
-    panel.pts.forEach((pt, i) => {
+    for (let i = 0; i < panel.ptsCount; i++) {
+      const pt = panel.pts[i];
       if (i === 0) ctx.moveTo(pt[0], pt[1]);
       else ctx.lineTo(pt[0], pt[1]);
-    });
+    }
     ctx.closePath();
     ctx.fillStyle = `rgb(${Math.round(12 + 18 * shade)},${Math.round(12 + 18 * shade)},${Math.round(12 + 18 * shade)})`;
     ctx.fill();
