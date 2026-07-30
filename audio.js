@@ -483,19 +483,20 @@ export function resetMatchAudio() {
 const CHEER_VOL_SCALE = 0.8;
 
 /** ゴール直後に必ず鳴る限界突破の極上爆発地鳴りアクセント */
-function playGoalSting() {
+function playGoalSting(targetList = null) {
+  const list = targetList || activeCheer;
   const victory = playClone("cheerVictory", 1.0 * CHEER_VOL_SCALE, rand(0.96, 1.06), 0, 0);
-  if (victory) activeCheer.push(victory);
+  if (victory) list.push(victory);
   const yell = playClone("cheerYell", 1.0 * CHEER_VOL_SCALE, rand(0.98, 1.08), 0, rand(0, 10));
-  if (yell) activeCheer.push(yell);
+  if (yell) list.push(yell);
   const chaos = playClone("cheerChaos", 1.0 * CHEER_VOL_SCALE, rand(0.96, 1.1), 0, rand(5, 20));
-  if (chaos) activeCheer.push(chaos);
+  if (chaos) list.push(chaos);
   const short = playClone("cheerShort", 1.0 * CHEER_VOL_SCALE, rand(0.95, 1.05), 0, rand(0, 15));
-  if (short) activeCheer.push(short);
+  if (short) list.push(short);
   const whistle = playClone("cheerWhistle", 1.0 * CHEER_VOL_SCALE, rand(1.0, 1.15), 0, rand(5, 25));
-  if (whistle) activeCheer.push(whistle);
+  if (whistle) list.push(whistle);
   const clap = playClone("applauseStrong", 1.0 * CHEER_VOL_SCALE, rand(0.96, 1.08), 0, rand(0, 15));
-  if (clap) activeCheer.push(clap);
+  if (clap) list.push(clap);
   
   // 地鳴りのダブル重低音インパクト
   playKickBodyThump(0.5 * CHEER_VOL_SCALE, 75);
@@ -507,20 +508,22 @@ export function playKickoffCheer() {
   unlockAudio();
   stopCheer();
   const gen = cheerGen;
+  const myCheer = [];
+  activeCheer = myCheer;
 
   try {
     const crowd = playClone("crowdStadium", rand(0.75, 0.95) * CHEER_VOL_SCALE, rand(0.96, 1.06), 0, 0);
-    if (crowd) activeCheer.push(crowd);
+    if (crowd) myCheer.push(crowd);
     const chant = playClone("cheerChant", rand(0.7, 0.9) * CHEER_VOL_SCALE, rand(0.98, 1.08), 0, rand(20, 80));
-    if (chant) activeCheer.push(chant);
+    if (chant) myCheer.push(chant);
     const yell = playClone("cheerShort", rand(0.65, 0.85) * CHEER_VOL_SCALE, rand(1.0, 1.12), 0, rand(10, 50));
-    if (yell) activeCheer.push(yell);
+    if (yell) myCheer.push(yell);
 
     if (Array.isArray(APPLAUSE)) {
       const clapKeys = pickN(APPLAUSE, 3);
       clapKeys.forEach((key, i) => {
         const clap = playClone(key, rand(0.6, 0.85) * CHEER_VOL_SCALE, rand(0.95, 1.08), rand(0, 1.2), rand(10, 60) + i * 40);
-        if (clap) activeCheer.push(clap);
+        if (clap) myCheer.push(clap);
       });
     }
 
@@ -544,7 +547,7 @@ export function playKickoffCheer() {
     cheerTimer = trackPlayTimer(
       setTimeout(() => {
         if (gen !== cheerGen) return;
-        for (const a of activeCheer) fadeOut(a, fadeMs);
+        for (const a of myCheer) fadeOut(a, fadeMs);
         cheerTimer = null;
       }, holdMs)
     );
@@ -559,17 +562,19 @@ export function playCheer(opts = {}) {
   unlockAudio();
   stopCheer();
   const gen = cheerGen;
+  const myCheer = [];
+  activeCheer = myCheer;
 
-  playGoalSting();
+  playGoalSting(myCheer);
 
   if (lite) {
     const yell = playClone(pick(CHEER_YELLS), 1.0 * CHEER_VOL_SCALE, rand(0.96, 1.12), rand(0, 1.2));
-    if (yell) activeCheer.push(yell);
+    if (yell) myCheer.push(yell);
     const clap = playClone(pick(APPLAUSE), 1.0 * CHEER_VOL_SCALE, rand(0.94, 1.08), rand(0, 90));
-    if (clap) activeCheer.push(clap);
+    if (clap) myCheer.push(clap);
     cheerTimer = trackPlayTimer(setTimeout(() => {
       if (gen !== cheerGen) return;
-      for (const a of activeCheer) fadeOut(a, rand(500, 750) | 0);
+      for (const a of myCheer) fadeOut(a, rand(500, 750) | 0);
       cheerTimer = null;
     }, rand(2500, 3500) | 0));
     return;
@@ -579,7 +584,7 @@ export function playCheer(opts = {}) {
   const bedKeys = pickN(["cheerVictory", "cheer", "cheerChaos", "crowdStadium"], 4);
   bedKeys.forEach((key, i) => {
     const bed = playClone(key, 1.0 * CHEER_VOL_SCALE, rand(0.94, 1.08), rand(0, 2.2), i * rand(15, 40));
-    if (bed) activeCheer.push(bed);
+    if (bed) myCheer.push(bed);
   });
 
   // メイン歓声叫び（4枚全開・ステレオデチューン）
@@ -593,14 +598,14 @@ export function playCheer(opts = {}) {
       rand(0, 1.8),
       delay
     );
-    if (a) activeCheer.push(a);
+    if (a) myCheer.push(a);
   });
 
   // 3枚のアクセント（ホイッスル/短歓声/チャント）
   const extraKeys = pickN(CHEER_EXTRAS, 3);
   extraKeys.forEach((key, i) => {
     const a = playClone(key, 1.0 * CHEER_VOL_SCALE, rand(0.98, 1.12), rand(0, 1.5), rand(30, 150) + i * rand(40, 90));
-    if (a) activeCheer.push(a);
+    if (a) myCheer.push(a);
   });
 
   // 6枚のスタジアム大拍手
@@ -613,7 +618,7 @@ export function playCheer(opts = {}) {
       rand(0, 1.6),
       rand(5, 80) + i * rand(15, 40)
     );
-    if (a) activeCheer.push(a);
+    if (a) myCheer.push(a);
   });
 
   // 時間差で押し寄せる大拍手の大波（2波）
@@ -626,7 +631,7 @@ export function playCheer(opts = {}) {
         rand(0.1, 2.4),
         rand(150, 450) + wave * rand(250, 500) + i * rand(30, 80)
       );
-      if (late) activeCheer.push(late);
+      if (late) myCheer.push(late);
     });
   }
 
@@ -649,24 +654,21 @@ export function playCheer(opts = {}) {
   cheerTimer = trackPlayTimer(
     setTimeout(() => {
       if (gen !== cheerGen) return;
-      for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 150) | 0));
+      for (const a of myCheer) fadeOut(a, fadeMs + ((Math.random() * 150) | 0));
       cheerTimer = null;
     }, holdMs)
   );
 }
 
-/** PK戦勝利：圧倒的大歓声＋大拍手の祝福（約4.6〜5.8秒間） */
+/** PK戦勝利：圧倒的大歓声＋大拍手の祝福（約4.6〜5.8秒間独立保証） */
 export function playVictoryCelebration() {
   unlockAudio();
-  // ゴール直後の歓声を急激に途切れさせず、自然に盛り上がりをシームレス接続
-  cheerGen++;
-  if (cheerTimer) {
-    clearTimeout(cheerTimer);
-    cheerTimer = null;
-  }
-  const gen = cheerGen;
+  // 歓喜専用の独立ジェネレーション＆独立チェアーリストを生成（過去のタイマーによる消音干渉を100%遮断）
+  const victoryGen = ++cheerGen;
+  const victoryCheer = [];
+  activeCheer = victoryCheer;
 
-  playGoalSting();
+  playGoalSting(victoryCheer);
 
   const bedKeys = pickN(["cheerVictory", "cheer", "cheerChaos", "crowdStadium"], 4);
   const yellKeys = pickN(CHEER_YELLS, 4);
@@ -677,7 +679,7 @@ export function playVictoryCelebration() {
 
   bedKeys.forEach((key, i) => {
     const a = playClone(key, 1.0 * (i === 0 ? 1 : 0.85) * CHEER_VOL_SCALE, rand(0.94, 1.08), rand(0, 2.2), i * rand(20, 80));
-    if (a) activeCheer.push(a);
+    if (a) victoryCheer.push(a);
   });
 
   yellKeys.forEach((key, i) => {
@@ -688,13 +690,13 @@ export function playVictoryCelebration() {
       rand(0, 1.8),
       rand(0, 150) + i * rand(50, 110)
     );
-    if (a) activeCheer.push(a);
+    if (a) victoryCheer.push(a);
   });
 
   const extraKeys = pickN(CHEER_EXTRAS, 3);
   extraKeys.forEach((key, i) => {
     const a = playClone(key, rand(0.55, 0.82) * CHEER_VOL_SCALE, rand(0.98, 1.12), rand(0, 1.5), rand(60, 280) + i * rand(60, 140));
-    if (a) activeCheer.push(a);
+    if (a) victoryCheer.push(a);
   });
 
   clapKeys.forEach((key, i) => {
@@ -705,10 +707,10 @@ export function playVictoryCelebration() {
       rand(0, 2.0),
       rand(0, 180) + i * rand(40, 100)
     );
-    if (a) activeCheer.push(a);
+    if (a) victoryCheer.push(a);
   });
 
-  // 時間差で押し寄せる歓喜と大拍手の大波（2波：約4.6〜5.8秒間をカバー）
+  // 時間差で押し寄せる歓喜と大拍手の大波（2波：約4.6〜5.8秒間を確実にカバー）
   for (let wave = 0; wave < 2; wave++) {
     pickN(APPLAUSE, 3).forEach((key, i) => {
       const a = playClone(
@@ -718,7 +720,7 @@ export function playVictoryCelebration() {
         rand(0.1, 2.4),
         rand(250, 600) + wave * rand(700, 1100) + i * rand(50, 120)
       );
-      if (a) activeCheer.push(a);
+      if (a) victoryCheer.push(a);
     });
 
     const extraYell = playClone(
@@ -728,7 +730,7 @@ export function playVictoryCelebration() {
       rand(0, 1.5),
       rand(400, 800) + wave * rand(700, 1100)
     );
-    if (extraYell) activeCheer.push(extraYell);
+    if (extraYell) victoryCheer.push(extraYell);
   }
 
   playCrowdSwell({
@@ -743,11 +745,10 @@ export function playVictoryCelebration() {
     density: rand(1.0, 1.5),
   });
 
-  cheerTimer = trackPlayTimer(
+  trackPlayTimer(
     setTimeout(() => {
-      if (gen !== cheerGen) return;
-      for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 200) | 0));
-      cheerTimer = null;
+      if (victoryGen !== cheerGen) return;
+      for (const a of victoryCheer) fadeOut(a, fadeMs + ((Math.random() * 200) | 0));
     }, holdMs)
   );
 }
@@ -758,21 +759,23 @@ export function playBlockedByKeeper(opts = {}) {
   unlockAudio();
   stopCheer();
   const gen = cheerGen;
+  const myCheer = [];
+  activeCheer = myCheer;
 
   const sting = playClone("cheerShort", 1.0 * CHEER_VOL_SCALE, rand(0.96, 1.08), 0, 0);
-  if (sting) activeCheer.push(sting);
+  if (sting) myCheer.push(sting);
   const yell = playClone("cheerYell", 1.0 * CHEER_VOL_SCALE, rand(0.98, 1.12), 0, rand(0, 15));
-  if (yell) activeCheer.push(yell);
+  if (yell) myCheer.push(yell);
   const chaos = playClone("cheerChaos", 0.9 * CHEER_VOL_SCALE, rand(0.96, 1.08), 0, rand(10, 30));
-  if (chaos) activeCheer.push(chaos);
+  if (chaos) myCheer.push(chaos);
 
   const crowd = playClone("crowdStadium", rand(0.8, 1.0) * CHEER_VOL_SCALE, rand(0.76, 0.92), rand(0, 1.4), rand(0, 25));
-  if (crowd) activeCheer.push(crowd);
+  if (crowd) myCheer.push(crowd);
 
   const clapKeys = pickN(APPLAUSE, 3);
   clapKeys.forEach((key, i) => {
     const clap = playClone(key, rand(0.7, 0.95) * CHEER_VOL_SCALE, rand(0.92, 1.08), rand(0, 1.2), rand(15, 80) + i * 30);
-    if (clap) activeCheer.push(clap);
+    if (clap) myCheer.push(clap);
   });
 
   if (!lite) {
@@ -794,7 +797,7 @@ export function playBlockedByKeeper(opts = {}) {
   cheerTimer = trackPlayTimer(
     setTimeout(() => {
       if (gen !== cheerGen) return;
-      for (const a of activeCheer) fadeOut(a, fadeMs);
+      for (const a of myCheer) fadeOut(a, fadeMs);
       cheerTimer = null;
     }, holdMs)
   );
