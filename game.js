@@ -945,6 +945,10 @@ function playfieldInsets() {
   };
 }
 
+function isStandaloneMode() {
+  return window.navigator.standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+}
+
 function computeGoalRect() {
   const w = state.w;
   const h = state.h;
@@ -958,7 +962,11 @@ function computeGoalRect() {
   const maxGhByWidth = (availW * 0.96) / 2.92;
   const ghCap = h <= 300 ? 104 : h <= 380 ? 142 : h <= 460 ? 172 : 216;
   let gh = Math.min(maxGhByHeight, maxGhByWidth, ghCap);
-  if (w <= 375 && h <= 667) {
+
+  // モバイル端末（幅<=430px）の場合、Safariブラウザ時(バーあり)とスタンドアローン時(フルスクリーン)で
+  // ゴールサイズが変化しないよう、同一のスケール比率(0.85)を確実に適用
+  const isMobilePortrait = w <= 430 && w < h;
+  if (isMobilePortrait && (h <= 932 || isStandaloneMode())) {
     gh *= 0.85;
   }
 

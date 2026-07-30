@@ -58,6 +58,12 @@ button {
     linear-gradient(180deg, #06110d 0%, #0a1f15 42%, #082016 100%);
 }
 
+@media (display-mode: standalone) {
+  #app {
+    height: 100vh;
+  }
+}
+
 html.viewport-locked,
 html.viewport-locked body {
   height: var(--viewport-lock-h);
