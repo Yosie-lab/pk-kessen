@@ -41,7 +41,6 @@ const APPLAUSE = [
   "applauseHall",
 ];
 
-const cache = {};
 let unlocked = false;
 let cheerTimer = null;
 let activeCheer = [];
@@ -50,44 +49,58 @@ let playGen = 0;
 let audioCtx = null;
 
 /** 
- * 固定 HTMLAudioElement プール（Zero-Allocation Fixed Audio Pool）
- * 毎回の cloneNode や new Audio を完全追放し、メディアデコーダーのリークを100%防止。
- * 本来の HTMLAudioElement の圧倒的な高音質・重低音・臨場感をそのまま維持。
+ * ファイルキーごとの固定オーディオスロット（Per-Key Static Sound Pool）
+ * 動的 new / clone / src変更を完全排除。URL設定済みの静的エレメントを永続再利用。
+ * メディアデコーダーの動的生成がゼロとなり、NotSupportedErrorやリークが完全に消滅。
  */
-const POOL_SIZE = 36;
-const audioPool = [];
-const activePoolSet = new Set();
+const SLOTS_PER_KEY = 3;
+const soundPools = {};
 
-for (let i = 0; i < POOL_SIZE; i++) {
-  const el = new Audio();
-  el.preload = "auto";
-  el._instanceGen = 0;
-  audioPool.push(el);
-}
+Object.keys(FILES).forEach((key) => {
+  soundPools[key] = [];
+  for (let i = 0; i < SLOTS_PER_KEY; i++) {
+    const el = new Audio(FILES[key]);
+    el.preload = "auto";
+    el._inUse = false;
+    el._key = key;
+    el._instanceGen = 0;
+    soundPools[key].push(el);
+  }
+});
 
-function acquirePoolAudio() {
-  for (let i = 0; i < POOL_SIZE; i++) {
-    const el = audioPool[i];
-    if (!activePoolSet.has(el)) {
-      activePoolSet.add(el);
+function acquirePoolAudio(key) {
+  const pool = soundPools[key];
+  if (!pool) return null;
+
+  for (let i = 0; i < pool.length; i++) {
+    const el = pool[i];
+    if (!el._inUse && (el.paused || el.ended)) {
+      el._inUse = true;
       el._instanceGen = (el._instanceGen || 0) + 1;
       return el;
     }
   }
-  // 万が一あふれたら一番古いものを再利用
-  const oldest = activePoolSet.values().next().value;
-  if (oldest) {
-    try { oldest.pause(); } catch (_) {}
-    oldest._instanceGen = (oldest._instanceGen || 0) + 1;
-    return oldest;
+
+  // スロットが埋まっている場合は、最も進行しているものを再利用
+  let oldest = pool[0];
+  for (let i = 1; i < pool.length; i++) {
+    if (pool[i].currentTime > oldest.currentTime) {
+      oldest = pool[i];
+    }
   }
-  return null;
+  try {
+    oldest.pause();
+    oldest.currentTime = 0;
+  } catch (_) {}
+  oldest._inUse = true;
+  oldest._instanceGen = (oldest._instanceGen || 0) + 1;
+  return oldest;
 }
 
 function releasePoolAudio(el) {
   if (!el) return;
+  el._inUse = false;
   el._instanceGen = (el._instanceGen || 0) + 1;
-  activePoolSet.delete(el);
   try {
     el.pause();
     el.currentTime = 0;
@@ -145,21 +158,15 @@ function pickN(arr, n) {
   return copy.slice(0, Math.min(n, copy.length));
 }
 
-function getAudio(key) {
-  if (!cache[key]) {
-    const a = new Audio(FILES[key]);
-    a.preload = "auto";
-    cache[key] = a;
-  }
-  return cache[key];
-}
-
 /** 起動時にサンプルを先読み（ゴール時の無音対策） */
 function preloadSounds() {
   Object.keys(FILES).forEach((key) => {
-    try {
-      getAudio(key).load();
-    } catch (_) {}
+    const pool = soundPools[key];
+    if (pool && pool[0]) {
+      try {
+        pool[0].load();
+      } catch (_) {}
+    }
   });
 }
 preloadSounds();
@@ -175,16 +182,12 @@ function clearPlayTimers() {
 }
 
 function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
-  const fileUrl = FILES[key];
-  if (!fileUrl) return null;
-
-  const a = acquirePoolAudio();
+  const a = acquirePoolAudio(key);
   if (!a) return null;
 
   const currentGen = a._instanceGen;
 
   try {
-    a.src = fileUrl;
     a.volume = Math.max(0, Math.min(1, volume));
     a.playbackRate = Math.max(0.5, Math.min(2.0, rate));
   } catch (_) {}
@@ -259,15 +262,19 @@ export function unlockAudio() {
   if (unlocked) return;
   unlocked = true;
   Object.keys(FILES).forEach((key) => {
-    const a = getAudio(key);
-    a.volume = 0;
-    const p = a.play();
-    if (p && p.then) {
-      p.then(() => {
-        a.pause();
-        a.currentTime = 0;
-        a.volume = 1;
-      }).catch(() => {});
+    const pool = soundPools[key];
+    if (pool && pool[0]) {
+      const a = pool[0];
+      const origVol = a.volume;
+      a.volume = 0;
+      const p = a.play();
+      if (p && p.then) {
+        p.then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.volume = origVol;
+        }).catch(() => {});
+      }
     }
   });
 }
@@ -396,7 +403,7 @@ const POST_HITS = ["postHit1", "postHit2", "postHit3", "postHit4", "metalTap"];
 const BAR_HITS = ["barHit1", "barHit2", "barHit3", "postHit2", "metalTap"];
 
 /**
- * ポスト／バーに当たった金属音（実サンプル＋軽い打撃レイヤー）
+ * ポスト／バーに当たった金属音（実サンプル＋重厚打撃＋歓喜/悲鳴アクセント）
  * @param {"left"|"right"|"bar"} part
  */
 export function playPostHit(part = "left") {
@@ -405,21 +412,25 @@ export function playPostHit(part = "left") {
   const key = pick(isBar ? BAR_HITS : POST_HITS);
 
   if (isBar) {
-    const a = playClone(key, rand(0.35, 0.5), rand(0.92, 1.08), rand(0, 0.05));
+    const a = playClone(key, rand(0.7, 0.95), rand(0.92, 1.08), rand(0, 0.05));
     trackPlayTimer(setTimeout(() => fadeOut(a, rand(400, 650)), rand(160, 280)));
-    if (Math.random() > 0.45) {
-      const tap = playClone("metalTap", rand(0.18, 0.3), rand(1.05, 1.25), 0, rand(8, 20));
+    if (Math.random() > 0.3) {
+      const tap = playClone("metalTap", rand(0.4, 0.65), rand(1.05, 1.25), 0, rand(8, 20));
       trackPlayTimer(setTimeout(() => fadeOut(tap, 280), 200));
     }
-    playWoodworkThump(rand(0.08, 0.14), rand(120, 170));
+    const gasp = playClone("cheerShort", rand(0.65, 0.88), rand(1.02, 1.14), 0, 10);
+    if (gasp) activeCheer.push(gasp);
+    playWoodworkThump(rand(0.25, 0.4), rand(110, 160));
   } else {
-    const a = playClone(key, rand(0.55, 0.8), rand(0.88, 1.05), rand(0, 0.04));
+    const a = playClone(key, rand(0.8, 1.0), rand(0.88, 1.05), rand(0, 0.04));
     trackPlayTimer(setTimeout(() => fadeOut(a, rand(280, 480)), rand(120, 220)));
-    if (Math.random() > 0.5) {
-      const layer = playClone(pick(POST_HITS), rand(0.2, 0.35), rand(0.95, 1.15), 0, rand(10, 28));
+    if (Math.random() > 0.4) {
+      const layer = playClone(pick(POST_HITS), rand(0.45, 0.7), rand(0.95, 1.15), 0, rand(10, 28));
       trackPlayTimer(setTimeout(() => fadeOut(layer, 260), 180));
     }
-    playWoodworkThump(rand(0.12, 0.22), rand(90, 140));
+    const gasp = playClone("cheerShort", rand(0.65, 0.88), rand(0.98, 1.12), 0, 15);
+    if (gasp) activeCheer.push(gasp);
+    playWoodworkThump(rand(0.3, 0.45), rand(85, 130));
   }
 }
 
@@ -467,9 +478,9 @@ export function resetMatchAudio() {
   playGen++;
   clearPlayTimers();
   stopCheer();
-  for (const el of Array.from(activePoolSet)) {
-    releasePoolAudio(el);
-  }
+  Object.keys(soundPools).forEach((key) => {
+    soundPools[key].forEach((el) => releasePoolAudio(el));
+  });
   for (const src of Array.from(activeAudioSources)) {
     releaseSource(src);
   }
@@ -682,38 +693,6 @@ export function playVictoryCelebration() {
       cheerTimer = null;
     }, holdMs)
   );
-}
-
-/**
- * ポスト／バーに当たった金属音（実サンプル＋重厚打撃＋歓喜/悲鳴アクセント）
- * @param {"left"|"right"|"bar"} part
- */
-export function playPostHit(part = "left") {
-  unlockAudio();
-  const isBar = part === "bar";
-  const key = pick(isBar ? BAR_HITS : POST_HITS);
-
-  if (isBar) {
-    const a = playClone(key, rand(0.7, 0.95), rand(0.92, 1.08), rand(0, 0.05));
-    trackPlayTimer(setTimeout(() => fadeOut(a, rand(400, 650)), rand(160, 280)));
-    if (Math.random() > 0.3) {
-      const tap = playClone("metalTap", rand(0.4, 0.65), rand(1.05, 1.25), 0, rand(8, 20));
-      trackPlayTimer(setTimeout(() => fadeOut(tap, 280), 200));
-    }
-    const gasp = playClone("cheerShort", rand(0.65, 0.88), rand(1.02, 1.14), 0, 10);
-    if (gasp) activeCheer.push(gasp);
-    playWoodworkThump(rand(0.25, 0.4), rand(110, 160));
-  } else {
-    const a = playClone(key, rand(0.8, 1.0), rand(0.88, 1.05), rand(0, 0.04));
-    trackPlayTimer(setTimeout(() => fadeOut(a, rand(280, 480)), rand(120, 220)));
-    if (Math.random() > 0.4) {
-      const layer = playClone(pick(POST_HITS), rand(0.45, 0.7), rand(0.95, 1.15), 0, rand(10, 28));
-      trackPlayTimer(setTimeout(() => fadeOut(layer, 260), 180));
-    }
-    const gasp = playClone("cheerShort", rand(0.65, 0.88), rand(0.98, 1.12), 0, 15);
-    if (gasp) activeCheer.push(gasp);
-    playWoodworkThump(rand(0.3, 0.45), rand(85, 130));
-  }
 }
 
 /** 相手キーパーに阻まれた・ファインセーブ成功時：最大級のスタジアム大歓喜・大喝采 */
