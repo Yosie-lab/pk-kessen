@@ -68,6 +68,8 @@ Object.keys(FILES).forEach((key) => {
   }
 });
 
+const activePoolAudioSet = new Set();
+
 function acquirePoolAudio(key) {
   const pool = soundPools[key];
   if (!pool) return null;
@@ -77,6 +79,7 @@ function acquirePoolAudio(key) {
     if (!el._inUse && (el.paused || el.ended)) {
       el._inUse = true;
       el._instanceGen = (el._instanceGen || 0) + 1;
+      activePoolAudioSet.add(el);
       return el;
     }
   }
@@ -94,6 +97,7 @@ function acquirePoolAudio(key) {
   } catch (_) {}
   oldest._inUse = true;
   oldest._instanceGen = (oldest._instanceGen || 0) + 1;
+  activePoolAudioSet.add(oldest);
   return oldest;
 }
 
@@ -101,6 +105,7 @@ function releasePoolAudio(el) {
   if (!el) return;
   el._inUse = false;
   el._instanceGen = (el._instanceGen || 0) + 1;
+  activePoolAudioSet.delete(el);
   try {
     el.pause();
     el.currentTime = 0;
@@ -255,28 +260,28 @@ function getCtx() {
   return audioCtx;
 }
 
-/** ブラウザの自動再生制限を解除（最初のユーザー操作で呼ぶ） */
+/** ブラウザの自動再生制限を軽量に解除（メインスレッドをブロックしない） */
 export function unlockAudio() {
   const ctx = getCtx();
   if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
   if (unlocked) return;
   unlocked = true;
-  Object.keys(FILES).forEach((key) => {
-    const pool = soundPools[key];
-    if (pool && pool[0]) {
-      const a = pool[0];
-      const origVol = a.volume;
-      a.volume = 0;
-      const p = a.play();
-      if (p && p.then) {
-        p.then(() => {
-          a.pause();
-          a.currentTime = 0;
-          a.volume = origVol;
-        }).catch(() => {});
-      }
+
+  // 1つのダミー音声のみアンロックし、ブラウザの音声を即時権限解除
+  const pool = soundPools.whistleBlast;
+  if (pool && pool[0]) {
+    const a = pool[0];
+    const origVol = a.volume;
+    a.volume = 0.001;
+    const p = a.play();
+    if (p && p.then) {
+      p.then(() => {
+        a.pause();
+        a.currentTime = 0;
+        a.volume = origVol;
+      }).catch(() => {});
     }
-  });
+  }
 }
 
 /** キック開始の審判ホイッスル（サッカーの短い「ピー」） */
@@ -478,9 +483,9 @@ export function resetMatchAudio() {
   playGen++;
   clearPlayTimers();
   stopCheer();
-  Object.keys(soundPools).forEach((key) => {
-    soundPools[key].forEach((el) => releasePoolAudio(el));
-  });
+  for (const el of Array.from(activePoolAudioSet)) {
+    releasePoolAudio(el);
+  }
   for (const src of Array.from(activeAudioSources)) {
     releaseSource(src);
   }
