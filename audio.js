@@ -468,21 +468,23 @@ export function resetMatchAudio() {
   }
 }
 
-/** ゴール直後に必ず鳴る強力な地鳴りアクセント */
+/** ゴール直後に必ず鳴る勝利級の爆発地鳴りアクセント */
 function playGoalSting() {
-  const yell = playClone("cheerYell", 1.0, rand(0.98, 1.06), 0, 0);
+  const victory = playClone("cheerVictory", 1.0, rand(0.96, 1.06), 0, 0);
+  if (victory) activeCheer.push(victory);
+  const yell = playClone("cheerYell", 1.0, rand(0.98, 1.08), 0, rand(0, 15));
   if (yell) activeCheer.push(yell);
+  const chaos = playClone("cheerChaos", 1.0, rand(0.96, 1.1), 0, rand(5, 25));
+  if (chaos) activeCheer.push(chaos);
   const short = playClone("cheerShort", 1.0, rand(0.95, 1.05), 0, rand(0, 20));
   if (short) activeCheer.push(short);
-  const chaos = playClone("cheerChaos", 0.9, rand(0.98, 1.1), 0, rand(5, 30));
-  if (chaos) activeCheer.push(chaos);
-  const whistle = playClone("cheerWhistle", 0.7, rand(1.0, 1.15), 0, rand(10, 40));
+  const whistle = playClone("cheerWhistle", 0.8, rand(1.0, 1.15), 0, rand(10, 35));
   if (whistle) activeCheer.push(whistle);
-  playKickBodyThump(0.35, 90);
+  playKickBodyThump(0.42, 85);
 }
 
 /**
- * スタジアム大歓声（重厚・大迫力・毎回違う多層レイヤー）
+ * スタジアム大歓声（勝利時と同等レベルの超高密度・爆発的大迫力レイヤー）
  */
 export function playCheer(opts = {}) {
   const lite = opts?.lite;
@@ -493,9 +495,9 @@ export function playCheer(opts = {}) {
   playGoalSting();
 
   if (lite) {
-    const yell = playClone(pick(CHEER_YELLS), 0.88, rand(0.96, 1.12), rand(0, 1.2));
+    const yell = playClone(pick(CHEER_YELLS), 1.0, rand(0.96, 1.12), rand(0, 1.2));
     if (yell) activeCheer.push(yell);
-    const clap = playClone(pick(APPLAUSE), 0.7, rand(0.94, 1.08), rand(0, 90));
+    const clap = playClone(pick(APPLAUSE), 0.85, rand(0.94, 1.08), rand(0, 90));
     if (clap) activeCheer.push(clap);
     cheerTimer = trackPlayTimer(setTimeout(() => {
       if (gen !== cheerGen) return;
@@ -505,20 +507,20 @@ export function playCheer(opts = {}) {
     return;
   }
 
-  // 背景の歓声ベース（2枚重ね）
-  const bedKeys = pickN(CHEER_BEDS, 2);
+  // 勝利時と同等の重厚歓声ベース（3枚重ね）
+  const bedKeys = pickN(["cheerVictory", "cheer", "cheerChaos", "crowdStadium"], 3);
   bedKeys.forEach((key, i) => {
-    const bed = playClone(key, i === 0 ? 0.85 : 0.65, rand(0.94, 1.08), rand(0, 2.5), i * 40);
+    const bed = playClone(key, 1.0 * (i === 0 ? 1 : 0.85), rand(0.94, 1.08), rand(0, 2.2), i * rand(20, 60));
     if (bed) activeCheer.push(bed);
   });
 
-  // メイン歓声叫び（3〜4枚の多層レイヤー）
+  // メイン歓声叫び（4枚重ねで全方位から爆発）
   const yellKeys = pickN(CHEER_YELLS, 4);
   yellKeys.forEach((key, i) => {
-    const delay = i === 0 ? 0 : rand(20, 120);
+    const delay = i === 0 ? 0 : rand(15, 80);
     const a = playClone(
       key,
-      i === 0 ? 1.0 : rand(0.75, 0.92),
+      1.0 * (i === 0 ? 1 : rand(0.8, 0.95)),
       rand(0.96, 1.14),
       rand(0, 1.8),
       delay
@@ -527,55 +529,53 @@ export function playCheer(opts = {}) {
   });
 
   // アクセント（ホイッスル/短歓声）
-  const extraKey = pick(CHEER_EXTRAS);
-  const extra = playClone(extraKey, rand(0.5, 0.75), rand(0.98, 1.15), rand(0, 1.2), rand(50, 200));
-  if (extra) activeCheer.push(extra);
+  const extraKeys = pickN(CHEER_EXTRAS, 2);
+  extraKeys.forEach((key, i) => {
+    const a = playClone(key, rand(0.6, 0.85), rand(0.98, 1.12), rand(0, 1.5), rand(40, 180) + i * rand(50, 120));
+    if (a) activeCheer.push(a);
+  });
 
-  // 大拍手（4枚重ね）
-  const clapKeys = pickN(APPLAUSE, 4);
+  // 大拍手（5枚重層再生）
+  const clapKeys = pickN(APPLAUSE, 5);
   clapKeys.forEach((key, i) => {
     const a = playClone(
       key,
-      rand(0.7, 0.95) * (i === 0 ? 1 : 0.85),
+      1.0 * (i === 0 ? 1 : rand(0.8, 0.95)),
       rand(0.94, 1.12),
       rand(0, 1.6),
-      rand(15, 120) + i * rand(20, 60)
+      rand(10, 100) + i * rand(20, 50)
     );
     if (a) activeCheer.push(a);
   });
 
-  // 時間差で湧き起こる拍手
+  // 時間差で押し寄せる拍手の大波（2〜3波）
   for (let wave = 0; wave < 2; wave++) {
-    const late = playClone(
-      pick(APPLAUSE),
-      rand(0.5, 0.75),
-      rand(0.96, 1.1),
-      rand(0.2, 2.0),
-      rand(140, 360) + wave * 220
-    );
-    if (late) activeCheer.push(late);
+    pickN(APPLAUSE, 2).forEach((key, i) => {
+      const late = playClone(
+        key,
+        rand(0.6, 0.85),
+        rand(0.96, 1.08),
+        rand(0.1, 2.4),
+        rand(200, 600) + wave * rand(300, 600) + i * rand(40, 100)
+      );
+      if (late) activeCheer.push(late);
+    });
   }
 
-  const swellOpts = {
-    intensity: rand(0.75, 1.0),
-    bright: rand(0.5, 1.0),
-    dur: rand(2.2, 3.5),
-    rise: rand(0.04, 0.15),
-  };
-  const textureOpts = {
-    intensity: rand(0.8, 1.0),
-    dur: rand(2.2, 3.5),
-    density: rand(0.8, 1.3),
-  };
-  trackPlayTimer(
-    setTimeout(() => {
-      if (gen !== cheerGen) return;
-      playCrowdSwell(swellOpts);
-      playApplauseTexture(textureOpts);
-    }, 0)
-  );
+  // 勝利レベルのスタジアムスウェルと拍手テクスチャ
+  playCrowdSwell({
+    intensity: 1.0,
+    bright: rand(0.65, 1.0),
+    dur: rand(2.8, 4.2),
+    rise: rand(0.03, 0.12),
+  });
+  playApplauseTexture({
+    intensity: 1.0,
+    dur: rand(3.0, 4.5),
+    density: rand(1.0, 1.4),
+  });
 
-  const holdMs = rand(2400, 3800) | 0;
+  const holdMs = rand(2200, 3400) | 0;
   const fadeMs = rand(600, 1000) | 0;
 
   cheerTimer = trackPlayTimer(
