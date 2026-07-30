@@ -635,10 +635,11 @@ function setPt(out, x, y) {
   return out;
 }
 
+let bgCacheDirty = true;
+
 function invalidateBgCache() {
-  bgCache.key = "";
+  bgCacheDirty = true;
   layoutCache = null;
-  layoutCacheKey = "";
 }
 
 function detectMobileLite(width = state.w, height = state.h) {
@@ -659,9 +660,7 @@ function maxBallTrail() {
 }
 
 function ensureBgCache() {
-  const g = goalRect();
-  const key = `${state.w}_${state.h}_${state.dpr}_${state.oppKit?.id}_${state.scene?.id}_${(g.x + 0.5) | 0}_${(g.y + 0.5) | 0}_${(g.w + 0.5) | 0}_${(g.h + 0.5) | 0}_${state.fixedGoalRatio ? 1 : 0}`;
-  if (bgCache.key === key) return;
+  if (!bgCacheDirty && bgCache.canvas) return;
   if (!bgCache.canvas) {
     bgCache.canvas = document.createElement("canvas");
     bgCache.ctx = bgCache.canvas.getContext("2d");
@@ -680,7 +679,7 @@ function ensureBgCache() {
   drawGoal();
   state.crowdPulse = savedPulse;
   ctx = prev;
-  bgCache.key = key;
+  bgCacheDirty = false;
 }
 
 /** ゴール後の観客フラッシュ（背景キャッシュの上に重ねる） */
@@ -3625,10 +3624,8 @@ function goalBackRect() {
 
 /** PKスポット・エリアの配置（IFAB国際規格実寸比 ＋ 正確な3D透視投影） */
 function penaltyLayout() {
+  if (layoutCache) return layoutCache;
   const { w, h } = state;
-  const ratio = state.fixedGoalRatio;
-  const cacheKey = `${w}|${h}|${ratio ? `${ratio.x},${ratio.y},${ratio.w},${ratio.h}` : ""}`;
-  if (layoutCache && layoutCacheKey === cacheKey) return layoutCache;
   const g = goalRect();
   const gy = g.y + g.h;
   const gCx = g.x + g.w * 0.5;
@@ -3668,7 +3665,6 @@ function penaltyLayout() {
     sixFarHalf,
     spot: { x: w * 0.5, y: spotY },
   };
-  layoutCacheKey = cacheKey;
   return layoutCache;
 }
 
