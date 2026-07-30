@@ -2460,8 +2460,11 @@ function stepStrikeFlight(pending, now, side) {
   } else {
     state.keeperProgress = clamp(0.8 + keeperDiveEase(clamp((u - 0.02) / 0.36, 0, 1)) * 0.2, 0, 1);
   }
-  if (!pending.impactTriggered && (pos.atImpact || u >= 0.65)) {
-    triggerResultImpact(pending, side);
+  if (!pending.promptTriggered && u >= 0.22) {
+    triggerResultPrompt(pending, side);
+  }
+  if (!pending.audioTriggered && (pos.atImpact || u >= 0.55)) {
+    triggerResultAudio(pending, side);
   }
   if (u >= 1) {
     state.ball.x = end.x;
@@ -2887,17 +2890,13 @@ function tickPendingStrike(now) {
   else if (pending.mode === "save") stepCpuShot(now);
 }
 
-function triggerResultImpact(pending, shooter) {
-  if (!pending || pending.impactTriggered) return;
-  pending.impactTriggered = true;
+function triggerResultPrompt(pending, shooter) {
+  if (!pending || pending.promptTriggered) return;
+  pending.promptTriggered = true;
   const result = pending.result;
   const wood = result.post === "bar" ? "バー" : "ポスト";
 
   if (result.goal) {
-    state.flash = 1;
-    state.crowdPulse = 1;
-    if (shooter === "you") playCheer({ lite: state.mobileLite });
-    else playMiss();
     if (result.post) {
       if (result.post === "bar") {
         setPrompt(
@@ -2914,18 +2913,34 @@ function triggerResultImpact(pending, shooter) {
       setPrompt(shooter === "you" ? "ゴーール！！" : "決められた…", { result: true });
     }
   } else if (result.saved) {
+    setPrompt(shooter === "you" ? "止められた〜" : "止めた〜", { result: true });
+  } else if (result.post) {
+    setPrompt(`${wood}に当たって外れた!`, { result: true });
+  } else {
+    setPrompt(shooter === "you" ? "枠を外した！" : "外した！", { result: true });
+  }
+}
+
+function triggerResultAudio(pending, shooter) {
+  if (!pending || pending.audioTriggered) return;
+  pending.audioTriggered = true;
+  const result = pending.result;
+
+  if (result.goal) {
+    state.flash = 1;
+    state.crowdPulse = 1;
+    if (shooter === "you") playCheer({ lite: state.mobileLite });
+    else playMiss();
+  } else if (result.saved) {
     state.flash = 0.45;
     if (shooter === "cpu") playCheer({ lite: state.mobileLite });
     else playBlockedByKeeper({ lite: state.mobileLite });
-    setPrompt(shooter === "you" ? "止められた〜" : "止めた〜", { result: true });
   } else if (result.post) {
     state.flash = 0.7;
     playMiss();
-    setPrompt(`${wood}に当たって外れた!`, { result: true });
   } else {
     state.flash = 0.45;
     playMiss();
-    setPrompt(shooter === "you" ? "枠を外した！" : "外した！", { result: true });
   }
 }
 
