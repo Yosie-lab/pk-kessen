@@ -660,7 +660,7 @@ function maxBallTrail() {
 
 function ensureBgCache() {
   const g = goalRect();
-  const key = `${state.w}_${state.h}_${state.dpr}_${state.scene?.id}_${(g.x + 0.5) | 0}_${(g.y + 0.5) | 0}_${(g.w + 0.5) | 0}_${(g.h + 0.5) | 0}_${state.fixedGoalRatio ? 1 : 0}`;
+  const key = `${state.w}_${state.h}_${state.dpr}_${state.oppKit?.id}_${state.scene?.id}_${(g.x + 0.5) | 0}_${(g.y + 0.5) | 0}_${(g.w + 0.5) | 0}_${(g.h + 0.5) | 0}_${state.fixedGoalRatio ? 1 : 0}`;
   if (bgCache.key === key) return;
   if (!bgCache.canvas) {
     bgCache.canvas = document.createElement("canvas");
