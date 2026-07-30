@@ -1723,9 +1723,10 @@ function resolveShot(aim, power, dive) {
 
   let finalAim;
   if (!onTarget) {
+    const isCenter = intended.dir === "center" || (aim.x >= 0.38 && aim.x <= 0.62);
     finalAim = {
-      x: intended.dir === "left" ? -0.06 : intended.dir === "right" ? 1.06 : aim.x < 0.5 ? -0.06 : 1.06,
-      y: clamp(ZONE_Y[intended.height] - 0.08, -0.04, 0.55),
+      x: isCenter ? clamp(aim.x, 0.42, 0.58) : (intended.dir === "left" ? -0.06 : intended.dir === "right" ? 1.06 : aim.x < 0.5 ? -0.06 : 1.06),
+      y: isCenter ? -0.06 : clamp(ZONE_Y[intended.height] - 0.08, -0.04, 0.55),
     };
   } else {
     const center = cellCenter(intended.dir, intended.height);
