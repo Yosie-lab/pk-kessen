@@ -2460,6 +2460,9 @@ function stepStrikeFlight(pending, now, side) {
   } else {
     state.keeperProgress = clamp(0.8 + keeperDiveEase(clamp((u - 0.02) / 0.36, 0, 1)) * 0.2, 0, 1);
   }
+  if (!pending.impactTriggered && (pos.atImpact || u >= 0.65)) {
+    triggerResultImpact(pending, side);
+  }
   if (u >= 1) {
     state.ball.x = end.x;
     state.ball.y = end.y;
@@ -2884,17 +2887,15 @@ function tickPendingStrike(now) {
   else if (pending.mode === "save") stepCpuShot(now);
 }
 
-function finishKick(result, shooter) {
-  showControls("none");
-  const key = shooter === "you" ? "you" : "cpu";
-  const outcome = result.goal ? "goal" : "miss";
-  state.history[key].push(outcome);
+function triggerResultImpact(pending, shooter) {
+  if (!pending || pending.impactTriggered) return;
+  pending.impactTriggered = true;
+  const result = pending.result;
   const wood = result.post === "bar" ? "バー" : "ポスト";
+
   if (result.goal) {
-    state.scores[key] += 1;
     state.flash = 1;
     state.crowdPulse = 1;
-    // 自軍ゴールは歓声、相手ゴールは残念な声
     if (shooter === "you") playCheer({ lite: state.mobileLite });
     else playMiss();
     if (result.post) {
@@ -2914,13 +2915,11 @@ function finishKick(result, shooter) {
     }
   } else if (result.saved) {
     state.flash = 0.45;
-    // 自軍キーパーのセーブは歓声、相手キーパーに阻まれたらスタジアム反応
     if (shooter === "cpu") playCheer({ lite: state.mobileLite });
     else playBlockedByKeeper({ lite: state.mobileLite });
     setPrompt(shooter === "you" ? "止められた〜" : "止めた〜", { result: true });
   } else if (result.post) {
     state.flash = 0.7;
-    // 金属音は飛翔中に再生済み。ここでは反応のみ
     playMiss();
     setPrompt(`${wood}に当たって外れた!`, { result: true });
   } else {
@@ -2928,7 +2927,16 @@ function finishKick(result, shooter) {
     playMiss();
     setPrompt(shooter === "you" ? "枠を外した！" : "外した！", { result: true });
   }
+}
 
+function finishKick(result, shooter) {
+  showControls("none");
+  const key = shooter === "you" ? "you" : "cpu";
+  const outcome = result.goal ? "goal" : "miss";
+  state.history[key].push(outcome);
+  if (result.goal) {
+    state.scores[key] += 1;
+  }
   updateHud();
   state.phase = "result-beat";
 
