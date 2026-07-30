@@ -3622,7 +3622,7 @@ function goalBackRect() {
   };
 }
 
-/** PKスポット・エリアの配置（IFAB国際規格実寸比: Goal 7.32m, 6yd 5.5m/18.32m, Spot 11m, 18yd 16.5m/40.32m） */
+/** PKスポット・エリアの配置（IFAB国際規格実寸比 ＋ 正確な3D透視投影） */
 function penaltyLayout() {
   const { w, h } = state;
   const ratio = state.fixedGoalRatio;
@@ -3632,13 +3632,26 @@ function penaltyLayout() {
   const gy = g.y + g.h;
   const gCx = g.x + g.w * 0.5;
   const goalHalf = g.w * 0.5;
+  const yVanish = goalVanishY();
 
-  // 実寸比: スポット11m、6ヤードエリア(5.5m)はスポットまでの距離の半分、18ヤードエリア(16.5m)は1.5倍
+  // スポットY座標（画面上でのペナルティスポット位置）
   const spotY = gy + Math.min(g.h * 1.38, (h - gy) * 0.44);
-  const spotFromGoal = Math.max(36, spotY - gy);
 
-  const sixY = gy + spotFromGoal * 0.5;
-  const penY = Math.min(h * 0.98, gy + spotFromGoal * 1.5);
+  // 3D透視投影（パースペクティブ）の奥行き幾何計算
+  // ゴールライン (0m) から スポット (11m) への Y距離に基づき、カメラ距離 Z_cam を決定
+  const hGoal = Math.max(10, gy - yVanish);
+  const hSpot = Math.max(hGoal + 10, spotY - yVanish);
+  const ratioSpot = hGoal / hSpot; // 1 - 11/Z_cam
+  const invZcam = clamp((1 - ratioSpot) / 11.0, 0.015, 0.05); // 1/Z_cam
+
+  // 6ヤードエリア (5.5m)
+  const ratioSix = 1 - 5.5 * invZcam;
+  const sixY = yVanish + hGoal / Math.max(0.1, ratioSix);
+
+  // 18ヤードエリア (16.5m)：透視効果により手前へ大きくダイナミックに広がる
+  const ratioPen = 1 - 16.5 * invZcam;
+  const penYRaw = yVanish + hGoal / Math.max(0.05, ratioPen);
+  const penY = Math.min(h * 0.98, Math.max(spotY + 30, penYRaw));
 
   // 実寸比: 6ヤードエリア全幅 18.32m / ゴール 7.32m ≒ 2.503倍
   const sixFarHalf = goalHalf * 2.503;
