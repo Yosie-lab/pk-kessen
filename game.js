@@ -1060,19 +1060,21 @@ function keeperBodyCovers(ballAim, diveCell) {
 
   // 高さのカバー範囲判定
   if (diveCell.height === "mid") {
-    // 中央構え：中央〜上下若干の範囲を体でカバー
-    if (dy < -0.32) return false;
-    if (dy > 0.32) return false;
-    return true;
-  }
-  if (diveCell.height === "high") {
-    if (dy < -0.35) return false;
+    // 中央構え（y: 0.50）：胸元〜腹部付近（dy: -0.22 ~ 0.22）を体でブロック
+    if (dy < -0.22) return false;
     if (dy > 0.22) return false;
     return true;
   }
+  if (diveCell.height === "high") {
+    // ハイダイブ（y: 0.20）：高めの球をカバー。真ん中〜足元（dy > 0.12, y >= 0.32）は抜けてゴール
+    if (dy < -0.30) return false;
+    if (dy > 0.12) return false;
+    return true;
+  }
   if (diveCell.height === "low") {
-    if (dy < -0.18) return false;
-    if (dy > 0.35) return false;
+    // ローダイブ（y: 0.68）：足元・下段の球をカバー。真ん中〜頭上（dy < -0.12, y <= 0.56）は抜けてゴール
+    if (dy < -0.12) return false;
+    if (dy > 0.30) return false;
     return true;
   }
   return false;

@@ -1,4 +1,4 @@
-const CACHE_NAME = "pk-kessen-v6";
+const CACHE_NAME = "pk-kessen-v7";
 const ASSETS = [
   "./",
   "./index.html",
