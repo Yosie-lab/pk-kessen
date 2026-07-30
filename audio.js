@@ -53,6 +53,37 @@ const MAX_PLAYING_CLONES = 18;
 const playingClones = [];
 const activeFadeCancels = new Set();
 const pendingPlayTimers = new Set();
+const activeMasterNodes = new Set();
+const activeAudioSources = new Set();
+
+function trackMaster(master) {
+  if (master) activeMasterNodes.add(master);
+  return master;
+}
+
+function releaseMaster(master) {
+  if (!master) return;
+  activeMasterNodes.delete(master);
+  try {
+    master.disconnect();
+  } catch (_) {}
+}
+
+function trackSource(src) {
+  if (src) activeAudioSources.add(src);
+  return src;
+}
+
+function releaseSource(src) {
+  if (!src) return;
+  activeAudioSources.delete(src);
+  try {
+    src.stop();
+  } catch (_) {}
+  try {
+    src.disconnect();
+  } catch (_) {}
+}
 
 function rand(a, b) {
   return a + Math.random() * (b - a);
@@ -416,6 +447,12 @@ function stopCheer() {
   for (const a of cheerClones) {
     releaseClone(a);
   }
+  for (const src of Array.from(activeAudioSources)) {
+    releaseSource(src);
+  }
+  for (const master of Array.from(activeMasterNodes)) {
+    releaseMaster(master);
+  }
 }
 
 /** 試合開始時：再生中サウンドと clone を一括停止（連プレイ時のメモリ・rAF 溜まり対策） */
@@ -702,7 +739,7 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
   if (!ctx) return;
   const now = ctx.currentTime;
 
-  const master = ctx.createGain();
+  const master = trackMaster(ctx.createGain());
   master.gain.setValueAtTime(0.0001, now);
   master.gain.exponentialRampToValueAtTime(0.0001 + intensity * 0.55, now + rise);
   master.gain.linearRampToValueAtTime(intensity * 0.35, now + dur * 0.55);
@@ -722,7 +759,7 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
       const env = Math.sin((Math.PI * s) / len);
       data[s] = (pink * 0.7 + white * 0.3) * env * 0.7;
     }
-    const src = ctx.createBufferSource();
+    const src = trackSource(ctx.createBufferSource());
     src.buffer = buffer;
     const bp = ctx.createBiquadFilter();
     bp.type = "bandpass";
@@ -736,7 +773,8 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
     src.start(now + i * rand(0, 0.05));
     src.stop(now + dur);
     src.onended = () => {
-      try { src.disconnect(); bp.disconnect(); g.disconnect(); } catch (_) {}
+      releaseSource(src);
+      try { bp.disconnect(); g.disconnect(); } catch (_) {}
     };
   }
 
@@ -745,7 +783,7 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
     const bursts = 2 + ((Math.random() * 4) | 0);
     for (let i = 0; i < bursts; i++) {
       const t0 = now + rand(0.05, dur * 0.55);
-      const osc = ctx.createOscillator();
+      const osc = trackSource(ctx.createOscillator());
       const g = ctx.createGain();
       const f = ctx.createBiquadFilter();
       osc.type = "triangle";
@@ -762,14 +800,15 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
       osc.start(t0);
       osc.stop(t0 + 0.4);
       osc.onended = () => {
-        try { osc.disconnect(); f.disconnect(); g.disconnect(); } catch (_) {}
+        releaseSource(osc);
+        try { f.disconnect(); g.disconnect(); } catch (_) {}
       };
     }
   }
 
   // master は全ノード停止後に切断
   trackPlayTimer(setTimeout(() => {
-    try { master.disconnect(); } catch (_) {}
+    releaseMaster(master);
   }, Math.ceil((dur + 0.3) * 1000)));
 }
 
@@ -808,7 +847,7 @@ function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {})
   const ctx = getCtx();
   if (!ctx) return;
   const now = ctx.currentTime;
-  const master = ctx.createGain();
+  const master = trackMaster(ctx.createGain());
   master.gain.setValueAtTime(0.0001, now);
   master.gain.exponentialRampToValueAtTime(0.0001 + intensity * 0.45, now + 0.08);
   master.gain.linearRampToValueAtTime(intensity * 0.28, now + dur * 0.5);
@@ -821,7 +860,7 @@ function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {})
   const clapCount = Math.min(24, (12 + density * 20) | 0);
   for (let i = 0; i < clapCount; i++) {
     const t0 = now + rand(0.02, dur * 0.85);
-    const src = ctx.createBufferSource();
+    const src = trackSource(ctx.createBufferSource());
     src.buffer = clapBuf;
     const bp = ctx.createBiquadFilter();
     bp.type = "bandpass";
@@ -840,8 +879,8 @@ function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {})
     const stopTime = t0 + 0.06;
     src.stop(stopTime);
     src.onended = () => {
+      releaseSource(src);
       try {
-        src.disconnect();
         hp.disconnect();
         bp.disconnect();
         g.disconnect();
@@ -850,9 +889,7 @@ function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {})
   }
 
   trackPlayTimer(setTimeout(() => {
-    try {
-      master.disconnect();
-    } catch (_) {}
+    releaseMaster(master);
   }, Math.ceil((dur + 0.2) * 1000)));
 }
 
@@ -863,7 +900,7 @@ function playDisappointedCrowd() {
   const now = ctx.currentTime;
   const dur = rand(1.15, 1.55);
   const peak = rand(0.4, 0.65);
-  const master = ctx.createGain();
+  const master = trackMaster(ctx.createGain());
   master.gain.setValueAtTime(0.0001, now);
   master.gain.exponentialRampToValueAtTime(peak, now + rand(0.06, 0.12));
   master.gain.exponentialRampToValueAtTime(peak * 0.55, now + dur * 0.4);
@@ -872,7 +909,7 @@ function playDisappointedCrowd() {
 
   const noiseBuf = getSharedNoiseBuffer(ctx);
   if (noiseBuf) {
-    const noise = ctx.createBufferSource();
+    const noise = trackSource(ctx.createBufferSource());
     noise.buffer = noiseBuf;
     const noiseFilter = ctx.createBiquadFilter();
     noiseFilter.type = "bandpass";
@@ -886,8 +923,8 @@ function playDisappointedCrowd() {
     noise.start(now);
     noise.stop(now + dur);
     noise.onended = () => {
+      releaseSource(noise);
       try {
-        noise.disconnect();
         noiseFilter.disconnect();
         noiseGain.disconnect();
       } catch (_) {}
@@ -896,7 +933,7 @@ function playDisappointedCrowd() {
 
   const count = 3;
   for (let i = 0; i < count; i++) {
-    const osc = ctx.createOscillator();
+    const osc = trackSource(ctx.createOscillator());
     const g = ctx.createGain();
     const filt = ctx.createBiquadFilter();
     osc.type = "triangle";
@@ -917,8 +954,8 @@ function playDisappointedCrowd() {
     osc.start(tStart);
     osc.stop(now + dur);
     osc.onended = () => {
+      releaseSource(osc);
       try {
-        osc.disconnect();
         filt.disconnect();
         g.disconnect();
       } catch (_) {}
@@ -926,9 +963,7 @@ function playDisappointedCrowd() {
   }
 
   trackPlayTimer(setTimeout(() => {
-    try {
-      master.disconnect();
-    } catch (_) {}
+    releaseMaster(master);
   }, Math.ceil((dur + 0.2) * 1000)));
 }
 

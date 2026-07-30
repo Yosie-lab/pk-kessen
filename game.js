@@ -2389,9 +2389,18 @@ function initStrikeKicker(side, runFrom, approach) {
 const ballTrailPool = [];
 
 function pushBallTrail(trail, x, y, a, spinY, spinX, scale) {
-  const slot = { x, y, a, spinY, spinX, scale };
+  const slot = ballTrailPool.pop() || { x: 0, y: 0, a: 0, spinY: 0, spinX: 0, scale: 1 };
+  slot.x = x;
+  slot.y = y;
+  slot.a = a;
+  slot.spinY = spinY;
+  slot.spinX = spinX;
+  slot.scale = scale;
   trail.push(slot);
-  if (trail.length > maxBallTrail()) trail.shift();
+  if (trail.length > maxBallTrail()) {
+    const dropped = trail.shift();
+    if (dropped) ballTrailPool.push(dropped);
+  }
 }
 
 function fadeBallTrail(trail, decay = STRIKE.TRAIL_FADE, minA = STRIKE.TRAIL_MIN_ALPHA) {
@@ -2401,6 +2410,8 @@ function fadeBallTrail(trail, decay = STRIKE.TRAIL_FADE, minA = STRIKE.TRAIL_MIN
     if (trail[i].a >= minA) {
       if (write !== i) trail[write] = trail[i];
       write++;
+    } else {
+      ballTrailPool.push(trail[i]);
     }
   }
   trail.length = write;
