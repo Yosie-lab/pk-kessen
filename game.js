@@ -3638,20 +3638,19 @@ function penaltyLayout() {
   const spotY = gy + Math.min(g.h * 1.38, (h - gy) * 0.44);
 
   // 3D透視投影（パースペクティブ）の奥行き幾何計算
-  // ゴールライン (0m) から スポット (11m) への Y距離に基づき、カメラ距離 Z_cam を決定
   const hGoal = Math.max(10, gy - yVanish);
   const hSpot = Math.max(hGoal + 10, spotY - yVanish);
   const ratioSpot = hGoal / hSpot; // 1 - 11/Z_cam
-  const invZcam = clamp((1 - ratioSpot) / 11.0, 0.015, 0.05); // 1/Z_cam
+  const invZcam = clamp((1 - ratioSpot) / 11.0, 0.018, 0.055); // 1/Z_cam
 
   // 6ヤードエリア (5.5m)
   const ratioSix = 1 - 5.5 * invZcam;
   const sixY = yVanish + hGoal / Math.max(0.1, ratioSix);
 
-  // 18ヤードエリア (16.5m)：透視効果により手前へ大きくダイナミックに広がる
+  // 18ヤードエリア手前水平ライン (16.5m)：カメラ手前足元に来るため、画面最下部手前側へ配置
   const ratioPen = 1 - 16.5 * invZcam;
-  const penYRaw = yVanish + hGoal / Math.max(0.05, ratioPen);
-  const penY = Math.min(h * 0.98, Math.max(spotY + 30, penYRaw));
+  const penYRaw = ratioPen > 0.02 ? yVanish + hGoal / ratioPen : h * 1.1;
+  const penY = Math.min(h * 0.98, Math.max(h * 0.86, penYRaw));
 
   // 実寸比: 6ヤードエリア全幅 18.32m / ゴール 7.32m ≒ 2.503倍
   const sixFarHalf = goalHalf * 2.503;
