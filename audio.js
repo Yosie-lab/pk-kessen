@@ -669,45 +669,77 @@ export function playVictoryCelebration() {
   );
 }
 
-/** 相手キーパーに阻まれたとき：悔しさと緊迫の反応（重厚な低音・大喝采） */
+/**
+ * ポスト／バーに当たった金属音（実サンプル＋重厚打撃＋歓喜/悲鳴アクセント）
+ * @param {"left"|"right"|"bar"} part
+ */
+export function playPostHit(part = "left") {
+  unlockAudio();
+  const isBar = part === "bar";
+  const key = pick(isBar ? BAR_HITS : POST_HITS);
+
+  if (isBar) {
+    const a = playClone(key, rand(0.7, 0.95), rand(0.92, 1.08), rand(0, 0.05));
+    trackPlayTimer(setTimeout(() => fadeOut(a, rand(400, 650)), rand(160, 280)));
+    if (Math.random() > 0.3) {
+      const tap = playClone("metalTap", rand(0.4, 0.65), rand(1.05, 1.25), 0, rand(8, 20));
+      trackPlayTimer(setTimeout(() => fadeOut(tap, 280), 200));
+    }
+    const gasp = playClone("cheerShort", rand(0.65, 0.88), rand(1.02, 1.14), 0, 10);
+    if (gasp) activeCheer.push(gasp);
+    playWoodworkThump(rand(0.25, 0.4), rand(110, 160));
+  } else {
+    const a = playClone(key, rand(0.8, 1.0), rand(0.88, 1.05), rand(0, 0.04));
+    trackPlayTimer(setTimeout(() => fadeOut(a, rand(280, 480)), rand(120, 220)));
+    if (Math.random() > 0.4) {
+      const layer = playClone(pick(POST_HITS), rand(0.45, 0.7), rand(0.95, 1.15), 0, rand(10, 28));
+      trackPlayTimer(setTimeout(() => fadeOut(layer, 260), 180));
+    }
+    const gasp = playClone("cheerShort", rand(0.65, 0.88), rand(0.98, 1.12), 0, 15);
+    if (gasp) activeCheer.push(gasp);
+    playWoodworkThump(rand(0.3, 0.45), rand(85, 130));
+  }
+}
+
+/** 相手キーパーに阻まれた・ファインセーブ成功時：最大級のスタジアム大歓喜・大喝采 */
 export function playBlockedByKeeper(opts = {}) {
   const lite = opts?.lite;
   unlockAudio();
   stopCheer();
   const gen = cheerGen;
 
-  const sting = playClone("cheerShort", rand(0.7, 0.88), rand(0.94, 1.06), 0, 0);
+  const sting = playClone("cheerShort", 1.0, rand(0.96, 1.08), 0, 0);
   if (sting) activeCheer.push(sting);
-  const crowd = playClone("crowdStadium", rand(0.55, 0.72), rand(0.74, 0.9), rand(0, 1.4), rand(0, 30));
+  const yell = playClone("cheerYell", 1.0, rand(0.98, 1.12), 0, rand(0, 15));
+  if (yell) activeCheer.push(yell);
+  const chaos = playClone("cheerChaos", 0.9, rand(0.96, 1.08), 0, rand(10, 30));
+  if (chaos) activeCheer.push(chaos);
+
+  const crowd = playClone("crowdStadium", rand(0.8, 1.0), rand(0.76, 0.92), rand(0, 1.4), rand(0, 25));
   if (crowd) activeCheer.push(crowd);
 
-  if (Math.random() > 0.25) {
-    const clap = playClone(
-      pick(APPLAUSE),
-      rand(0.42, 0.62),
-      rand(0.92, 1.06),
-      rand(0, 1.2),
-      rand(20, 90)
-    );
+  const clapKeys = pickN(APPLAUSE, 3);
+  clapKeys.forEach((key, i) => {
+    const clap = playClone(key, rand(0.7, 0.95), rand(0.92, 1.08), rand(0, 1.2), rand(15, 80) + i * 30);
     if (clap) activeCheer.push(clap);
-  }
+  });
 
   if (!lite) {
     playCrowdSwell({
-      intensity: rand(0.42, 0.65),
-      bright: rand(0.42, 0.72),
-      dur: rand(1.2, 1.85),
-      rise: rand(0.04, 0.1),
+      intensity: 0.95,
+      bright: rand(0.6, 0.95),
+      dur: rand(1.8, 2.8),
+      rise: rand(0.03, 0.1),
     });
     playApplauseTexture({
-      intensity: rand(0.45, 0.68),
-      dur: rand(1.3, 1.9),
-      density: rand(0.55, 0.85),
+      intensity: 0.95,
+      dur: rand(1.8, 3.0),
+      density: rand(0.85, 1.3),
     });
   }
 
-  const holdMs = rand(1100, 1650) | 0;
-  const fadeMs = rand(420, 680) | 0;
+  const holdMs = rand(1500, 2400) | 0;
+  const fadeMs = rand(500, 850) | 0;
   cheerTimer = trackPlayTimer(
     setTimeout(() => {
       if (gen !== cheerGen) return;
@@ -717,16 +749,30 @@ export function playBlockedByKeeper(opts = {}) {
   );
 }
 
-/** 枠外・シュートミス・失点時：ため息と落胆の大どよめき（大迫力） */
+/** 枠外・シュートミス・失点時：スタジアム数万人の大ため息・落胆の大どよめき（超大迫力） */
 export function playMiss() {
   unlockAudio();
   stopCheer();
 
-  const bed = pick(["crowdStadium", "cheerYell", "cheerChant"]);
-  const murmur = playClone(bed, rand(0.48, 0.68), rand(0.62, 0.82), rand(0, 1.5));
-  if (murmur) activeCheer = [murmur];
-  const hold = rand(850, 1300) | 0;
-  trackPlayTimer(setTimeout(() => fadeOut(murmur, rand(450, 750) | 0), hold));
+  const bed1 = playClone("crowdStadium", 0.95, rand(0.6, 0.8), rand(0, 1.2));
+  if (bed1) activeCheer.push(bed1);
+  const bed2 = playClone("cheerYell", 0.9, rand(0.65, 0.82), rand(0, 1.0));
+  if (bed2) activeCheer.push(bed2);
+  const bed3 = playClone("cheerChaos", 0.85, rand(0.6, 0.78), rand(0, 1.5));
+  if (bed3) activeCheer.push(bed3);
+
+  playCrowdSwell({
+    intensity: 0.9,
+    bright: rand(0.3, 0.6),
+    dur: rand(2.0, 3.2),
+    rise: rand(0.04, 0.15),
+  });
+
+  const hold = rand(1400, 2200) | 0;
+  trackPlayTimer(setTimeout(() => {
+    for (const a of activeCheer) fadeOut(a, rand(500, 850) | 0);
+  }, hold));
+  
   playDisappointedCrowd();
 }
 
