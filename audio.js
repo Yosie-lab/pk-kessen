@@ -42,6 +42,8 @@ const APPLAUSE = [
 ];
 
 const cache = {};
+const audioBuffers = {};
+const bufferLoading = {};
 let unlocked = false;
 let cheerTimer = null;
 let activeCheer = [];
@@ -111,6 +113,22 @@ function getAudio(key) {
   return cache[key];
 }
 
+function loadAudioBuffer(key) {
+  const ctx = getCtx();
+  if (!ctx || audioBuffers[key] || bufferLoading[key]) return;
+  bufferLoading[key] = true;
+  fetch(FILES[key])
+    .then((res) => res.arrayBuffer())
+    .then((ab) => ctx.decodeAudioData(ab))
+    .then((buf) => {
+      audioBuffers[key] = buf;
+    })
+    .catch(() => {})
+    .finally(() => {
+      bufferLoading[key] = false;
+    });
+}
+
 /** 起動時にサンプルを先読み（ゴール時の無音対策） */
 function preloadSounds() {
   Object.keys(FILES).forEach((key) => {
@@ -133,6 +151,10 @@ function clearPlayTimers() {
 
 function releaseClone(a) {
   if (!a) return;
+  if (a.isWebAudio) {
+    a.pause();
+    return;
+  }
   const idx = playingClones.indexOf(a);
   if (idx >= 0) playingClones.splice(idx, 1);
   try {
@@ -167,6 +189,76 @@ function trackClone(a) {
 }
 
 function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
+  const gen = playGen;
+  const ctx = getCtx();
+  const buf = audioBuffers[key];
+
+  if (ctx && buf) {
+    const src = trackSource(ctx.createBufferSource());
+    const gain = trackMaster(ctx.createGain());
+    src.buffer = buf;
+    try {
+      src.playbackRate.value = rate;
+    } catch (_) {}
+    const v = Math.max(0, Math.min(1, volume));
+    gain.gain.setValueAtTime(v, ctx.currentTime);
+
+    src.connect(gain);
+    gain.connect(ctx.destination);
+
+    const startTime = ctx.currentTime + Math.max(0, delayMs) / 1000;
+    const dur = buf.duration;
+    let offset = startAt;
+    if (Number.isFinite(dur) && dur > 0.4) {
+      offset = Math.min(startAt, Math.max(0, dur * 0.55));
+    }
+
+    try {
+      src.start(startTime, offset);
+    } catch (_) {
+      releaseSource(src);
+      releaseMaster(gain);
+      return null;
+    }
+
+    src.onended = () => {
+      releaseSource(src);
+      releaseMaster(gain);
+    };
+
+    const handle = {
+      isWebAudio: true,
+      gain,
+      src,
+      volume: v,
+      pause() {
+        try {
+          src.stop();
+        } catch (_) {}
+        releaseSource(src);
+        releaseMaster(gain);
+      },
+    };
+    Object.defineProperty(handle, "volume", {
+      get() {
+        return this._vol ?? v;
+      },
+      set(val) {
+        this._vol = val;
+        try {
+          gain.gain.setValueAtTime(val, ctx.currentTime);
+        } catch (_) {}
+      },
+    });
+
+    return handle;
+  }
+
+  // フォールバック（バッファ未ロード時）
+  if (ctx && !audioBuffers[key]) {
+    loadAudioBuffer(key);
+  }
+
   const base = getAudio(key);
   if (!base) return null;
   const a = base.cloneNode(true);
@@ -175,7 +267,6 @@ function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
   a.playbackRate = rate;
   a.preload = "auto";
   trackClone(a);
-  const gen = playGen;
 
   const tryPlay = (attempt = 0) => {
     if (gen !== playGen) return;
@@ -325,7 +416,7 @@ function playKickLeatherTap(intensity = 0.3) {
   const ctx = getCtx();
   if (!ctx) return;
   const now = ctx.currentTime;
-  const master = ctx.createGain();
+  const master = trackMaster(ctx.createGain());
   master.gain.value = intensity;
   master.connect(ctx.destination);
 
@@ -335,7 +426,7 @@ function playKickLeatherTap(intensity = 0.3) {
   for (let i = 0; i < nLen; i++) {
     data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (nLen * 0.18));
   }
-  const noise = ctx.createBufferSource();
+  const noise = trackSource(ctx.createBufferSource());
   noise.buffer = buf;
   const bp = ctx.createBiquadFilter();
   bp.type = "bandpass";
@@ -355,7 +446,9 @@ function playKickLeatherTap(intensity = 0.3) {
   noise.start(now);
   noise.stop(now + 0.1);
   noise.onended = () => {
-    try { noise.disconnect(); hp.disconnect(); bp.disconnect(); g.disconnect(); master.disconnect(); } catch (_) {}
+    releaseSource(noise);
+    releaseMaster(master);
+    try { hp.disconnect(); bp.disconnect(); g.disconnect(); } catch (_) {}
   };
 }
 
@@ -364,8 +457,8 @@ function playKickBodyThump(intensity = 0.2, freq = 120) {
   const ctx = getCtx();
   if (!ctx) return;
   const now = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const g = ctx.createGain();
+  const osc = trackSource(ctx.createOscillator());
+  const g = trackMaster(ctx.createGain());
   osc.type = "sine";
   osc.frequency.setValueAtTime(freq, now);
   osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq * 0.45), now + 0.12);
@@ -377,7 +470,9 @@ function playKickBodyThump(intensity = 0.2, freq = 120) {
   osc.start(now);
   osc.stop(now + 0.2);
   osc.onended = () => {
-    try { osc.disconnect(); g.disconnect(); } catch (_) {}
+    releaseSource(osc);
+    releaseMaster(g);
+    try { g.disconnect(); } catch (_) {}
   };
 }
 
@@ -417,8 +512,8 @@ function playWoodworkThump(intensity = 0.12, freq = 130) {
   const ctx = getCtx();
   if (!ctx) return;
   const now = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const g = ctx.createGain();
+  const osc = trackSource(ctx.createOscillator());
+  const g = trackMaster(ctx.createGain());
   osc.type = "sine";
   osc.frequency.setValueAtTime(freq, now);
   osc.frequency.exponentialRampToValueAtTime(Math.max(45, freq * 0.5), now + 0.14);
@@ -430,7 +525,9 @@ function playWoodworkThump(intensity = 0.12, freq = 130) {
   osc.start(now);
   osc.stop(now + 0.18);
   osc.onended = () => {
-    try { osc.disconnect(); g.disconnect(); } catch (_) {}
+    releaseSource(osc);
+    releaseMaster(g);
+    try { g.disconnect(); } catch (_) {}
   };
 }
 
