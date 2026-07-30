@@ -520,41 +520,47 @@ export function playKickoffCheer() {
   stopCheer();
   const gen = cheerGen;
 
-  const crowd = playClone("crowdStadium", rand(0.75, 0.95), rand(0.96, 1.06), 0, 0);
-  if (crowd) activeCheer.push(crowd);
-  const chant = playClone("cheerChant", rand(0.7, 0.9), rand(0.98, 1.08), 0, rand(20, 80));
-  if (chant) activeCheer.push(chant);
-  const yell = playClone("cheerShort", rand(0.65, 0.85), rand(1.0, 1.12), 0, rand(10, 50));
-  if (yell) activeCheer.push(yell);
+  try {
+    const crowd = playClone("crowdStadium", rand(0.75, 0.95), rand(0.96, 1.06), 0, 0);
+    if (crowd) activeCheer.push(crowd);
+    const chant = playClone("cheerChant", rand(0.7, 0.9), rand(0.98, 1.08), 0, rand(20, 80));
+    if (chant) activeCheer.push(chant);
+    const yell = playClone("cheerShort", rand(0.65, 0.85), rand(1.0, 1.12), 0, rand(10, 50));
+    if (yell) activeCheer.push(yell);
 
-  const clapKeys = pickN(APPLAUSE, 3);
-  clapKeys.forEach((key, i) => {
-    const clap = playClone(key, rand(0.6, 0.85), rand(0.95, 1.08), rand(0, 1.2), rand(10, 60) + i * 40);
-    if (clap) activeCheer.push(clap);
-  });
+    if (Array.isArray(APPLAUSE)) {
+      const clapKeys = pickN(APPLAUSE, 3);
+      clapKeys.forEach((key, i) => {
+        const clap = playClone(key, rand(0.6, 0.85), rand(0.95, 1.08), rand(0, 1.2), rand(10, 60) + i * 40);
+        if (clap) activeCheer.push(clap);
+      });
+    }
 
-  playCrowdSwell({
-    intensity: rand(0.65, 0.85),
-    bright: rand(0.5, 0.85),
-    dur: rand(2.2, 3.2),
-    rise: rand(0.04, 0.12),
-  });
-  playApplauseTexture({
-    intensity: rand(0.7, 0.95),
-    dur: rand(2.2, 3.2),
-    density: rand(0.8, 1.2),
-  });
+    try {
+      playCrowdSwell({
+        intensity: rand(0.65, 0.85),
+        bright: rand(0.5, 0.85),
+        dur: rand(2.2, 3.2),
+        rise: rand(0.04, 0.12),
+      });
+      playApplauseTexture({
+        intensity: rand(0.7, 0.95),
+        dur: rand(2.2, 3.2),
+        density: rand(0.8, 1.2),
+      });
+    } catch (_) {}
 
-  const holdMs = rand(2200, 3200) | 0;
-  const fadeMs = rand(600, 1000) | 0;
+    const holdMs = rand(2200, 3200) | 0;
+    const fadeMs = rand(600, 1000) | 0;
 
-  cheerTimer = trackPlayTimer(
-    setTimeout(() => {
-      if (gen !== cheerGen) return;
-      for (const a of activeCheer) fadeOut(a, fadeMs);
-      cheerTimer = null;
-    }, holdMs)
-  );
+    cheerTimer = trackPlayTimer(
+      setTimeout(() => {
+        if (gen !== cheerGen) return;
+        for (const a of activeCheer) fadeOut(a, fadeMs);
+        cheerTimer = null;
+      }, holdMs)
+    );
+  } catch (_) {}
 }
 
 /**
