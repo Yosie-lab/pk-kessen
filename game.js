@@ -1058,44 +1058,40 @@ function sameCell(a, b) {
   return a && b && a.dir === b.dir && a.height === b.height;
 }
 
-/** キーパー胴体（中央）がボール着地点をカバーしているか（上下非対称） */
+/** キーパー胴体（中央）がボール着地点をカバーしているか */
 function keeperBodyCovers(ballAim, diveCell) {
   if (diveCell.dir !== "center" || !ballAim) return false;
   const diveAim = keeperDiveAim(diveCell.dir, diveCell.height);
   const dx = Math.abs(ballAim.x - diveAim.x);
-  const dy = ballAim.y - diveAim.y; // 負 = 上（頭側）、正 = 下（腹・足側）
+  const dy = ballAim.y - diveAim.y;
 
+  // 横幅判定：キーパーが中央にいる場合、中央列（dx <= 0.18）への球は正面でカバー
+  if (dx > 0.18) return false;
+
+  // キーパーが中央に構えている場合、高さに関わらず中央領域（y: 0.05 ~ 0.95）を手・身体でカバーしてセーブ/弾く
   if (diveCell.height === "mid") {
-    if (dx > 0.14) return false;
-    if (dy < -0.08) return false; // 頭上は届かない
-    if (dy > 0.26) return false; // 下方向は腹・足元まで
+    if (dy < -0.42) return false;
+    if (dy > 0.42) return false;
     return true;
   }
   if (diveCell.height === "high") {
-    if (dx > 0.12) return false;
-    if (dy < -0.12) return false;
-    if (dy > 0.16) return false;
+    if (dy < -0.45) return false;
+    if (dy > 0.35) return false;
     return true;
   }
   if (diveCell.height === "low") {
-    if (dx > 0.12) return false;
-    if (dy < -0.06) return false;
-    if (dy > 0.14) return false;
+    if (dy < -0.35) return false;
+    if (dy > 0.45) return false;
     return true;
   }
-  return false;
+  return true;
 }
 
-/** 中央列：届く方向だけ（中段→下、上段→中段）。頭上は上段ダイブのみ */
+/** 中央列：キーパーが中央に構えていれば中央へのシュートは全て弾く/セーブ */
 function centerVerticalReach(ballCell, diveCell, ballAim) {
-  if (ballCell.dir !== "center" || diveCell.dir !== "center") return false;
-  if (ballAim && Math.abs(ballAim.x - ZONE_X.center) > 0.14) return false;
-  if (diveCell.height === "mid" && ballCell.height === "low") {
-    return !ballAim || ballAim.y >= 0.58;
-  }
-  if (diveCell.height === "high" && ballCell.height === "mid") {
-    return !ballAim || ballAim.y <= 0.58;
-  }
+  if (diveCell.dir !== "center") return false;
+  if (ballCell.dir === "center") return true;
+  if (ballAim && Math.abs(ballAim.x - ZONE_X.center) <= 0.18) return true;
   return false;
 }
 
@@ -1114,6 +1110,10 @@ function keeperSideLowCovers(ballAim, diveCell, ballCell = null) {
 
 /** セーブ：同一マス、胴体カバー、または届く方向の中央リーチ */
 function keeperSavesShot(ballCell, diveCell, ballAim = null) {
+  // キーパーが中央に構えており、シュートが中央列（center）に来た場合は必ずセーブ（弾く/ストップ）
+  if (diveCell.dir === "center" && (ballCell.dir === "center" || (ballAim && Math.abs(ballAim.x - ZONE_X.center) <= 0.18))) {
+    return true;
+  }
   if (sameCell(ballCell, diveCell)) {
     if (ballCell.height === "low" && ballCell.dir !== "center") {
       return keeperSideLowCovers(ballAim, diveCell, ballCell);
