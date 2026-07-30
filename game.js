@@ -5811,18 +5811,21 @@ function attachButtonHandler(btnEl, action) {
   if (!btnEl) return;
   let handledAt = 0;
   const trigger = (e) => {
-    unlockAudio();
     const now = performance.now();
     if (now - handledAt < 300) return;
     handledAt = now;
+
+    unlockAudio();
+
     if (typeof action === "function") {
       action();
-    } else if (state.mode !== "play") {
+    } else {
       startMatch();
     }
   };
+
+  btnEl.addEventListener("pointerdown", trigger, { passive: true });
   btnEl.addEventListener("click", trigger);
-  btnEl.addEventListener("pointerdown", () => unlockAudio(), { passive: true });
 }
 
 attachButtonHandler(els.btnStart);
