@@ -59,7 +59,7 @@ let audioCtx = null;
  * 起動時に84個を一斉生成せず、必要時に最大2個まで遅延生成。
  * iOS Safari でのモジュール初期化メモリクラッシュを完全防止。
  */
-const SLOTS_PER_KEY = 2;
+const SLOTS_PER_KEY = 4;
 const soundPools = {};
 const activePoolAudioSet = new Set();
 
@@ -70,9 +70,10 @@ function acquirePoolAudio(key) {
   }
   const pool = soundPools[key];
 
+  // 空いている（再生が完了している）エレメントを優先して即座に解放＆再利用
   for (let i = 0; i < pool.length; i++) {
     const el = pool[i];
-    if (el && !el._inUse && (el.paused || el.ended)) {
+    if (el && (el.paused || el.ended)) {
       el._inUse = true;
       el._instanceGen = (el._instanceGen || 0) + 1;
       activePoolAudioSet.add(el);
