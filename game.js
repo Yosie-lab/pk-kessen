@@ -1080,14 +1080,6 @@ function keeperBodyCovers(ballAim, diveCell) {
   return false;
 }
 
-/** 中央列：キーパーが中央に構えていれば中央へのシュートは全て弾く/セーブ */
-function centerVerticalReach(ballCell, diveCell, ballAim) {
-  if (diveCell.dir !== "center") return false;
-  if (ballCell.dir === "center") return true;
-  if (ballAim && Math.abs(ballAim.x - ZONE_X.center) <= 0.18) return true;
-  return false;
-}
-
 /** 左右下枠：キーパーが伸ばした手・体でボールをカバーしているか */
 function keeperSideLowCovers(ballAim, diveCell, ballCell = null) {
   if (diveCell.height !== "low" || diveCell.dir === "center" || !ballAim) return false;
