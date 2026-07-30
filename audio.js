@@ -49,34 +49,24 @@ let playGen = 0;
 let audioCtx = null;
 
 /** 
- * ファイルキーごとの固定オーディオスロット（Per-Key Static Sound Pool）
- * 動的 new / clone / src変更を完全排除。URL設定済みの静的エレメントを永続再利用。
- * メディアデコーダーの動的生成がゼロとなり、NotSupportedErrorやリークが完全に消滅。
+ * ファイルキーごとのオンデマンドオーディオスロット（Lazy Static Sound Pool）
+ * 起動時に84個を一斉生成せず、必要時に最大2個まで遅延生成。
+ * iOS Safari でのモジュール初期化メモリクラッシュを完全防止。
  */
-const SLOTS_PER_KEY = 3;
+const SLOTS_PER_KEY = 2;
 const soundPools = {};
-
-Object.keys(FILES).forEach((key) => {
-  soundPools[key] = [];
-  for (let i = 0; i < SLOTS_PER_KEY; i++) {
-    const el = new Audio(FILES[key]);
-    el.preload = "auto";
-    el._inUse = false;
-    el._key = key;
-    el._instanceGen = 0;
-    soundPools[key].push(el);
-  }
-});
-
 const activePoolAudioSet = new Set();
 
 function acquirePoolAudio(key) {
+  if (!FILES[key]) return null;
+  if (!soundPools[key]) {
+    soundPools[key] = [];
+  }
   const pool = soundPools[key];
-  if (!pool) return null;
 
   for (let i = 0; i < pool.length; i++) {
     const el = pool[i];
-    if (!el._inUse && (el.paused || el.ended)) {
+    if (el && !el._inUse && (el.paused || el.ended)) {
       el._inUse = true;
       el._instanceGen = (el._instanceGen || 0) + 1;
       activePoolAudioSet.add(el);
@@ -84,21 +74,36 @@ function acquirePoolAudio(key) {
     }
   }
 
-  // スロットが埋まっている場合は、最も進行しているものを再利用
-  let oldest = pool[0];
-  for (let i = 1; i < pool.length; i++) {
-    if (pool[i].currentTime > oldest.currentTime) {
-      oldest = pool[i];
-    }
+  if (pool.length < SLOTS_PER_KEY) {
+    try {
+      const el = new Audio(FILES[key]);
+      el.preload = "auto";
+      el._inUse = true;
+      el._key = key;
+      el._instanceGen = 1;
+      pool.push(el);
+      activePoolAudioSet.add(el);
+      return el;
+    } catch (_) {}
   }
-  try {
-    oldest.pause();
-    oldest.currentTime = 0;
-  } catch (_) {}
-  oldest._inUse = true;
-  oldest._instanceGen = (oldest._instanceGen || 0) + 1;
-  activePoolAudioSet.add(oldest);
-  return oldest;
+
+  if (pool.length > 0) {
+    let oldest = pool[0];
+    for (let i = 1; i < pool.length; i++) {
+      if (pool[i].currentTime > oldest.currentTime) {
+        oldest = pool[i];
+      }
+    }
+    try {
+      oldest.pause();
+      oldest.currentTime = 0;
+    } catch (_) {}
+    oldest._inUse = true;
+    oldest._instanceGen = (oldest._instanceGen || 0) + 1;
+    activePoolAudioSet.add(oldest);
+    return oldest;
+  }
+  return null;
 }
 
 function releasePoolAudio(el) {
@@ -163,18 +168,7 @@ function pickN(arr, n) {
   return copy.slice(0, Math.min(n, copy.length));
 }
 
-/** 起動時にサンプルを先読み（ゴール時の無音対策） */
-function preloadSounds() {
-  Object.keys(FILES).forEach((key) => {
-    const pool = soundPools[key];
-    if (pool && pool[0]) {
-      try {
-        pool[0].load();
-      } catch (_) {}
-    }
-  });
-}
-preloadSounds();
+
 
 function trackPlayTimer(id) {
   pendingPlayTimers.add(id);
