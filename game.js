@@ -1687,6 +1687,10 @@ function postChanceFromAim(aim, accuracy, zone) {
 
 function pickPostPart(aim, zone) {
   const options = [];
+  // 中央狙いの場合は左右ポストに当てない（クロスバーのみ）
+  if (zone.dir === "center") {
+    return "bar";
+  }
   // 左狙い→右ポスト、右狙い→左ポストは出さない（反対側へ外れたように見えないように）
   if (zone.dir !== "right" && (zone.dir === "left" || aim.x < 0.42)) {
     options.push("left", "left");
@@ -1697,7 +1701,7 @@ function pickPostPart(aim, zone) {
   if (zone.height === "high" || aim.y < 0.38) options.push("bar", "bar");
   if (zone.dir === "left") options.push("left", "bar");
   else if (zone.dir === "right") options.push("right", "bar");
-  else options.push("left", "right", "bar");
+  else options.push("bar");
   return randChoice(options);
 }
 
