@@ -582,9 +582,9 @@ export function playCheer(opts = {}) {
     if (clap) activeCheer.push(clap);
     cheerTimer = trackPlayTimer(setTimeout(() => {
       if (gen !== cheerGen) return;
-      for (const a of activeCheer) fadeOut(a, rand(420, 620) | 0);
+      for (const a of activeCheer) fadeOut(a, rand(500, 750) | 0);
       cheerTimer = null;
-    }, rand(1800, 2500) | 0));
+    }, rand(2800, 3800) | 0));
     return;
   }
 
@@ -647,17 +647,17 @@ export function playCheer(opts = {}) {
   playCrowdSwell({
     intensity: 1.0,
     bright: rand(0.7, 1.0),
-    dur: rand(3.0, 4.5),
+    dur: rand(4.5, 6.0),
     rise: rand(0.02, 0.08),
   });
   playApplauseTexture({
     intensity: 1.0,
-    dur: rand(3.0, 4.5),
+    dur: rand(4.5, 6.0),
     density: 1.4,
   });
 
-  const holdMs = rand(2400, 3600) | 0;
-  const fadeMs = rand(650, 1100) | 0;
+  const holdMs = rand(3800, 5200) | 0;
+  const fadeMs = rand(800, 1400) | 0;
 
   cheerTimer = trackPlayTimer(
     setTimeout(() => {
@@ -680,8 +680,8 @@ export function playVictoryCelebration() {
   const yellKeys = pickN(CHEER_YELLS, 4);
   const clapKeys = pickN(APPLAUSE, 6);
 
-  const holdMs = rand(4500, 6500) | 0;
-  const fadeMs = rand(1000, 1500) | 0;
+  const holdMs = rand(7500, 10000) | 0;
+  const fadeMs = rand(1500, 2500) | 0;
 
   bedKeys.forEach((key, i) => {
     const a = playClone(key, 1.0 * (i === 0 ? 1 : 0.85), rand(0.94, 1.08), rand(0, 2.2), i * rand(20, 80));
@@ -716,14 +716,14 @@ export function playVictoryCelebration() {
     if (a) activeCheer.push(a);
   });
 
-  for (let wave = 0; wave < 3; wave++) {
+  for (let wave = 0; wave < 4; wave++) {
     pickN(APPLAUSE, 3).forEach((key, i) => {
       const a = playClone(
         key,
         rand(0.6, 0.88),
         rand(0.96, 1.08),
         rand(0.1, 2.4),
-        rand(400, 900) + wave * rand(400, 700) + i * rand(50, 120)
+        rand(400, 900) + wave * rand(500, 900) + i * rand(50, 120)
       );
       if (a) activeCheer.push(a);
     });
@@ -732,12 +732,12 @@ export function playVictoryCelebration() {
   playCrowdSwell({
     intensity: 1.0,
     bright: rand(0.7, 1.0),
-    dur: rand(4.0, 6.0),
+    dur: rand(7.5, 10.0),
     rise: rand(0.03, 0.1),
   });
   playApplauseTexture({
     intensity: 1.0,
-    dur: rand(4.0, 6.0),
+    dur: rand(7.5, 10.0),
     density: rand(1.0, 1.5),
   });
 
