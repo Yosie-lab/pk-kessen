@@ -344,21 +344,19 @@ export function playPostHit(part = "left") {
   const key = pick(isBar ? BAR_HITS : POST_HITS);
 
   if (isBar) {
-    // バーは少し抑えめ・やや高め
     const a = playClone(key, rand(0.28, 0.42), rand(0.92, 1.08), rand(0, 0.05));
-    setTimeout(() => fadeOut(a, rand(400, 650)), rand(160, 280));
+    trackPlayTimer(setTimeout(() => fadeOut(a, rand(400, 650)), rand(160, 280)));
     if (Math.random() > 0.45) {
       const tap = playClone("metalTap", rand(0.12, 0.22), rand(1.05, 1.25), 0, rand(8, 20));
-      setTimeout(() => fadeOut(tap, 280), 200);
+      trackPlayTimer(setTimeout(() => fadeOut(tap, 280), 200));
     }
     playWoodworkThump(rand(0.06, 0.1), rand(120, 170));
   } else {
-    // ポストは短めの鈍い金属
     const a = playClone(key, rand(0.45, 0.7), rand(0.88, 1.05), rand(0, 0.04));
-    setTimeout(() => fadeOut(a, rand(280, 480)), rand(120, 220));
+    trackPlayTimer(setTimeout(() => fadeOut(a, rand(280, 480)), rand(120, 220)));
     if (Math.random() > 0.5) {
       const layer = playClone(pick(POST_HITS), rand(0.15, 0.28), rand(0.95, 1.15), 0, rand(10, 28));
-      setTimeout(() => fadeOut(layer, 260), 180);
+      trackPlayTimer(setTimeout(() => fadeOut(layer, 260), 180));
     }
     playWoodworkThump(rand(0.1, 0.18), rand(90, 140));
   }
@@ -442,11 +440,11 @@ export function playCheer(opts = {}) {
     activeCheer.push(yell);
     const clap = playClone(pick(APPLAUSE), rand(0.34, 0.52), rand(0.94, 1.08), rand(0, 90));
     activeCheer.push(clap);
-    cheerTimer = setTimeout(() => {
+    cheerTimer = trackPlayTimer(setTimeout(() => {
       if (gen !== cheerGen) return;
       for (const a of activeCheer) fadeOut(a, rand(420, 620) | 0);
       cheerTimer = null;
-    }, rand(1500, 2100) | 0);
+    }, rand(1500, 2100) | 0));
     return;
   }
 
@@ -825,11 +823,11 @@ function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {})
     };
   }
 
-  setTimeout(() => {
+  trackPlayTimer(setTimeout(() => {
     try {
       master.disconnect();
     } catch (_) {}
-  }, Math.ceil((dur + 0.2) * 1000));
+  }, Math.ceil((dur + 0.2) * 1000)));
 }
 
 function playDisappointedCrowd() {
@@ -901,22 +899,26 @@ function playDisappointedCrowd() {
     };
   }
 
-  setTimeout(() => {
+  trackPlayTimer(setTimeout(() => {
     try {
       master.disconnect();
     } catch (_) {}
-  }, Math.ceil((dur + 0.2) * 1000));
+  }, Math.ceil((dur + 0.2) * 1000)));
 }
 
 function fadeOut(audio, duration) {
   if (!audio) return;
-  const start = performance.now();
+  const STEPS = 8;
+  const stepMs = Math.max(16, duration / STEPS);
   const startVol = audio.volume;
-  let rafId = 0;
+  let step = 0;
   let done = false;
+  let timerId = 0;
+
   const finish = () => {
     if (done) return;
     done = true;
+    pendingPlayTimers.delete(timerId);
     activeFadeCancels.delete(cancel);
     try {
       audio.pause();
@@ -924,26 +926,33 @@ function fadeOut(audio, duration) {
     } catch (_) {}
     releaseClone(audio);
   };
-  function step(now) {
+
+  const tick = () => {
     if (done) return;
-    const t = Math.min(1, (now - start) / duration);
-    audio.volume = Math.max(0, startVol * (1 - t));
+    step++;
+    const t = Math.min(1, step / STEPS);
+    try { audio.volume = Math.max(0, startVol * (1 - t)); } catch (_) {}
     if (t < 1) {
-      rafId = requestAnimationFrame(step);
+      timerId = setTimeout(tick, stepMs);
+      pendingPlayTimers.add(timerId);
     } else {
       finish();
     }
-  }
+  };
+
   const cancel = () => {
     if (done) return;
     done = true;
-    cancelAnimationFrame(rafId);
+    clearTimeout(timerId);
+    pendingPlayTimers.delete(timerId);
     activeFadeCancels.delete(cancel);
     try {
       audio.pause();
       audio.currentTime = 0;
     } catch (_) {}
+    releaseClone(audio);
   };
   activeFadeCancels.add(cancel);
-  rafId = requestAnimationFrame(step);
+  timerId = setTimeout(tick, stepMs);
+  pendingPlayTimers.add(timerId);
 }
