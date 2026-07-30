@@ -1,4 +1,4 @@
-const CACHE_NAME = "pk-kessen-v1";
+const CACHE_NAME = "pk-kessen-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -60,33 +60,57 @@ self.addEventListener("activate", (e) => {
 });
 
 self.addEventListener("fetch", (e) => {
-  // GETリクエストのみ対応
   if (e.request.method !== "GET") return;
 
-  e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // キャッシュがあればキャッシュを返しつつ、バックグラウンドで最新を取得して更新（Stale-While-Revalidate）
-        fetch(e.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(e.request, networkResponse);
-              });
-            }
-          })
-          .catch(() => {});
-        return cachedResponse;
-      }
-      return fetch(e.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(e.request, responseClone);
-          });
+  const url = new URL(e.request.url);
+  const isCoreScriptOrDocument =
+    url.pathname.endsWith("/") ||
+    url.pathname.endsWith("/index.html") ||
+    url.pathname.endsWith("/game.js") ||
+    url.pathname.endsWith("/audio.js") ||
+    url.pathname.endsWith("/styles.css");
+
+  if (isCoreScriptOrDocument) {
+    // Network-First（常に最新コードを先に取得）
+    e.respondWith(
+      fetch(e.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(e.request, responseClone);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(e.request))
+    );
+  } else {
+    // Cache-First with Background Revalidate for assets & audio
+    e.respondWith(
+      caches.match(e.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          fetch(e.request)
+            .then((networkResponse) => {
+              if (networkResponse && networkResponse.status === 200) {
+                caches.open(CACHE_NAME).then((cache) => {
+                  cache.put(e.request, networkResponse);
+                });
+              }
+            })
+            .catch(() => {});
+          return cachedResponse;
         }
-        return networkResponse;
-      });
-    })
-  );
+        return fetch(e.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(e.request, responseClone);
+            });
+          }
+          return networkResponse;
+        });
+      })
+    );
+  }
 });

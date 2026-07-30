@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=8" />
+    <link rel="stylesheet" href="styles.css?v=9" />
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
@@ -48,32 +48,52 @@
           </div>
           <div class="side cpu">
             <div class="country-head">
-              <span class="vs-prefix">VS</span>
-              <span class="label" id="label-cpu">RIVAL</span>
+              <span class="country-head-spacer" aria-hidden="true">VS</span>
+              <span class="label" id="label-cpu">GERMANY</span>
             </div>
             <div class="score-row">
               <span class="score" id="score-cpu">0</span>
-              <span class="flag" id="flag-cpu" aria-hidden="true">🏳️</span>
+              <span class="flag" id="flag-cpu" aria-hidden="true">🇩🇪</span>
             </div>
             <div class="kicks" id="kicks-cpu"></div>
           </div>
         </div>
-        <p class="prompt" id="prompt"></p>
+        <div class="prompt" id="prompt">準備中…</div>
       </header>
 
-      <canvas id="pitch" aria-hidden="true"></canvas>
+      <canvas id="pitch"></canvas>
 
       <section class="screen title-screen" id="title-screen">
-        <div class="title-atmosphere" aria-hidden="true"></div>
-        <div class="title-content">
-          <p class="eyebrow">SUDDEN DEATH</p>
-          <h1 class="brand">PK決戦</h1>
-          <p class="tagline">もつれた試合を、一発で決める。</p>
-          <div class="cta-row">
-            <button type="button" class="btn primary" id="btn-start">キックオフ</button>
+        <div class="hero">
+          <h1 class="title">PK決戦</h1>
+          <p class="subtitle">世界の強豪と連続PK勝負！</p>
+          <div class="kit-preview-card" id="kit-preview-card" aria-label="チーム選択">
+            <button
+              type="button"
+              class="kit-nav btn-icon"
+              id="btn-kit-prev"
+              aria-label="前のユニフォーム"
+            >
+              ‹
+            </button>
+            <div class="kit-info">
+              <p class="kit-opponent-name" id="kit-opponent-name">対戦国: ドイツ</p>
+              <div class="kit-swatch-row">
+                <span class="kit-swatch-chip you" id="kit-swatch-you" title="自チーム"></span>
+                <span class="kit-swatch-vs">VS</span>
+                <span class="kit-swatch-chip cpu" id="kit-swatch-cpu" title="相手チーム"></span>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="kit-nav btn-icon"
+              id="btn-kit-next"
+              aria-label="次のユニフォーム"
+            >
+              ›
+            </button>
           </div>
-          <p class="hint">キックオフのあと、ピッチをクリックするとホイッスルが鳴り助走が始まります。</p>
-          <p class="hint boot-error" id="boot-error" hidden>ゲーム脚本の読み込みに失敗しました。</p>
+          <button type="button" class="btn primary large" id="btn-start">キックオフ</button>
         </div>
       </section>
 
@@ -106,7 +126,7 @@
         }
       });
     </script>
-    <script type="module" src="./game.js?v=43"></script>
+    <script type="module" src="./game.js?v=45"></script>
     <script>
       setTimeout(function () {
         if (window.__PK_LOADED) return;
