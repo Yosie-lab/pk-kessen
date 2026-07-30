@@ -741,7 +741,37 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
   }
 }
 
-/** 実サンプル下に敷く細かい拍手テクスチャ（毎回密度を変える） */
+let sharedClapBuffer = null;
+let sharedNoiseBuffer = null;
+
+function getSharedClapBuffer(ctx) {
+  if (!sharedClapBuffer && ctx) {
+    const len = Math.floor(ctx.sampleRate * 0.045);
+    sharedClapBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = sharedClapBuffer.getChannelData(0);
+    for (let s = 0; s < len; s++) {
+      data[s] = (Math.random() * 2 - 1) * Math.exp(-s / (len * 0.22));
+    }
+  }
+  return sharedClapBuffer;
+}
+
+function getSharedNoiseBuffer(ctx) {
+  if (!sharedNoiseBuffer && ctx) {
+    const len = Math.floor(ctx.sampleRate * 2.5);
+    sharedNoiseBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = sharedNoiseBuffer.getChannelData(0);
+    let pink = 0;
+    for (let s = 0; s < len; s++) {
+      const white = Math.random() * 2 - 1;
+      pink = pink * 0.86 + white * 0.14;
+      data[s] = (pink * 0.7 + white * 0.3) * 0.7;
+    }
+  }
+  return sharedNoiseBuffer;
+}
+
+/** 実サンプル下に敷く細かい拍手テクスチャ（共有バッファ・ノード自動解放） */
 function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {}) {
   const ctx = getCtx();
   if (!ctx) return;
@@ -753,18 +783,14 @@ function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {})
   master.gain.exponentialRampToValueAtTime(0.0001, now + dur);
   master.connect(ctx.destination);
 
-  const clapCount = (18 + density * 40) | 0;
+  const clapBuf = getSharedClapBuffer(ctx);
+  if (!clapBuf) return;
+
+  const clapCount = Math.min(24, (12 + density * 20) | 0);
   for (let i = 0; i < clapCount; i++) {
     const t0 = now + rand(0.02, dur * 0.85);
-    const len = Math.floor(ctx.sampleRate * rand(0.012, 0.045));
-    const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let s = 0; s < len; s++) {
-      const env = Math.exp(-s / (len * 0.22));
-      data[s] = (Math.random() * 2 - 1) * env;
-    }
     const src = ctx.createBufferSource();
-    src.buffer = buffer;
+    src.buffer = clapBuf;
     const bp = ctx.createBiquadFilter();
     bp.type = "bandpass";
     bp.frequency.value = rand(1200, 3800);
@@ -779,7 +805,23 @@ function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {})
     bp.connect(g);
     g.connect(master);
     src.start(t0);
+    const stopTime = t0 + 0.06;
+    src.stop(stopTime);
+    src.onended = () => {
+      try {
+        src.disconnect();
+        hp.disconnect();
+        bp.disconnect();
+        g.disconnect();
+      } catch (_) {}
+    };
   }
+
+  setTimeout(() => {
+    try {
+      master.disconnect();
+    } catch (_) {}
+  }, Math.ceil((dur + 0.2) * 1000));
 }
 
 function playDisappointedCrowd() {
@@ -796,27 +838,31 @@ function playDisappointedCrowd() {
   master.gain.exponentialRampToValueAtTime(0.0001, now + dur);
   master.connect(ctx.destination);
 
-  const noiseLen = Math.floor(ctx.sampleRate * dur);
-  const buffer = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < noiseLen; i++) {
-    data[i] = (Math.random() * 2 - 1) * (1 - i / noiseLen) * 0.55;
+  const noiseBuf = getSharedNoiseBuffer(ctx);
+  if (noiseBuf) {
+    const noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    const noiseFilter = ctx.createBiquadFilter();
+    noiseFilter.type = "bandpass";
+    noiseFilter.frequency.value = rand(420, 620);
+    noiseFilter.Q.value = rand(0.55, 0.9);
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.value = rand(0.28, 0.4);
+    noise.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(master);
+    noise.start(now);
+    noise.stop(now + dur);
+    noise.onended = () => {
+      try {
+        noise.disconnect();
+        noiseFilter.disconnect();
+        noiseGain.disconnect();
+      } catch (_) {}
+    };
   }
-  const noise = ctx.createBufferSource();
-  noise.buffer = buffer;
-  const noiseFilter = ctx.createBiquadFilter();
-  noiseFilter.type = "bandpass";
-  noiseFilter.frequency.value = rand(420, 620);
-  noiseFilter.Q.value = rand(0.55, 0.9);
-  const noiseGain = ctx.createGain();
-  noiseGain.gain.value = rand(0.28, 0.4);
-  noise.connect(noiseFilter);
-  noiseFilter.connect(noiseGain);
-  noiseGain.connect(master);
-  noise.start(now);
-  noise.stop(now + dur);
 
-  const count = 4 + ((Math.random() * 3) | 0);
+  const count = 3;
   for (let i = 0; i < count; i++) {
     const osc = ctx.createOscillator();
     const g = ctx.createGain();
@@ -835,9 +881,23 @@ function playDisappointedCrowd() {
     osc.connect(filt);
     filt.connect(g);
     g.connect(master);
-    osc.start(now + rand(0, 0.08));
+    const tStart = now + rand(0, 0.08);
+    osc.start(tStart);
     osc.stop(now + dur);
+    osc.onended = () => {
+      try {
+        osc.disconnect();
+        filt.disconnect();
+        g.disconnect();
+      } catch (_) {}
+    };
   }
+
+  setTimeout(() => {
+    try {
+      master.disconnect();
+    } catch (_) {}
+  }, Math.ceil((dur + 0.2) * 1000));
 }
 
 function fadeOut(audio, duration) {

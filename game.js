@@ -2378,15 +2378,7 @@ function initStrikeKicker(side, runFrom, approach) {
 const ballTrailPool = [];
 
 function pushBallTrail(trail, x, y, a, spinY, spinX, scale) {
-  const cap = maxBallTrail() + 1;
-  while (ballTrailPool.length < cap) ballTrailPool.push({});
-  const slot = ballTrailPool[trail.length % cap];
-  slot.x = x;
-  slot.y = y;
-  slot.a = a;
-  slot.spinY = spinY;
-  slot.spinX = spinX;
-  slot.scale = scale;
+  const slot = { x, y, a, spinY, spinX, scale };
   trail.push(slot);
   if (trail.length > maxBallTrail()) trail.shift();
 }
@@ -2789,6 +2781,7 @@ function autoLockMissedAim(elapsed) {
   let result = resolveShot(aim, power, dive);
   if (!inside) result = forceOffTarget(result);
   playerAimHistory.push({ ...aim });
+  if (playerAimHistory.length > 5) playerAimHistory.shift();
   applyKeeperDive(result.dive);
   pending.aimLockedAt = elapsed;
   state.shot = result;
