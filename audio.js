@@ -680,7 +680,6 @@ export function playMiss() {
   activeCheer = [murmur];
   const hold = rand(700, 1100) | 0;
   trackPlayTimer(setTimeout(() => fadeOut(murmur, rand(400, 650) | 0), hold));
-}
   playDisappointedCrowd();
 }
 
