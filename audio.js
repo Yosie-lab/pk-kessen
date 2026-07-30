@@ -42,17 +42,54 @@ const APPLAUSE = [
 ];
 
 const cache = {};
-const audioBuffers = {};
-const bufferLoading = {};
 let unlocked = false;
 let cheerTimer = null;
 let activeCheer = [];
 let cheerGen = 0;
 let playGen = 0;
 let audioCtx = null;
-/** cloneNode した HTMLAudioElement の上限（溜まると iOS Safari が重くなる） */
-const MAX_PLAYING_CLONES = 18;
-const playingClones = [];
+
+/** 
+ * 固定 HTMLAudioElement プール（Zero-Allocation Fixed Audio Pool）
+ * 毎回の cloneNode や new Audio を完全追放し、メディアデコーダーのリークを100%防止。
+ * 本来の HTMLAudioElement の圧倒的な高音質・重低音・臨場感をそのまま維持。
+ */
+const POOL_SIZE = 36;
+const audioPool = [];
+const activePoolSet = new Set();
+
+for (let i = 0; i < POOL_SIZE; i++) {
+  const el = new Audio();
+  el.preload = "auto";
+  audioPool.push(el);
+}
+
+function acquirePoolAudio() {
+  for (let i = 0; i < POOL_SIZE; i++) {
+    const el = audioPool[i];
+    if (!activePoolSet.has(el)) {
+      activePoolSet.add(el);
+      return el;
+    }
+  }
+  // 万が一あふれたら一番古いものを再利用
+  const oldest = activePoolSet.values().next().value;
+  if (oldest) {
+    try { oldest.pause(); } catch (_) {}
+    return oldest;
+  }
+  return null;
+}
+
+function releasePoolAudio(el) {
+  if (!el) return;
+  activePoolSet.delete(el);
+  try {
+    el.pause();
+    el.currentTime = 0;
+  } catch (_) {}
+}
+
 const activeFadeCancels = new Set();
 const pendingPlayTimers = new Set();
 const activeMasterNodes = new Set();
@@ -113,22 +150,6 @@ function getAudio(key) {
   return cache[key];
 }
 
-function loadAudioBuffer(key) {
-  const ctx = getCtx();
-  if (!ctx || audioBuffers[key] || bufferLoading[key]) return;
-  bufferLoading[key] = true;
-  fetch(FILES[key])
-    .then((res) => res.arrayBuffer())
-    .then((ab) => ctx.decodeAudioData(ab))
-    .then((buf) => {
-      audioBuffers[key] = buf;
-    })
-    .catch(() => {})
-    .finally(() => {
-      bufferLoading[key] = false;
-    });
-}
-
 /** 起動時にサンプルを先読み（ゴール時の無音対策） */
 function preloadSounds() {
   Object.keys(FILES).forEach((key) => {
@@ -149,132 +170,37 @@ function clearPlayTimers() {
   pendingPlayTimers.clear();
 }
 
-function releaseClone(a) {
-  if (!a) return;
-  if (a.isWebAudio) {
-    a.pause();
-    return;
-  }
-  const idx = playingClones.indexOf(a);
-  if (idx >= 0) playingClones.splice(idx, 1);
-  try {
-    a.pause();
-    a.removeAttribute("src");
-    a.load();
-  } catch (_) {}
-}
-
-function trimPlayingClones() {
-  while (playingClones.length > MAX_PLAYING_CLONES) {
-    const old = playingClones.shift();
-    releaseClone(old);
-  }
-}
-
-function trackClone(a) {
-  playingClones.push(a);
-  trimPlayingClones();
-  a.addEventListener(
-    "ended",
-    () => releaseClone(a),
-    { once: true }
-  );
-  a.addEventListener(
-    "pause",
-    () => {
-      if (a.currentTime <= 0.01 || a.ended) releaseClone(a);
-    },
-    { once: true }
-  );
-}
-
 function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
-  const gen = playGen;
-  const ctx = getCtx();
-  const buf = audioBuffers[key];
+  const fileUrl = FILES[key];
+  if (!fileUrl) return null;
 
-  if (ctx && buf) {
-    const src = trackSource(ctx.createBufferSource());
-    const gain = trackMaster(ctx.createGain());
-    src.buffer = buf;
-    try {
-      src.playbackRate.value = rate;
-    } catch (_) {}
-    const v = Math.max(0, Math.min(1, volume));
-    gain.gain.setValueAtTime(v, ctx.currentTime);
+  const a = acquirePoolAudio();
+  if (!a) return null;
 
-    src.connect(gain);
-    gain.connect(ctx.destination);
-
-    const startTime = ctx.currentTime + Math.max(0, delayMs) / 1000;
-    const dur = buf.duration;
-    let offset = startAt;
-    if (Number.isFinite(dur) && dur > 0.4) {
-      offset = Math.min(startAt, Math.max(0, dur * 0.55));
-    }
-
-    try {
-      src.start(startTime, offset);
-    } catch (_) {
-      releaseSource(src);
-      releaseMaster(gain);
-      return null;
-    }
-
-    src.onended = () => {
-      releaseSource(src);
-      releaseMaster(gain);
-    };
-
-    const handle = {
-      isWebAudio: true,
-      gain,
-      src,
-      volume: v,
-      pause() {
-        try {
-          src.stop();
-        } catch (_) {}
-        releaseSource(src);
-        releaseMaster(gain);
-      },
-    };
-    Object.defineProperty(handle, "volume", {
-      get() {
-        return this._vol ?? v;
-      },
-      set(val) {
-        this._vol = val;
-        try {
-          gain.gain.setValueAtTime(val, ctx.currentTime);
-        } catch (_) {}
-      },
-    });
-
-    return handle;
-  }
-
-  // フォールバック（バッファ未ロード時）
-  if (ctx && !audioBuffers[key]) {
-    loadAudioBuffer(key);
-  }
-
-  const base = getAudio(key);
-  if (!base) return null;
-  const a = base.cloneNode(true);
-  if (!a.src && base.src) a.src = base.src;
+  a.src = fileUrl;
   a.volume = Math.max(0, Math.min(1, volume));
   a.playbackRate = rate;
-  a.preload = "auto";
-  trackClone(a);
+  
+  const gen = playGen;
+
+  const onEnded = () => {
+    a.removeEventListener("ended", onEnded);
+    releasePoolAudio(a);
+  };
+  a.addEventListener("ended", onEnded, { once: true });
 
   const tryPlay = (attempt = 0) => {
-    if (gen !== playGen) return;
+    if (gen !== playGen) {
+      releasePoolAudio(a);
+      return;
+    }
     try {
       const dur = a.duration;
       if (Number.isFinite(dur) && dur > 0.4) {
         const maxStart = Math.max(0, dur * 0.55);
         a.currentTime = Math.min(startAt, maxStart);
+      } else {
+        a.currentTime = startAt;
       }
     } catch (_) {}
     const p = a.play();
@@ -283,7 +209,7 @@ function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
         if (gen === playGen && attempt < 2) {
           trackPlayTimer(setTimeout(() => tryPlay(attempt + 1), 60 + attempt * 80));
         } else {
-          releaseClone(a);
+          releasePoolAudio(a);
         }
       });
     }
@@ -291,34 +217,18 @@ function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
 
   const start = () => {
     if (gen !== playGen) {
-      releaseClone(a);
+      releasePoolAudio(a);
       return;
     }
     tryPlay(0);
   };
-  if (a.readyState >= 2) {
-    if (delayMs > 8) {
-      trackPlayTimer(setTimeout(start, delayMs));
-    } else {
-      start();
-    }
+
+  if (delayMs > 8) {
+    trackPlayTimer(setTimeout(start, delayMs));
   } else {
-    a.addEventListener(
-      "canplay",
-      () => {
-        if (gen !== playGen) {
-          releaseClone(a);
-          return;
-        }
-        if (delayMs > 8) trackPlayTimer(setTimeout(start, delayMs));
-        else start();
-      },
-      { once: true }
-    );
-    try {
-      a.load();
-    } catch (_) {}
+    start();
   }
+
   return a;
 }
 
@@ -356,11 +266,8 @@ export function unlockAudio() {
 export function playWhistle() {
   unlockAudio();
   try {
-    // Mixkit 警察ホイッスル実録音を短く切ったもの（自然な豆ホイッスルの揺れあり）
     playClone("whistleBlast", 1, 1, 0, 0);
-  } catch (_) {
-    /* 音声失敗でもゲームは進める */
-  }
+  } catch (_) {}
 }
 
 /** ボールを蹴った瞬間（重い／普通／軽いをその都度変える） */
@@ -376,38 +283,37 @@ export function playKick() {
 /** しっかり蹴った音 */
 function playKickHard() {
   const rate = rand(0.88, 1.02);
-  playClone("kick", rand(0.85, 1), rate, 0, 0);
-  playClone("kickQuick", rand(0.35, 0.55), rand(0.95, 1.08), 0, rand(12, 28));
-  playKickBodyThump(rand(0.22, 0.35), rand(90, 130));
+  playClone("kick", rand(0.88, 1.0), rate, 0, 0);
+  playClone("kickQuick", rand(0.4, 0.6), rand(0.95, 1.08), 0, rand(12, 28));
+  playKickBodyThump(rand(0.25, 0.38), rand(90, 130));
 }
 
 /** 普通のキック */
 function playKickMedium() {
   const which = Math.random() > 0.45 ? "kick" : "kickQuick";
-  playClone(which, rand(0.7, 0.92), rand(0.96, 1.12), 0, 0);
+  playClone(which, rand(0.75, 0.95), rand(0.96, 1.12), 0, 0);
   if (Math.random() > 0.4) {
-    playClone(which === "kick" ? "kickQuick" : "kick", rand(0.25, 0.42), rand(1.05, 1.2), 0, rand(10, 22));
+    playClone(which === "kick" ? "kickQuick" : "kick", rand(0.3, 0.48), rand(1.05, 1.2), 0, rand(10, 22));
   }
-  playKickBodyThump(rand(0.12, 0.22), rand(110, 160));
+  playKickBodyThump(rand(0.15, 0.25), rand(110, 160));
 }
 
 /** 軽めのサンプルキック */
 function playKickSoft() {
-  playClone("kickQuick", rand(0.45, 0.7), rand(1.12, 1.35), 0, 0);
+  playClone("kickQuick", rand(0.5, 0.75), rand(1.12, 1.35), 0, 0);
   if (Math.random() > 0.5) {
-    playClone("kick", rand(0.2, 0.38), rand(1.15, 1.4), 0, rand(8, 18));
+    playClone("kick", rand(0.25, 0.42), rand(1.15, 1.4), 0, rand(8, 18));
   }
-  playKickLeatherTap(rand(0.18, 0.32));
-  playKickBodyThump(rand(0.06, 0.12), rand(140, 200));
+  playKickLeatherTap(rand(0.2, 0.35));
+  playKickBodyThump(rand(0.08, 0.15), rand(140, 200));
 }
 
 /** そっと触れるような軽いキック（合成） */
 function playKickLight() {
-  playKickLeatherTap(rand(0.28, 0.48));
-  playKickBodyThump(rand(0.08, 0.16), rand(160, 240));
-  // ごく小さくサンプルを重ねて実在感
+  playKickLeatherTap(rand(0.3, 0.5));
+  playKickBodyThump(rand(0.1, 0.18), rand(160, 240));
   if (Math.random() > 0.35) {
-    playClone("kickQuick", rand(0.12, 0.28), rand(1.25, 1.55), 0, rand(4, 14));
+    playClone("kickQuick", rand(0.15, 0.32), rand(1.25, 1.55), 0, rand(4, 14));
   }
 }
 
@@ -489,21 +395,21 @@ export function playPostHit(part = "left") {
   const key = pick(isBar ? BAR_HITS : POST_HITS);
 
   if (isBar) {
-    const a = playClone(key, rand(0.28, 0.42), rand(0.92, 1.08), rand(0, 0.05));
+    const a = playClone(key, rand(0.35, 0.5), rand(0.92, 1.08), rand(0, 0.05));
     trackPlayTimer(setTimeout(() => fadeOut(a, rand(400, 650)), rand(160, 280)));
     if (Math.random() > 0.45) {
-      const tap = playClone("metalTap", rand(0.12, 0.22), rand(1.05, 1.25), 0, rand(8, 20));
+      const tap = playClone("metalTap", rand(0.18, 0.3), rand(1.05, 1.25), 0, rand(8, 20));
       trackPlayTimer(setTimeout(() => fadeOut(tap, 280), 200));
     }
-    playWoodworkThump(rand(0.06, 0.1), rand(120, 170));
+    playWoodworkThump(rand(0.08, 0.14), rand(120, 170));
   } else {
-    const a = playClone(key, rand(0.45, 0.7), rand(0.88, 1.05), rand(0, 0.04));
+    const a = playClone(key, rand(0.55, 0.8), rand(0.88, 1.05), rand(0, 0.04));
     trackPlayTimer(setTimeout(() => fadeOut(a, rand(280, 480)), rand(120, 220)));
     if (Math.random() > 0.5) {
-      const layer = playClone(pick(POST_HITS), rand(0.15, 0.28), rand(0.95, 1.15), 0, rand(10, 28));
+      const layer = playClone(pick(POST_HITS), rand(0.2, 0.35), rand(0.95, 1.15), 0, rand(10, 28));
       trackPlayTimer(setTimeout(() => fadeOut(layer, 260), 180));
     }
-    playWoodworkThump(rand(0.1, 0.18), rand(90, 140));
+    playWoodworkThump(rand(0.12, 0.22), rand(90, 140));
   }
 }
 
@@ -542,19 +448,17 @@ function stopCheer() {
   const cheerClones = activeCheer.slice();
   activeCheer = [];
   for (const a of cheerClones) {
-    if (a) fadeOut(a, 240);
+    if (a) fadeOut(a, 250);
   }
 }
 
-/** 試合開始時：再生中サウンドと clone を一括停止（連プレイ時のメモリ・rAF 溜まり対策） */
+/** 試合開始時：再生中サウンドとプールを一括リセット */
 export function resetMatchAudio() {
   playGen++;
   clearPlayTimers();
   stopCheer();
-  const clones = playingClones.slice();
-  playingClones.length = 0;
-  for (const a of clones) {
-    releaseClone(a);
+  for (const el of Array.from(activePoolSet)) {
+    releasePoolAudio(el);
   }
   for (const src of Array.from(activeAudioSources)) {
     releaseSource(src);
@@ -564,19 +468,19 @@ export function resetMatchAudio() {
   }
 }
 
-/** ゴール直後に必ず鳴る短いアクセント（歓声レイヤーの遅延・失敗対策） */
+/** ゴール直後に必ず鳴る強力な地鳴りアクセント */
 function playGoalSting() {
-  const yell = playClone("cheerYell", rand(0.88, 1.0), rand(1.0, 1.12), 0, 0);
+  const yell = playClone("cheerYell", rand(0.9, 1.0), rand(0.98, 1.08), 0, 0);
   if (yell) activeCheer.push(yell);
-  const short = playClone("cheerShort", rand(0.75, 0.9), rand(0.98, 1.08), 0, rand(0, 30));
+  const short = playClone("cheerShort", rand(0.8, 0.95), rand(0.96, 1.06), 0, rand(0, 25));
   if (short) activeCheer.push(short);
-  const whistle = playClone("cheerWhistle", rand(0.4, 0.65), rand(1.02, 1.15), 0, rand(10, 45));
+  const whistle = playClone("cheerWhistle", rand(0.5, 0.72), rand(1.0, 1.12), 0, rand(10, 40));
   if (whistle) activeCheer.push(whistle);
-  playKickBodyThump(rand(0.22, 0.32), rand(90, 125));
+  playKickBodyThump(rand(0.28, 0.4), rand(85, 120));
 }
 
 /**
- * スタジアム歓声（短め・毎回違うレイヤー／速度／入り）
+ * スタジアム大歓声（重厚・大迫力・毎回違う多層レイヤー）
  */
 export function playCheer(opts = {}) {
   const lite = opts?.lite;
@@ -587,40 +491,40 @@ export function playCheer(opts = {}) {
   playGoalSting();
 
   if (lite) {
-    const yell = playClone(pick(CHEER_YELLS), rand(0.7, 0.88), rand(0.96, 1.12), rand(0, 1.2));
+    const yell = playClone(pick(CHEER_YELLS), rand(0.75, 0.92), rand(0.96, 1.1), rand(0, 1.2));
     if (yell) activeCheer.push(yell);
-    const clap = playClone(pick(APPLAUSE), rand(0.45, 0.65), rand(0.94, 1.08), rand(0, 90));
+    const clap = playClone(pick(APPLAUSE), rand(0.5, 0.7), rand(0.94, 1.08), rand(0, 80));
     if (clap) activeCheer.push(clap);
     cheerTimer = trackPlayTimer(setTimeout(() => {
       if (gen !== cheerGen) return;
-      for (const a of activeCheer) fadeOut(a, rand(420, 620) | 0);
+      for (const a of activeCheer) fadeOut(a, rand(450, 650) | 0);
       cheerTimer = null;
     }, rand(1600, 2300) | 0));
     return;
   }
 
-  const style = Math.random(); // 反応の型を変える
+  const style = Math.random();
   const bedKey = pick(CHEER_BEDS);
-  const yellKeys = pickN(CHEER_YELLS, style > 0.4 ? 3 : 2);
-  const useExtra = Math.random() > 0.25;
+  const yellKeys = pickN(CHEER_YELLS, style > 0.35 ? 3 : 2);
+  const useExtra = Math.random() > 0.2;
   const extraKey = useExtra ? pick(CHEER_EXTRAS) : null;
 
   const bedRate = rand(0.94, 1.1);
-  const yellRate = rand(0.96, 1.16);
-  const bedVol = rand(0.55, 0.72);
-  const yellVol = rand(0.75, 0.95);
-  const holdMs = rand(1800, 2800) | 0;
-  const fadeMs = rand(500, 850) | 0;
+  const yellRate = rand(0.96, 1.14);
+  const bedVol = rand(0.65, 0.85);
+  const yellVol = rand(0.82, 1.0);
+  const holdMs = rand(2000, 3000) | 0;
+  const fadeMs = rand(600, 950) | 0;
 
   const bed = playClone(bedKey, bedVol, bedRate, rand(0, 2.8));
   if (bed) activeCheer.push(bed);
 
-  // メインの叫び声（わずかにずらして大歓声の厚み）
+  // メインの叫び声（重厚なスタジアム大歓声）
   yellKeys.forEach((key, i) => {
-    const delay = i === 0 ? 0 : rand(30, 140);
+    const delay = i === 0 ? 0 : rand(25, 120);
     const a = playClone(
       key,
-      yellVol * (i === 0 ? 1 : rand(0.6, 0.85)),
+      yellVol * (i === 0 ? 1 : rand(0.7, 0.9)),
       yellRate * (i === 0 ? 1 : rand(0.96, 1.08)),
       rand(0, 1.8),
       delay
@@ -628,48 +532,46 @@ export function playCheer(opts = {}) {
     if (a) activeCheer.push(a);
   });
 
-  // ホイッスル／短歓声などアクセント
   if (extraKey && extraKey !== bedKey && !yellKeys.includes(extraKey)) {
-    const delay = rand(60, 240) | 0;
-    const a = playClone(extraKey, rand(0.35, 0.6), rand(0.98, 1.15), rand(0, 1.2), delay);
+    const delay = rand(50, 200) | 0;
+    const a = playClone(extraKey, rand(0.4, 0.68), rand(0.98, 1.15), rand(0, 1.2), delay);
     if (a) activeCheer.push(a);
   }
 
-  // 拍手（ほぼ毎回・レイヤー数と入りを変える）
-  const clapKeys = pickN(APPLAUSE, style > 0.4 ? 3 : 2);
+  // 大拍手（スタジアム全体を包む音圧）
+  const clapKeys = pickN(APPLAUSE, style > 0.35 ? 3 : 2);
   clapKeys.forEach((key, i) => {
     const a = playClone(
       key,
-      rand(0.45, 0.75) * (i === 0 ? 1 : 0.8),
+      rand(0.55, 0.85) * (i === 0 ? 1 : 0.85),
       rand(0.94, 1.12),
       rand(0, 1.6),
-      rand(20, 160) + i * rand(30, 80)
+      rand(15, 140) + i * rand(25, 70)
     );
     if (a) activeCheer.push(a);
   });
-  // 遅れて拍手を厚く追加
-  if (Math.random() > 0.4) {
+
+  if (Math.random() > 0.35) {
     const late = playClone(
       pick(APPLAUSE),
-      rand(0.35, 0.55),
+      rand(0.4, 0.65),
       rand(0.96, 1.1),
       rand(0.2, 2.0),
-      rand(180, 420)
+      rand(150, 380)
     );
     if (late) activeCheer.push(late);
   }
 
-  // 合成のざわめき＋拍手粒でスタジアム感を毎回変える（描画フレームをブロックしないよう次 tick へ）
   const swellOpts = {
-    intensity: rand(0.45, 0.8),
-    bright: rand(0.35, 0.9),
-    dur: rand(1.5, 2.6),
-    rise: rand(0.05, 0.18),
+    intensity: rand(0.6, 0.9),
+    bright: rand(0.45, 0.95),
+    dur: rand(1.8, 2.8),
+    rise: rand(0.04, 0.15),
   };
   const textureOpts = {
-    intensity: rand(0.5, 0.9),
-    dur: rand(1.6, 2.8),
-    density: rand(0.55, 1),
+    intensity: rand(0.65, 0.95),
+    dur: rand(1.8, 3.0),
+    density: rand(0.7, 1.1),
   };
   trackPlayTimer(
     setTimeout(() => {
@@ -682,13 +584,13 @@ export function playCheer(opts = {}) {
   cheerTimer = trackPlayTimer(
     setTimeout(() => {
       if (gen !== cheerGen) return;
-      for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 120) | 0));
+      for (const a of activeCheer) fadeOut(a, fadeMs + ((Math.random() * 150) | 0));
       cheerTimer = null;
     }, holdMs)
   );
 }
 
-/** PK戦勝利：大歓声＋拍手の声援 */
+/** PK戦勝利：圧倒的大歓声＋大拍手の祝福 */
 export function playVictoryCelebration() {
   unlockAudio();
   stopCheer();
@@ -696,70 +598,69 @@ export function playVictoryCelebration() {
 
   playGoalSting();
 
-  const bedKeys = pickN(["cheerVictory", "cheer", "cheerChaos", "crowdStadium"], 2);
-  const yellKeys = pickN(CHEER_YELLS, 3);
-  const clapKeys = pickN(APPLAUSE, 4);
+  const bedKeys = pickN(["cheerVictory", "cheer", "cheerChaos", "crowdStadium"], 3);
+  const yellKeys = pickN(CHEER_YELLS, 4);
+  const clapKeys = pickN(APPLAUSE, 5);
 
-  const holdMs = rand(3200, 4800) | 0;
-  const fadeMs = rand(700, 1100) | 0;
+  const holdMs = rand(3600, 5200) | 0;
+  const fadeMs = rand(800, 1200) | 0;
 
   bedKeys.forEach((key, i) => {
-    const a = playClone(key, rand(0.42, 0.62) * (i === 0 ? 1 : 0.75), rand(0.94, 1.08), rand(0, 2.2), i * rand(40, 120));
-    activeCheer.push(a);
+    const a = playClone(key, rand(0.6, 0.82) * (i === 0 ? 1 : 0.8), rand(0.94, 1.08), rand(0, 2.2), i * rand(30, 100));
+    if (a) activeCheer.push(a);
   });
 
   yellKeys.forEach((key, i) => {
     const a = playClone(
       key,
-      rand(0.58, 0.88) * (i === 0 ? 1 : rand(0.55, 0.8)),
+      rand(0.75, 0.98) * (i === 0 ? 1 : rand(0.7, 0.9)),
       rand(0.96, 1.14),
       rand(0, 2.0),
-      rand(0, 220) + i * rand(80, 160)
+      rand(0, 180) + i * rand(60, 130)
     );
-    activeCheer.push(a);
+    if (a) activeCheer.push(a);
   });
 
   const extraKeys = pickN(CHEER_EXTRAS, 2);
   extraKeys.forEach((key, i) => {
-    const a = playClone(key, rand(0.28, 0.52), rand(0.98, 1.12), rand(0, 1.5), rand(120, 420) + i * rand(100, 200));
-    activeCheer.push(a);
+    const a = playClone(key, rand(0.4, 0.68), rand(0.98, 1.12), rand(0, 1.5), rand(90, 350) + i * rand(80, 160));
+    if (a) activeCheer.push(a);
   });
 
   clapKeys.forEach((key, i) => {
     const a = playClone(
       key,
-      rand(0.48, 0.82) * (i === 0 ? 1 : rand(0.65, 0.9)),
+      rand(0.6, 0.92) * (i === 0 ? 1 : rand(0.75, 0.95)),
       rand(0.94, 1.1),
       rand(0, 2.0),
-      rand(0, 280) + i * rand(60, 140)
+      rand(0, 220) + i * rand(50, 120)
     );
-    activeCheer.push(a);
+    if (a) activeCheer.push(a);
   });
 
-  // 遅れて拍手を重ねてスタジアム感を強める
   for (let wave = 0; wave < 2; wave++) {
     pickN(APPLAUSE, 2).forEach((key, i) => {
       const a = playClone(
         key,
-        rand(0.34, 0.58),
+        rand(0.45, 0.7),
         rand(0.96, 1.08),
         rand(0.1, 2.4),
-        rand(600, 1200) + wave * rand(500, 900) + i * rand(80, 180)
+        rand(500, 1000) + wave * rand(400, 800) + i * rand(60, 140)
       );
-      activeCheer.push(a);
+      if (a) activeCheer.push(a);
     });
   }
 
   playCrowdSwell({
-    intensity: rand(0.65, 0.95),
-    bright: rand(0.55, 0.95),
-    dur: rand(2.8, 4.2),
+    intensity: rand(0.75, 1.0),
+    bright: rand(0.6, 1.0),
+    dur: rand(3.0, 4.5),
     rise: rand(0.04, 0.12),
   });
   playApplauseTexture({
-    intensity: rand(0.75, 1),
-    dur: rand(3.0, 4.5),
-    density: rand(0.85, 1.2),
+    intensity: rand(0.85, 1.0),
+    dur: rand(3.2, 4.8),
+    density: rand(0.9, 1.3),
   });
 
   cheerTimer = trackPlayTimer(
@@ -771,45 +672,45 @@ export function playVictoryCelebration() {
   );
 }
 
-/** 相手キーパーに阻まれたとき：小さめのスタジアム反応（必ず聞こえる音量） */
+/** 相手キーパーに阻まれたとき：悔しさと緊迫の反応（重厚な低音・大喝采） */
 export function playBlockedByKeeper(opts = {}) {
   const lite = opts?.lite;
   unlockAudio();
   stopCheer();
   const gen = cheerGen;
 
-  const sting = playClone("cheerShort", rand(0.55, 0.72), rand(0.94, 1.06), 0, 0);
-  activeCheer.push(sting);
-  const crowd = playClone("crowdStadium", rand(0.42, 0.58), rand(0.74, 0.9), rand(0, 1.4), rand(0, 40));
-  activeCheer.push(crowd);
+  const sting = playClone("cheerShort", rand(0.7, 0.88), rand(0.94, 1.06), 0, 0);
+  if (sting) activeCheer.push(sting);
+  const crowd = playClone("crowdStadium", rand(0.55, 0.72), rand(0.74, 0.9), rand(0, 1.4), rand(0, 30));
+  if (crowd) activeCheer.push(crowd);
 
-  if (Math.random() > 0.3) {
+  if (Math.random() > 0.25) {
     const clap = playClone(
       pick(APPLAUSE),
-      rand(0.3, 0.46),
+      rand(0.42, 0.62),
       rand(0.92, 1.06),
       rand(0, 1.2),
-      rand(30, 110)
+      rand(20, 90)
     );
-    activeCheer.push(clap);
+    if (clap) activeCheer.push(clap);
   }
 
   if (!lite) {
     playCrowdSwell({
-      intensity: rand(0.3, 0.5),
+      intensity: rand(0.42, 0.65),
       bright: rand(0.42, 0.72),
-      dur: rand(1.0, 1.65),
+      dur: rand(1.2, 1.85),
       rise: rand(0.04, 0.1),
     });
     playApplauseTexture({
-      intensity: rand(0.32, 0.52),
-      dur: rand(1.1, 1.7),
-      density: rand(0.45, 0.75),
+      intensity: rand(0.45, 0.68),
+      dur: rand(1.3, 1.9),
+      density: rand(0.55, 0.85),
     });
   }
 
-  const holdMs = rand(950, 1450) | 0;
-  const fadeMs = rand(360, 560) | 0;
+  const holdMs = rand(1100, 1650) | 0;
+  const fadeMs = rand(420, 680) | 0;
   cheerTimer = trackPlayTimer(
     setTimeout(() => {
       if (gen !== cheerGen) return;
@@ -819,16 +720,16 @@ export function playBlockedByKeeper(opts = {}) {
   );
 }
 
-/** 枠外・セーブ失敗など、外れたときの残念な声（毎回変化） */
+/** 枠外・シュートミス・失点時：ため息と落胆の大どよめき（大迫力） */
 export function playMiss() {
   unlockAudio();
   stopCheer();
 
   const bed = pick(["crowdStadium", "cheerYell", "cheerChant"]);
-  const murmur = playClone(bed, rand(0.32, 0.48), rand(0.62, 0.82), rand(0, 1.5));
-  activeCheer = [murmur];
-  const hold = rand(700, 1100) | 0;
-  trackPlayTimer(setTimeout(() => fadeOut(murmur, rand(400, 650) | 0), hold));
+  const murmur = playClone(bed, rand(0.48, 0.68), rand(0.62, 0.82), rand(0, 1.5));
+  if (murmur) activeCheer = [murmur];
+  const hold = rand(850, 1300) | 0;
+  trackPlayTimer(setTimeout(() => fadeOut(murmur, rand(450, 750) | 0), hold));
   playDisappointedCrowd();
 }
 
@@ -845,7 +746,6 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
   master.gain.exponentialRampToValueAtTime(0.0001, now + dur);
   master.connect(ctx.destination);
 
-  // 帯域の違うノイズ群衆を2〜3枚
   const layers = 2 + ((Math.random() * 2) | 0);
   for (let i = 0; i < layers; i++) {
     const len = Math.floor(ctx.sampleRate * dur);
@@ -877,7 +777,6 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
     };
   }
 
-  // たまに短い叫びの粒
   if (Math.random() > 0.4) {
     const bursts = 2 + ((Math.random() * 4) | 0);
     for (let i = 0; i < bursts; i++) {
@@ -905,7 +804,6 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
     }
   }
 
-  // master は全ノード停止後に切断
   trackPlayTimer(setTimeout(() => {
     releaseMaster(master);
   }, Math.ceil((dur + 0.3) * 1000)));
@@ -997,12 +895,12 @@ function playDisappointedCrowd() {
   if (!ctx) return;
 
   const now = ctx.currentTime;
-  const dur = rand(1.15, 1.55);
-  const peak = rand(0.4, 0.65);
+  const dur = rand(1.25, 1.75);
+  const peak = rand(0.55, 0.82);
   const master = trackMaster(ctx.createGain());
   master.gain.setValueAtTime(0.0001, now);
   master.gain.exponentialRampToValueAtTime(peak, now + rand(0.06, 0.12));
-  master.gain.exponentialRampToValueAtTime(peak * 0.55, now + dur * 0.4);
+  master.gain.exponentialRampToValueAtTime(peak * 0.6, now + dur * 0.4);
   master.gain.exponentialRampToValueAtTime(0.0001, now + dur);
   master.connect(ctx.destination);
 
@@ -1012,10 +910,10 @@ function playDisappointedCrowd() {
     noise.buffer = noiseBuf;
     const noiseFilter = ctx.createBiquadFilter();
     noiseFilter.type = "bandpass";
-    noiseFilter.frequency.value = rand(420, 620);
+    noiseFilter.frequency.value = rand(400, 600);
     noiseFilter.Q.value = rand(0.55, 0.9);
     const noiseGain = ctx.createGain();
-    noiseGain.gain.value = rand(0.28, 0.4);
+    noiseGain.gain.value = rand(0.38, 0.55);
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
     noiseGain.connect(master);
@@ -1030,19 +928,19 @@ function playDisappointedCrowd() {
     };
   }
 
-  const count = 3;
+  const count = 4;
   for (let i = 0; i < count; i++) {
     const osc = trackSource(ctx.createOscillator());
     const g = ctx.createGain();
     const filt = ctx.createBiquadFilter();
     osc.type = "triangle";
-    const base = rand(260, 980);
-    const detune = (Math.random() - 0.5) * 50;
+    const base = rand(240, 920);
+    const detune = (Math.random() - 0.5) * 60;
     osc.frequency.setValueAtTime(base + detune, now);
-    osc.frequency.exponentialRampToValueAtTime(Math.max(80, (base + detune) * rand(0.55, 0.72)), now + dur * 0.85);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(70, (base + detune) * rand(0.5, 0.68)), now + dur * 0.85);
     filt.type = "lowpass";
-    filt.frequency.value = rand(1100, 1600);
-    const vol = rand(0.05, 0.13);
+    filt.frequency.value = rand(1000, 1500);
+    const vol = rand(0.08, 0.18);
     g.gain.setValueAtTime(0.0001, now);
     g.gain.exponentialRampToValueAtTime(vol, now + rand(0.08, 0.18));
     g.gain.exponentialRampToValueAtTime(0.0001, now + dur * 0.9);
@@ -1068,7 +966,7 @@ function playDisappointedCrowd() {
 
 function fadeOut(audio, duration) {
   if (!audio) return;
-  const STEPS = 8;
+  const STEPS = 10;
   const stepMs = Math.max(16, duration / STEPS);
   const startVol = audio.volume;
   let step = 0;
@@ -1080,11 +978,7 @@ function fadeOut(audio, duration) {
     done = true;
     pendingPlayTimers.delete(timerId);
     activeFadeCancels.delete(cancel);
-    try {
-      audio.pause();
-      audio.currentTime = 0;
-    } catch (_) {}
-    releaseClone(audio);
+    releasePoolAudio(audio);
   };
 
   const tick = () => {
@@ -1106,11 +1000,7 @@ function fadeOut(audio, duration) {
     clearTimeout(timerId);
     pendingPlayTimers.delete(timerId);
     activeFadeCancels.delete(cancel);
-    try {
-      audio.pause();
-      audio.currentTime = 0;
-    } catch (_) {}
-    releaseClone(audio);
+    releasePoolAudio(audio);
   };
   activeFadeCancels.add(cancel);
   timerId = setTimeout(tick, stepMs);
