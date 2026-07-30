@@ -1540,15 +1540,20 @@ function hideOverlayScreens() {
   els.hud.hidden = false;
 }
 
+let lastStartAt = 0;
+
 function startMatch() {
+  const now = performance.now();
+  if (now - lastStartAt < 400) return;
+  lastStartAt = now;
+
   try {
-    matchStartedAt = performance.now();
+    matchStartedAt = now;
     unlockAudio();
     clearMatchTimers();
     resetMatchAudio();
     playerAimHistory.length = 0;
     // セッションレイアウトは一切リセットしない（試合をまたいでも同じ寸法を保持）
-    // sessionLayout == null の場合は scheduleLockFixedGoal が初回キャプチャする
     state.mode = "play";
     state.suddenDeath = false;
     state.kickIndex = 0;
@@ -5771,34 +5776,27 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-const handleStartBtnClick = (e) => {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-  startMatch();
-};
+function attachButtonHandler(btnEl) {
+  if (!btnEl) return;
+  let handledAt = 0;
+  const trigger = (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const now = performance.now();
+    if (now - handledAt < 500) return;
+    handledAt = now;
+    if (state.mode !== "play") {
+      startMatch();
+    }
+  };
+  btnEl.addEventListener("click", trigger);
+  btnEl.addEventListener("touchend", trigger, { passive: false });
+}
 
-["pointerdown", "pointerup", "click", "touchend"].forEach((evtType) => {
-  els.btnStart.addEventListener(evtType, (e) => {
-    e.stopPropagation();
-    if (evtType === "click" || evtType === "touchend") {
-      e.preventDefault();
-      if (state.mode !== "play") {
-        handleStartBtnClick(e);
-      }
-    }
-  });
-  els.btnRetry.addEventListener(evtType, (e) => {
-    e.stopPropagation();
-    if (evtType === "click" || evtType === "touchend") {
-      e.preventDefault();
-      if (state.mode !== "play") {
-        handleStartBtnClick(e);
-      }
-    }
-  });
-});
+attachButtonHandler(els.btnStart);
+attachButtonHandler(els.btnRetry);
 
 window.addEventListener("keydown", (e) => {
   if (state.mode === "title" && (e.key === "Enter" || e.key === " ")) {
