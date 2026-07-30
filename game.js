@@ -5872,14 +5872,20 @@ function onOrientationChange() {
   setTimeout(() => scheduleLayoutRefresh("orientation"), 280);
 }
 
-window.addEventListener("resize", onWinResize);
-window.addEventListener("orientationchange", onOrientationChange);
-if (window.visualViewport) {
-  window.visualViewport.addEventListener("resize", onVvResize);
+try {
+  window.addEventListener("resize", onWinResize);
+  window.addEventListener("orientationchange", onOrientationChange);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", onVvResize);
+  }
+  if (window.ResizeObserver) {
+    layoutObserver = new ResizeObserver(() => scheduleLayoutRefresh("resize-observer"));
+    observeLayoutRoot();
+  }
+  resize({ forceRemeasure: true });
+  requestAnimationFrame(loop);
+} catch (err) {
+  console.error("Boot error in game.js:", err);
+} finally {
+  window.__PK_LOADED = true;
 }
-layoutObserver = new ResizeObserver(() => scheduleLayoutRefresh("resize-observer"));
-observeLayoutRoot();
-resize({ forceRemeasure: true });
-requestAnimationFrame(loop);
-
-window.__PK_LOADED = true;

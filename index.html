@@ -77,12 +77,28 @@
         <div class="aim-hint" id="aim-hint">クリックで助走開始</div>
       </div>
     </div>
-    <script type="module" src="./game.js?v=42"></script>
+    <script>
+      window.addEventListener("error", function (e) {
+        var el = document.getElementById("boot-error");
+        if (el) {
+          el.hidden = false;
+          el.textContent = "エラーが発生しました: " + (e.message || e.error || e);
+        }
+      });
+      window.addEventListener("unhandledrejection", function (e) {
+        var el = document.getElementById("boot-error");
+        if (el) {
+          el.hidden = false;
+          el.textContent = "エラーが発生しました: " + (e.reason || e);
+        }
+      });
+    </script>
+    <script type="module" src="./game.js?v=43"></script>
     <script>
       setTimeout(function () {
         if (window.__PK_LOADED) return;
         var el = document.getElementById("boot-error");
-        if (!el) return;
+        if (!el || !el.hidden) return;
         el.hidden = false;
         el.textContent =
           location.protocol === "file:"
