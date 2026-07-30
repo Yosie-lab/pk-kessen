@@ -1553,7 +1553,7 @@ function startMatch() {
     clearMatchTimers();
     resetMatchAudio();
     playerAimHistory.length = 0;
-    // セッションレイアウトは一切リセットしない（試合をまたいでも同じ寸法を保持）
+    clearSessionLayout("startMatch");
     state.mode = "play";
     state.suddenDeath = false;
     state.kickIndex = 0;
