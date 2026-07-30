@@ -670,7 +670,7 @@ export function playCheer(opts = {}) {
   );
 }
 
-/** PK戦勝利：圧倒的大歓声＋大拍手の祝福（約8〜10秒間） */
+/** PK戦勝利：圧倒的大歓声＋大拍手の祝福（約7〜8秒間） */
 export function playVictoryCelebration() {
   unlockAudio();
   stopCheer();
@@ -682,8 +682,8 @@ export function playVictoryCelebration() {
   const yellKeys = pickN(CHEER_YELLS, 4);
   const clapKeys = pickN(APPLAUSE, 6);
 
-  const holdMs = rand(8000, 10000) | 0;
-  const fadeMs = rand(1500, 2500) | 0;
+  const holdMs = rand(7000, 8000) | 0;
+  const fadeMs = rand(1200, 2000) | 0;
 
   bedKeys.forEach((key, i) => {
     const a = playClone(key, 1.0 * (i === 0 ? 1 : 0.85) * CHEER_VOL_SCALE, rand(0.94, 1.08), rand(0, 2.2), i * rand(20, 80));
@@ -718,15 +718,15 @@ export function playVictoryCelebration() {
     if (a) activeCheer.push(a);
   });
 
-  // 時間差で押し寄せる歓喜と大拍手の大波（4波：約8〜10秒間をカバー）
-  for (let wave = 0; wave < 4; wave++) {
+  // 時間差で押し寄せる歓喜と大拍手の大波（3波：約7〜8秒間をカバー）
+  for (let wave = 0; wave < 3; wave++) {
     pickN(APPLAUSE, 3).forEach((key, i) => {
       const a = playClone(
         key,
         rand(0.6, 0.9) * CHEER_VOL_SCALE,
         rand(0.95, 1.08),
         rand(0.1, 2.4),
-        rand(500, 1000) + wave * rand(1200, 1800) + i * rand(60, 150)
+        rand(400, 900) + wave * rand(1000, 1500) + i * rand(60, 150)
       );
       if (a) activeCheer.push(a);
     });
@@ -736,7 +736,7 @@ export function playVictoryCelebration() {
       rand(0.7, 0.95) * CHEER_VOL_SCALE,
       rand(0.96, 1.1),
       rand(0, 1.5),
-      rand(800, 1500) + wave * rand(1200, 1800)
+      rand(600, 1200) + wave * rand(1000, 1500)
     );
     if (extraYell) activeCheer.push(extraYell);
   }
@@ -744,12 +744,12 @@ export function playVictoryCelebration() {
   playCrowdSwell({
     intensity: 1.0 * CHEER_VOL_SCALE,
     bright: rand(0.7, 1.0),
-    dur: rand(8.0, 10.0),
+    dur: rand(7.0, 8.0),
     rise: rand(0.03, 0.1),
   });
   playApplauseTexture({
     intensity: 1.0 * CHEER_VOL_SCALE,
-    dur: rand(8.0, 10.0),
+    dur: rand(7.0, 8.0),
     density: rand(1.0, 1.5),
   });
 
