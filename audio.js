@@ -403,13 +403,11 @@ function stopCheer() {
   }
   for (const cancel of activeFadeCancels) cancel();
   activeFadeCancels.clear();
-  for (const a of activeCheer) {
-    try {
-      a.pause();
-      a.currentTime = 0;
-    } catch (_) {}
-  }
+  const cheerClones = activeCheer.slice();
   activeCheer = [];
+  for (const a of cheerClones) {
+    releaseClone(a);
+  }
 }
 
 /** 試合開始時：再生中サウンドと clone を一括停止（連プレイ時のメモリ・rAF 溜まり対策） */
@@ -417,16 +415,11 @@ export function resetMatchAudio() {
   playGen++;
   clearPlayTimers();
   stopCheer();
-  for (const a of playingClones) {
-    try {
-      a.pause();
-      a.currentTime = 0;
-    } catch (_) {}
-  }
+  const clones = playingClones.slice();
   playingClones.length = 0;
-
-  // ※ audioCtx.close() は iOS Safari でスレッドブロック・再生拒否を引き起こすため
-  // クローズせず、クローン音源の停止のみ行う
+  for (const a of clones) {
+    releaseClone(a);
+  }
 }
 
 /** ゴール直後に必ず鳴る短いアクセント（歓声レイヤーの遅延・失敗対策） */
