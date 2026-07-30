@@ -2922,7 +2922,7 @@ function finishKick(result, shooter) {
     state.flash = 0.7;
     // 金属音は飛翔中に再生済み。ここでは反応のみ
     playMiss();
-    setPrompt(shooter === "you" ? "止められた〜" : "外した！", { result: true });
+    setPrompt(`${wood}に当たって外れた!`, { result: true });
   } else {
     state.flash = 0.45;
     playMiss();
