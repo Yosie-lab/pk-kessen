@@ -5807,23 +5807,22 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
-function attachButtonHandler(btnEl) {
+function attachButtonHandler(btnEl, action) {
   if (!btnEl) return;
   let handledAt = 0;
   const trigger = (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+    unlockAudio();
     const now = performance.now();
-    if (now - handledAt < 500) return;
+    if (now - handledAt < 300) return;
     handledAt = now;
-    if (state.mode !== "play") {
+    if (typeof action === "function") {
+      action();
+    } else if (state.mode !== "play") {
       startMatch();
     }
   };
   btnEl.addEventListener("click", trigger);
-  btnEl.addEventListener("touchend", trigger, { passive: false });
+  btnEl.addEventListener("pointerdown", () => unlockAudio(), { passive: true });
 }
 
 attachButtonHandler(els.btnStart);

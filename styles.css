@@ -477,6 +477,9 @@ html.viewport-locked body {
   border-radius: 2px;
   letter-spacing: 0.14em;
   font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition:
     transform 0.18s ease,
     background 0.18s ease,
