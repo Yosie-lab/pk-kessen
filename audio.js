@@ -668,7 +668,7 @@ export function playCheer(opts = {}) {
   );
 }
 
-/** PK戦勝利：圧倒的大歓声＋大拍手の祝福 */
+/** PK戦勝利：圧倒的大歓声＋大拍手の祝福（長めの極上歓喜演出） */
 export function playVictoryCelebration() {
   unlockAudio();
   stopCheer();
@@ -680,8 +680,8 @@ export function playVictoryCelebration() {
   const yellKeys = pickN(CHEER_YELLS, 4);
   const clapKeys = pickN(APPLAUSE, 6);
 
-  const holdMs = rand(7500, 10000) | 0;
-  const fadeMs = rand(1500, 2500) | 0;
+  const holdMs = rand(14000, 18000) | 0;
+  const fadeMs = rand(2500, 3500) | 0;
 
   bedKeys.forEach((key, i) => {
     const a = playClone(key, 1.0 * (i === 0 ? 1 : 0.85), rand(0.94, 1.08), rand(0, 2.2), i * rand(20, 80));
@@ -716,28 +716,39 @@ export function playVictoryCelebration() {
     if (a) activeCheer.push(a);
   });
 
-  for (let wave = 0; wave < 4; wave++) {
+  // 時間差で何度も押し寄せる歓喜と大拍手の大波（8波）
+  for (let wave = 0; wave < 8; wave++) {
     pickN(APPLAUSE, 3).forEach((key, i) => {
       const a = playClone(
         key,
-        rand(0.6, 0.88),
-        rand(0.96, 1.08),
+        rand(0.6, 0.9),
+        rand(0.95, 1.08),
         rand(0.1, 2.4),
-        rand(400, 900) + wave * rand(500, 900) + i * rand(50, 120)
+        rand(500, 1200) + wave * rand(1200, 1800) + i * rand(60, 150)
       );
       if (a) activeCheer.push(a);
     });
+
+    // 波ごとに歓声シャウトをランダム追加して盛り上がりを持続
+    const extraYell = playClone(
+      pick(CHEER_YELLS),
+      rand(0.7, 0.95),
+      rand(0.96, 1.1),
+      rand(0, 1.5),
+      rand(800, 1500) + wave * rand(1200, 1800)
+    );
+    if (extraYell) activeCheer.push(extraYell);
   }
 
   playCrowdSwell({
     intensity: 1.0,
     bright: rand(0.7, 1.0),
-    dur: rand(7.5, 10.0),
+    dur: rand(14.0, 18.0),
     rise: rand(0.03, 0.1),
   });
   playApplauseTexture({
     intensity: 1.0,
-    dur: rand(7.5, 10.0),
+    dur: rand(14.0, 18.0),
     density: rand(1.0, 1.5),
   });
 
