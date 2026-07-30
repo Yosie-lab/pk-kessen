@@ -1,3 +1,9 @@
+window.__PK_LOADED = true;
+try {
+  const errEl = document.getElementById("boot-error");
+  if (errEl) errEl.hidden = true;
+} catch (_) {}
+
 /** Mixkit 無料効果音（Mixkit License）＋合成crowdレイヤー */
 
 const FILES = {
