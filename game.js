@@ -5758,21 +5758,39 @@ function render() {
 }
 
 let last = performance.now();
+let loopId = 0;
 function loop(now) {
   if (!loopRunning) return;
+  loopId = 0;
   frameId++;
   const dt = Math.min(0.033, (now - last) / 1000);
   last = now;
   update(dt, now);
   render();
-  requestAnimationFrame(loop);
+  loopId = requestAnimationFrame(loop);
+}
+
+function startLoop() {
+  if (!loopRunning) return;
+  if (loopId) return; // すでに実行中なら重複起動しない
+  last = performance.now();
+  loopId = requestAnimationFrame(loop);
+}
+
+function stopLoop() {
+  loopRunning = false;
+  if (loopId) {
+    cancelAnimationFrame(loopId);
+    loopId = 0;
+  }
 }
 
 document.addEventListener("visibilitychange", () => {
   loopRunning = !document.hidden;
   if (loopRunning) {
-    last = performance.now();
-    requestAnimationFrame(loop);
+    startLoop(); // 重複起動防止付き
+  } else {
+    stopLoop();
   }
 });
 
@@ -5883,7 +5901,7 @@ try {
     observeLayoutRoot();
   }
   resize({ forceRemeasure: true });
-  requestAnimationFrame(loop);
+  startLoop(); // 重複起動防止付き
 } catch (err) {
   console.error("Boot error in game.js:", err);
 } finally {
