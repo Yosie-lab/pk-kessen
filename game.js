@@ -959,6 +959,9 @@ function computeGoalRect() {
     gh *= 0.85;
   }
 
+  // 全体画面の比率を現在の90%に設定
+  gh *= 0.90;
+
   const gw = Math.min(availW * 0.96, gh * 3.0);
   const x = Math.round(inset.left + (availW - gw) * 0.5);
   const y = Math.round(inset.top + topOverhang);
