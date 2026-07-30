@@ -101,17 +101,20 @@ function clearPlayTimers() {
 }
 
 function releaseClone(a) {
+  if (!a) return;
   const idx = playingClones.indexOf(a);
   if (idx >= 0) playingClones.splice(idx, 1);
+  try {
+    a.pause();
+    a.removeAttribute("src");
+    a.load();
+  } catch (_) {}
 }
 
 function trimPlayingClones() {
   while (playingClones.length > MAX_PLAYING_CLONES) {
     const old = playingClones.shift();
-    try {
-      old.pause();
-      old.currentTime = 0;
-    } catch (_) {}
+    releaseClone(old);
   }
 }
 
@@ -134,7 +137,9 @@ function trackClone(a) {
 
 function playClone(key, volume = 1, rate = 1, startAt = 0, delayMs = 0) {
   const base = getAudio(key);
-  const a = base.cloneNode();
+  if (!base) return null;
+  const a = base.cloneNode(true);
+  if (!a.src && base.src) a.src = base.src;
   a.volume = Math.max(0, Math.min(1, volume));
   a.playbackRate = rate;
   a.preload = "auto";
