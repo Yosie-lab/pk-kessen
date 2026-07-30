@@ -1,4 +1,4 @@
-import { unlockAudio, playKick, playCheer, playMiss, playBlockedByKeeper, playPostHit, playWhistle, playVictoryCelebration, resetMatchAudio } from "./audio.js";
+import { unlockAudio, playKick, playCheer, playMiss, playBlockedByKeeper, playPostHit, playWhistle, playVictoryCelebration, resetMatchAudio, playKickoffCheer } from "./audio.js";
 
 const canvas = document.getElementById("pitch");
 const mainCtx =
@@ -1546,6 +1546,7 @@ function startMatch() {
     unlockAudio();
     clearMatchTimers();
     resetMatchAudio();
+    playKickoffCheer();
     playerAimHistory.length = 0;
     // セッションレイアウトが未確立の場合のみ初期化
     state.mode = "play";
