@@ -2914,15 +2914,15 @@ function finishKick(result, shooter) {
     }
   } else if (result.saved) {
     state.flash = 0.45;
-    // 自軍キーパーのセーブは歓声、相手キーパーに阻まれたら小さめのスタジアム反応
+    // 自軍キーパーのセーブは歓声、相手キーパーに阻まれたらスタジアム反応
     if (shooter === "cpu") playCheer({ lite: state.mobileLite });
     else playBlockedByKeeper({ lite: state.mobileLite });
-    setPrompt(shooter === "you" ? "阻まれた！" : "セーブ！", { result: true });
+    setPrompt(shooter === "you" ? "止められた〜" : "止めた〜", { result: true });
   } else if (result.post) {
     state.flash = 0.7;
     // 金属音は飛翔中に再生済み。ここでは反応のみ
     playMiss();
-    setPrompt(`${wood}に阻まれた！`, { result: true });
+    setPrompt(shooter === "you" ? "止められた〜" : "外した！", { result: true });
   } else {
     state.flash = 0.45;
     playMiss();
