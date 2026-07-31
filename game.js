@@ -5836,7 +5836,11 @@ document.addEventListener("visibilitychange", () => {
 
 function attachButtonHandler(btnEl, action) {
   if (!btnEl) return;
+  let handledAt = 0;
   const handler = (e) => {
+    const now = performance.now();
+    if (now - handledAt < 250) return;
+    handledAt = now;
     try { unlockAudio(); } catch (_) {}
     if (typeof action === "function") {
       action();
@@ -5844,11 +5848,7 @@ function attachButtonHandler(btnEl, action) {
       startMatch();
     }
   };
-  btnEl.addEventListener("click", handler);
-  btnEl.addEventListener("touchend", (e) => {
-    if (e.cancelable) e.preventDefault();
-    handler(e);
-  });
+  btnEl.onclick = handler;
 }
 
 attachButtonHandler(els.btnStart);
