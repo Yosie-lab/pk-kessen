@@ -1581,6 +1581,8 @@ function startMatch() {
     hideOverlayScreens();
     updateHud();
     void els.hud.offsetHeight;
+    loopRunning = true;
+    startLoop();
     beginYouShoot();
     if (!sessionLayout) {
       layoutPending = true;
