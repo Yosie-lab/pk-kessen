@@ -1540,7 +1540,7 @@ function hideOverlayScreens() {
   els.result.style.display = "none";
   els.hud.hidden = false;
   els.hud.removeAttribute("hidden");
-  els.hud.style.display = "block";
+  els.hud.style.display = "";
 }
 
 let lastStartAt = 0;

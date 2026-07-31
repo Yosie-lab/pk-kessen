@@ -77,7 +77,7 @@
           <h1 class="brand">PK決戦</h1>
           <p class="tagline">もつれた試合を、一発で決める。</p>
           <div class="cta-row">
-            <button type="button" class="btn primary" id="btn-start" onclick="document.getElementById('title-screen').style.display='none'; document.getElementById('hud').hidden=false; if(window.startMatch) window.startMatch();" ontouchstart="document.getElementById('title-screen').style.display='none'; document.getElementById('hud').hidden=false; if(window.startMatch) window.startMatch();">キックオフ</button>
+            <button type="button" class="btn primary" id="btn-start" onclick="if (window.startMatch) window.startMatch();" ontouchstart="if (window.startMatch) window.startMatch();">キックオフ</button>
           </div>
           <p class="hint">キックオフのあと、ピッチをクリックするとホイッスルが鳴り助走が始まります。</p>
           <p class="hint boot-error" id="boot-error" hidden>ゲーム脚本の読み込みに失敗しました。</p>
@@ -89,7 +89,7 @@
           <p class="result-kicker" id="result-kicker">MATCH OVER</p>
           <h2 class="result-title" id="result-title">歓喜</h2>
           <p class="result-score" id="result-score">0 - 0</p>
-          <button type="button" class="btn primary" id="btn-retry" onclick="document.getElementById('result-screen').style.display='none'; document.getElementById('hud').hidden=false; if(window.startMatch) window.startMatch();" ontouchstart="document.getElementById('result-screen').style.display='none'; document.getElementById('hud').hidden=false; if(window.startMatch) window.startMatch();">もう一度</button>
+          <button type="button" class="btn primary" id="btn-retry" onclick="if (window.startMatch) window.startMatch();" ontouchstart="if (window.startMatch) window.startMatch();">もう一度</button>
         </div>
       </section>
 
@@ -123,7 +123,7 @@
         }
       });
     </script>
-    <script type="module" src="./game.js?v=75"></script>
+    <script type="module" src="./game.js?v=76"></script>
     <script>
       setTimeout(function () {
         if (window.__PK_LOADED) {
