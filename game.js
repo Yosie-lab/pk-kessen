@@ -1545,6 +1545,19 @@ function hideOverlayScreens() {
   els.controls.removeAttribute("hidden");
 }
 
+function showResultScreen() {
+  els.title.hidden = true;
+  els.title.style.display = "none";
+  els.hud.hidden = true;
+  els.hud.style.display = "none";
+  els.controls.hidden = true;
+  els.controls.style.display = "none";
+  els.result.hidden = false;
+  els.result.removeAttribute("hidden");
+  els.result.style.display = "";
+  unpinCanvasCss();
+}
+
 let lastStartAt = 0;
 
 function startMatch() {
@@ -3050,14 +3063,12 @@ function advanceTurn(lastShooter) {
 function endMatch(winner) {
   state.mode = "result";
   state.phase = "idle";
-  els.controls.hidden = true;
-  els.result.hidden = false;
+  showResultScreen();
   const isSuddenDeath = state.suddenDeath || state.wasSuddenDeath;
   els.resultKicker.textContent = isSuddenDeath ? "SUDDEN DEATH" : "MATCH OVER";
   els.resultTitle.textContent = winner === "you" ? "歓喜" : "残念";
   els.resultTitle.style.color = winner === "you" ? "var(--accent)" : "var(--danger)";
   els.resultScore.textContent = `${state.scores.you} - ${state.scores.cpu}`;
-  setPrompt(winner === "you" ? "PK戦を制した！" : "次こそ決める。");
   if (winner === "you") playVictoryCelebration();
   else playMiss();
 }

@@ -523,7 +523,9 @@ html.viewport-locked body {
 }
 
 .result-screen {
-  background: rgba(3, 10, 8, 0.86);
+  background:
+    radial-gradient(ellipse 70% 45% at 50% 18%, rgba(243, 226, 168, 0.14), transparent 60%),
+    linear-gradient(180deg, rgba(3, 10, 8, 0.96) 0%, rgba(3, 10, 8, 0.99) 100%);
   touch-action: manipulation;
 }
 
