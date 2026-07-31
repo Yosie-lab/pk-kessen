@@ -1585,22 +1585,12 @@ function startMatch() {
     startLoop();
     beginYouShoot();
     if (!sessionLayout) {
-      layoutPending = true;
       resize({ forceRemeasure: true });
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (state.mode !== "play") {
-            layoutPending = false;
-            return;
-          }
-          captureSessionLayout();
-          layoutPending = false;
-        });
-      });
+      captureSessionLayout();
     } else {
       resize({ source: "startMatch-restore" });
-      layoutPending = false;
     }
+    layoutPending = false;
   } catch (err) {
     console.error(err);
   }
