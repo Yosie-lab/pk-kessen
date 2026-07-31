@@ -1586,7 +1586,9 @@ function startMatch() {
     beginYouShoot();
     clearSessionLayout("startMatch");
     resize({ forceRemeasure: true });
-    captureSessionLayout();
+    requestAnimationFrame(() => {
+      captureSessionLayout();
+    });
     layoutPending = false;
   } catch (err) {
     console.error(err);
