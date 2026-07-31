@@ -180,6 +180,17 @@ function pickN(arr, n) {
 
 
 
+function createStereoPanner(ctx, pan = 0) {
+  if (ctx && typeof ctx.createStereoPanner === "function") {
+    try {
+      const panner = ctx.createStereoPanner();
+      panner.pan.setValueAtTime(Math.max(-0.95, Math.min(0.95, pan)), ctx.currentTime);
+      return panner;
+    } catch (_) {}
+  }
+  return null;
+}
+
 function trackPlayTimer(id) {
   pendingPlayTimers.add(id);
   return id;
@@ -503,11 +514,11 @@ export function resetMatchAudio() {
 }
 
 const CHEER_VOL_SCALE = 0.8;
-const VICTORY_VOL = 1.0;
-/** 勝利歓声：毎回同じ長さ（2.5〜3.5秒） */
-const VICTORY_HOLD_MS = 2600;
-const VICTORY_FADE_MS = 600;
-const VICTORY_SWELL_DUR = 3.0;
+const VICTORY_VOL = 0.95;
+/** 勝利歓声：持続時間を延長（約3.5〜4.0秒＋余韻フェード） */
+const VICTORY_HOLD_MS = 3400;
+const VICTORY_FADE_MS = 1400;
+const VICTORY_SWELL_DUR = 3.8;
 
 function playVictoryClone(key, delayMs = 0, startAt = 0) {
   return playClone(key, VICTORY_VOL, rand(0.98, 1.04), startAt, delayMs);
@@ -577,12 +588,15 @@ export function playKickoffCheer() {
     } catch (_) {}
 
     const holdMs = rand(2200, 3200) | 0;
-    const fadeMs = rand(600, 1000) | 0;
+    const fadeMs = rand(1000, 1600) | 0;
 
     cheerTimer = trackPlayTimer(
       setTimeout(() => {
         if (gen !== cheerGen) return;
-        for (const a of myCheer) fadeOut(a, fadeMs);
+        for (const a of myCheer) {
+          const jitteredFade = fadeMs * rand(0.85, 1.25);
+          fadeOut(a, jitteredFade);
+        }
         cheerTimer = null;
       }, holdMs)
     );
@@ -609,7 +623,7 @@ export function playCheer(opts = {}) {
     if (clap) myCheer.push(clap);
     cheerTimer = trackPlayTimer(setTimeout(() => {
       if (gen !== cheerGen) return;
-      for (const a of myCheer) fadeOut(a, rand(500, 750) | 0);
+      for (const a of myCheer) fadeOut(a, rand(800, 1200) | 0);
       cheerTimer = null;
     }, rand(2500, 3500) | 0));
     return;
@@ -684,12 +698,15 @@ export function playCheer(opts = {}) {
   });
 
   const holdMs = rand(3500, 5000) | 0;
-  const fadeMs = rand(800, 1200) | 0;
+  const fadeMs = rand(1200, 1800) | 0;
 
   cheerTimer = trackPlayTimer(
     setTimeout(() => {
       if (gen !== cheerGen) return;
-      for (const a of myCheer) fadeOut(a, fadeMs + ((Math.random() * 150) | 0));
+      for (const a of myCheer) {
+        const jitteredFade = fadeMs * rand(0.85, 1.25);
+        fadeOut(a, jitteredFade);
+      }
       cheerTimer = null;
     }, holdMs)
   );
@@ -711,7 +728,7 @@ function prepareVictoryCelebration() {
   }
 }
 
-/** PK戦勝利：歓声100%＋拍手（2.5〜3.5秒・再勝利時も同一） */
+/** PK戦勝利：圧倒的エキサイティング＆最高峰の高揚感（試合終了笛＋大歓声・高密度レイヤー） */
 export function playVictoryCelebration() {
   unlockAudio();
   prepareVictoryCelebration();
@@ -720,46 +737,84 @@ export function playVictoryCelebration() {
   const victoryCheer = [];
   activeCheer = victoryCheer;
 
-  // 歓声インパクト＋即時拍手
-  playGoalSting(victoryCheer, VICTORY_VOL);
+  // 1. 試合終了の審判トリプルホイッスル（ピー・ピ・ピーッ！）
+  const w1 = playClone("whistleBlast", 1.0, 1.05, 0, 0);
+  if (w1) victoryCheer.push(w1);
+  const w2 = playClone("whistleBlast", 0.9, 1.12, 0, 160);
+  if (w2) victoryCheer.push(w2);
+  const w3 = playClone("whistleBlast", 1.0, 1.0, 0, 320);
+  if (w3) victoryCheer.push(w3);
 
-  // メイン歓声ベッド
-  pickN(["crowdStadium", "cheerVictory", "cheer"], 2).forEach((key, i) => {
-    const a = playVictoryClone(key, i * 20);
+  // 2. 歓声爆発インパクト＋大拍手＋地鳴り
+  playGoalSting(victoryCheer, VICTORY_VOL * 1.15);
+
+  // 3. 高揚感あふれるハイピッチ＆マルチレイヤー歓声
+  const victoryBedKeys = pickN(["cheerVictory", "cheerChaos", "cheerChant", "crowdStadium", "cheer"], 5);
+  victoryBedKeys.forEach((key, i) => {
+    const a = playClone(key, VICTORY_VOL, rand(1.0, 1.14), 0, i * 20);
     if (a) victoryCheer.push(a);
   });
 
-  // 歓声の叫び
-  pickN(CHEER_YELLS, 2).forEach((key, i) => {
-    const a = playVictoryClone(key, 40 + i * 40);
+  // 4. 熱狂的なシャウト・アクセント・ホイッスル連射（追っかけ第2波付き）
+  pickN(CHEER_YELLS, 5).forEach((key, i) => {
+    const a = playClone(key, VICTORY_VOL, rand(1.02, 1.18), 0, 25 + i * 30);
+    if (a) victoryCheer.push(a);
+  });
+  
+  pickN(CHEER_EXTRAS, 4).forEach((key, i) => {
+    const a = playClone(key, VICTORY_VOL, rand(1.05, 1.22), 0, 60 + i * 40);
     if (a) victoryCheer.push(a);
   });
 
-  // 拍手サンプル（歓声と同時〜0.5秒）
+  // 追っかけ歓喜シャウト＆チャント（0.45〜0.9秒後）
+  pickN(["cheerVictory", "cheerYell", "cheerChant"], 3).forEach((key, i) => {
+    const a = playClone(key, VICTORY_VOL * 0.95, rand(1.0, 1.15), 0, 450 + i * 150);
+    if (a) victoryCheer.push(a);
+  });
+
+  // 5. 怒涛の3重スタジアム大拍手ウェーブ（即時6枚 ＋ 0.3秒後5枚 ＋ 0.75秒後4枚）
+  pickN(APPLAUSE, 6).forEach((key, i) => {
+    const a = playVictoryClone(key, i * 30);
+    if (a) victoryCheer.push(a);
+  });
+  
+  pickN(APPLAUSE, 5).forEach((key, i) => {
+    const a = playVictoryClone(key, 300 + i * 50);
+    if (a) victoryCheer.push(a);
+  });
+
   pickN(APPLAUSE, 4).forEach((key, i) => {
-    const a = playVictoryClone(key, i * 80);
+    const a = playVictoryClone(key, 750 + i * 60);
     if (a) victoryCheer.push(a);
   });
 
-  // 合成レイヤー：歓声スウェル＋拍手テクスチャ
+  // 6. 追加の連続重低音地鳴りバンプ
+  playKickBodyThump(0.55, 65);
+  playKickBodyThump(0.45, 95);
+  trackPlayTimer(setTimeout(() => playKickBodyThump(0.5, 80), 200));
+
+  // 7. 明るいトーンの極上スタジアムスウェル＆最大密度拍手テクスチャ
   playCrowdSwell({
-    intensity: VICTORY_VOL,
-    bright: rand(0.6, 0.85),
-    dur: VICTORY_SWELL_DUR,
-    rise: rand(0.08, 0.16),
+    intensity: VICTORY_VOL * 1.25,
+    bright: rand(0.78, 1.0),
+    dur: VICTORY_SWELL_DUR + 0.6,
+    rise: rand(0.04, 0.1),
   });
   playApplauseTexture({
-    intensity: VICTORY_VOL,
-    dur: VICTORY_SWELL_DUR,
-    density: rand(1.1, 1.45),
+    intensity: VICTORY_VOL * 1.25,
+    dur: VICTORY_SWELL_DUR + 0.6,
+    density: rand(1.8, 2.2),
   });
 
   victoryTimer = trackPlayTimer(
     setTimeout(() => {
       if (victoryGen !== cheerGen) return;
-      for (const a of victoryCheer) fadeOut(a, VICTORY_FADE_MS);
+      for (const a of victoryCheer) {
+        const jitteredFade = VICTORY_FADE_MS * rand(0.85, 1.25);
+        fadeOut(a, jitteredFade);
+      }
       victoryTimer = null;
-    }, VICTORY_HOLD_MS)
+    }, VICTORY_HOLD_MS + 400)
   );
 }
 
@@ -803,11 +858,14 @@ export function playBlockedByKeeper(opts = {}) {
   }
 
   const holdMs = rand(1500, 2400) | 0;
-  const fadeMs = rand(500, 850) | 0;
+  const fadeMs = rand(1000, 1600) | 0;
   cheerTimer = trackPlayTimer(
     setTimeout(() => {
       if (gen !== cheerGen) return;
-      for (const a of myCheer) fadeOut(a, fadeMs);
+      for (const a of myCheer) {
+        const jitteredFade = fadeMs * rand(0.85, 1.25);
+        fadeOut(a, jitteredFade);
+      }
       cheerTimer = null;
     }, holdMs)
   );
@@ -834,13 +892,15 @@ export function playMiss() {
 
   const hold = rand(1400, 2200) | 0;
   trackPlayTimer(setTimeout(() => {
-    for (const a of activeCheer) fadeOut(a, rand(500, 850) | 0);
+    for (const a of activeCheer) {
+      fadeOut(a, rand(1000, 1600) | 0);
+    }
   }, hold));
   
   playDisappointedCrowd();
 }
 
-/** 歓声の下に敷く、毎回違う群衆スウェル */
+/** 歓声の下に敷く、毎回違う群衆スウェル（ステレオ空間パンニング付き） */
 function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } = {}) {
   const ctx = getCtx();
   if (!ctx) return;
@@ -853,7 +913,7 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
   master.gain.exponentialRampToValueAtTime(0.0001, now + dur);
   master.connect(ctx.destination);
 
-  const layers = 2 + ((Math.random() * 2) | 0);
+  const layers = 3 + ((Math.random() * 2) | 0);
   for (let i = 0; i < layers; i++) {
     const len = Math.floor(ctx.sampleRate * dur);
     const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
@@ -873,14 +933,25 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
     bp.Q.value = rand(0.5, 1.4);
     const g = ctx.createGain();
     g.gain.value = 0.18 + intensity * 0.12;
+
+    // 左〜右スタンドの広大なパノラマ配置
+    const panVal = -0.85 + (i / Math.max(1, layers - 1)) * 1.7 + rand(-0.1, 0.1);
+    const panner = createStereoPanner(ctx, panVal);
+
     src.connect(bp);
     bp.connect(g);
-    g.connect(master);
+    if (panner) {
+      g.connect(panner);
+      panner.connect(master);
+    } else {
+      g.connect(master);
+    }
+
     src.start(now + i * rand(0, 0.05));
     src.stop(now + dur);
     src.onended = () => {
       releaseSource(src);
-      try { bp.disconnect(); g.disconnect(); } catch (_) {}
+      try { bp.disconnect(); g.disconnect(); if (panner) panner.disconnect(); } catch (_) {}
     };
   }
 
@@ -899,14 +970,23 @@ function playCrowdSwell({ intensity = 0.5, bright = 0.6, dur = 2, rise = 0.1 } =
       g.gain.setValueAtTime(0.0001, t0);
       g.gain.exponentialRampToValueAtTime(rand(0.03, 0.09), t0 + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + rand(0.12, 0.35));
+
+      const burstPanner = createStereoPanner(ctx, rand(-0.8, 0.8));
+
       osc.connect(f);
       f.connect(g);
-      g.connect(master);
+      if (burstPanner) {
+        g.connect(burstPanner);
+        burstPanner.connect(master);
+      } else {
+        g.connect(master);
+      }
+
       osc.start(t0);
       osc.stop(t0 + 0.4);
       osc.onended = () => {
         releaseSource(osc);
-        try { f.disconnect(); g.disconnect(); } catch (_) {}
+        try { f.disconnect(); g.disconnect(); if (burstPanner) burstPanner.disconnect(); } catch (_) {}
       };
     }
   }
@@ -946,7 +1026,7 @@ function getSharedNoiseBuffer(ctx) {
   return sharedNoiseBuffer;
 }
 
-/** 実サンプル下に敷く細かい拍手テクスチャ（共有バッファ・ノード自動解放） */
+/** 実サンプル下に敷く細かい拍手テクスチャ（全方位パンニング・共有バッファ・ノード自動解放） */
 function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {}) {
   const ctx = getCtx();
   if (!ctx) return;
@@ -961,7 +1041,7 @@ function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {})
   const clapBuf = getSharedClapBuffer(ctx);
   if (!clapBuf) return;
 
-  const clapCount = Math.min(24, (12 + density * 20) | 0);
+  const clapCount = Math.min(28, (14 + density * 22) | 0);
   for (let i = 0; i < clapCount; i++) {
     const t0 = now + rand(0.02, dur * 0.85);
     const src = trackSource(ctx.createBufferSource());
@@ -975,10 +1055,20 @@ function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {})
     hp.frequency.value = rand(400, 900);
     const g = ctx.createGain();
     g.gain.value = rand(0.04, 0.14) * intensity;
+
+    // スタジアム客席全方向からのサラウンド手拍子（-0.9〜+0.9）
+    const panner = createStereoPanner(ctx, rand(-0.9, 0.9));
+
     src.connect(hp);
     hp.connect(bp);
     bp.connect(g);
-    g.connect(master);
+    if (panner) {
+      g.connect(panner);
+      panner.connect(master);
+    } else {
+      g.connect(master);
+    }
+
     src.start(t0);
     const stopTime = t0 + 0.06;
     src.stop(stopTime);
@@ -988,6 +1078,7 @@ function playApplauseTexture({ intensity = 0.6, dur = 2.2, density = 0.8 } = {})
         hp.disconnect();
         bp.disconnect();
         g.disconnect();
+        if (panner) panner.disconnect();
       } catch (_) {}
     };
   }
@@ -1035,7 +1126,7 @@ function playDisappointedCrowd() {
     };
   }
 
-  const count = 4;
+  const count = 5;
   for (let i = 0; i < count; i++) {
     const osc = trackSource(ctx.createOscillator());
     const g = ctx.createGain();
@@ -1051,9 +1142,19 @@ function playDisappointedCrowd() {
     g.gain.setValueAtTime(0.0001, now);
     g.gain.exponentialRampToValueAtTime(vol, now + rand(0.08, 0.18));
     g.gain.exponentialRampToValueAtTime(0.0001, now + dur * 0.9);
+
+    const panVal = -0.8 + (i / Math.max(1, count - 1)) * 1.6;
+    const panner = createStereoPanner(ctx, panVal);
+
     osc.connect(filt);
     filt.connect(g);
-    g.connect(master);
+    if (panner) {
+      g.connect(panner);
+      panner.connect(master);
+    } else {
+      g.connect(master);
+    }
+
     const tStart = now + rand(0, 0.08);
     osc.start(tStart);
     osc.stop(now + dur);
@@ -1062,6 +1163,7 @@ function playDisappointedCrowd() {
       try {
         filt.disconnect();
         g.disconnect();
+        if (panner) panner.disconnect();
       } catch (_) {}
     };
   }
@@ -1104,8 +1206,8 @@ function fadeOut(audio, duration) {
 
     const elapsed = performance.now() - startTime;
     const t = Math.min(1, elapsed / duration);
-    // Smooth S-curve (Cosine Easing) for natural auditory fade-out
-    const factor = 0.5 * (1 + Math.cos(t * Math.PI));
+    // 人間の対数的音量知覚に合わせた自然な指数減衰カーブ（余韻が滑らかに引いていく）
+    const factor = Math.pow(1 - t, 2.2);
 
     try {
       audio.volume = Math.max(0, Math.min(1, startVol * factor));
