@@ -1539,7 +1539,8 @@ function hideOverlayScreens() {
   els.result.hidden = true;
   els.result.style.display = "none";
   els.hud.hidden = false;
-  els.hud.style.display = "";
+  els.hud.removeAttribute("hidden");
+  els.hud.style.display = "block";
 }
 
 let lastStartAt = 0;
