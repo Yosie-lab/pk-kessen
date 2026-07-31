@@ -1615,7 +1615,7 @@ function beginYouShoot() {
   showControls("ready");
   setPrompt({
     headline: `${SAMURAI_BLUE.shortName} kick`,
-    sub: " — ピッチをクリックしてキック開始",
+    sub: "ピッチをクリックしてキック開始",
   });
 }
 
@@ -1641,7 +1641,7 @@ function beginYouSave() {
   showControls("ready-save");
   setPrompt({
     headline: `${state.oppKit.name} kick`,
-    sub: " — クリックで開始。蹴る瞬間にダイブ",
+    sub: "クリックで開始。蹴る瞬間にダイブ",
   });
 }
 

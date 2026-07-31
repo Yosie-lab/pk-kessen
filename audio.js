@@ -503,9 +503,15 @@ export function resetMatchAudio() {
 }
 
 const CHEER_VOL_SCALE = 0.8;
-const VICTORY_VOL_SCALE = 1.0; // max volume (Audio element caps at 1)
-const MAIN_BED_VOL_SCALE = 1.0; // uniform volume (will be duplicated)
-const MAIN_BED_REPEATS = 6; // more repeats for sustained loudness
+const VICTORY_VOL = 1.0;
+/** 勝利歓声：毎回同じ長さ（2.5〜3.5秒） */
+const VICTORY_HOLD_MS = 2600;
+const VICTORY_FADE_MS = 600;
+const VICTORY_SWELL_DUR = 3.0;
+
+function playVictoryClone(key, delayMs = 0, startAt = 0) {
+  return playClone(key, VICTORY_VOL, rand(0.98, 1.04), startAt, delayMs);
+}
 
 /** ゴール直後に必ず鳴る限界突破の極上爆発地鳴りアクセント */
 function playGoalSting(targetList = null, volScale = CHEER_VOL_SCALE) {
@@ -689,120 +695,71 @@ export function playCheer(opts = {}) {
   );
 }
 
-/** PK戦勝利：圧倒的大歓声＋大拍手の祝福（歓声と同時に熱狂の大拍手・3.6〜5.0秒間） */
+/** 勝利歓声用：プール・タイマー・合成レイヤーを全解放（2回目以降も1回目と同じ） */
+function prepareVictoryCelebration() {
+  playGen++;
+  clearPlayTimers();
+  stopCheer();
+  for (const el of Array.from(activePoolAudioSet)) {
+    releasePoolAudio(el);
+  }
+  for (const src of Array.from(activeAudioSources)) {
+    releaseSource(src);
+  }
+  for (const master of Array.from(activeMasterNodes)) {
+    releaseMaster(master);
+  }
+}
+
+/** PK戦勝利：歓声100%＋拍手（2.5〜3.5秒・再勝利時も同一） */
 export function playVictoryCelebration() {
   unlockAudio();
-  stopCheer();
-  // 歓喜専用の独立ジェネレーション＆独立チェアーリストを生成
+  prepareVictoryCelebration();
+
   const victoryGen = cheerGen;
   const victoryCheer = [];
   activeCheer = victoryCheer;
 
-  // 歓喜決定の瞬間：インパクト＋大拍手（出だしから同時に鳴り響く）
-  playGoalSting(victoryCheer, VICTORY_VOL_SCALE);
+  // 歓声インパクト＋即時拍手
+  playGoalSting(victoryCheer, VICTORY_VOL);
 
-  const holdMs = rand(2800, 3200) | 0; // ちょうど約3秒間の大歓声キープ
-  const fadeMs = rand(1200, 1600) | 0; // すっきりとした自然な減衰
-
-  // 1. 出だしから歓声と完全に同時に鳴り響く大拍手アンサンブル（音量を統一）
-  const instantClaps = pickN(APPLAUSE, 6); // keep count but lower per‑clap volume
-  instantClaps.forEach((key, i) => {
-    const a = playClone(
-      key,
-      1.4 * VICTORY_VOL_SCALE, // louder instant claps
-      rand(0.96, 1.06),
-      0,
-      i * rand(0, 20)
-    );
+  // メイン歓声ベッド
+  pickN(["crowdStadium", "cheerVictory", "cheer"], 2).forEach((key, i) => {
+    const a = playVictoryClone(key, i * 20);
     if (a) victoryCheer.push(a);
   });
 
-  // 2. スタジアム全体のメイン大歓声（ワーーーッ！）
-  const mainBeds = ["crowdStadium", "cheer", "cheerVictory", "cheerChaos"];
-  mainBeds.forEach((key, i) => {
-    for (let r = 0; r < MAIN_BED_REPEATS; r++) {
-      const a = playClone(
-        key,
-        MAIN_BED_VOL_SCALE * VICTORY_VOL_SCALE,
-        rand(0.98, 1.04),
-        0,
-        i * rand(25, 60) + r * rand(5, 15)
-      );
-      if (a) victoryCheer.push(a);
-    }
-  });
-  // 歓喜後半（1.5秒後〜）へ音を継続させる2ndウェーブ
-  trackPlayTimer(
-    setTimeout(() => {
-      if (victoryGen !== cheerGen) return;
-      mainBeds.forEach((key, i) => {
-        const a = playClone(
-          key,
-          MAIN_BED_VOL_SCALE * VICTORY_VOL_SCALE,
-          rand(0.98, 1.04),
-          0,
-          i * rand(20, 50)
-        );
-        if (a) victoryCheer.push(a);
-      });
-    }, 1500)
-  );
-
-  // 3. 数万人の大歓呼・声の波
-  const yellKeys = pickN(CHEER_YELLS, 6); // increased yell layers
-  yellKeys.forEach((key, i) => {
-    const a = playClone(
-      key,
-      1.0 * VICTORY_VOL_SCALE, // 音量を上げて一定に
-      rand(0.97, 1.06),
-      0,
-      rand(20, 120) + i * rand(40, 80)
-    );
+  // 歓声の叫び
+  pickN(CHEER_YELLS, 2).forEach((key, i) => {
+    const a = playVictoryClone(key, 40 + i * 40);
     if (a) victoryCheer.push(a);
   });
 
-  // 4. 歓声とともにさらに押し寄せる大拍手の大波（2波）
-  for (let wave = 0; wave < 2; wave++) {
-    pickN(APPLAUSE, 6).forEach((key, i) => { // more applause in wave
-      const a = playClone(
-        key,
-        1.0 * VICTORY_VOL_SCALE, // uplifted min volume for yell
-        rand(0.97, 1.06),
-        0,
-        rand(120, 350) + wave * rand(500, 800) + i * rand(30, 80)
-      );
-      if (a) victoryCheer.push(a);
-    });
+  // 拍手サンプル（歓声と同時〜0.5秒）
+  pickN(APPLAUSE, 4).forEach((key, i) => {
+    const a = playVictoryClone(key, i * 80);
+    if (a) victoryCheer.push(a);
+  });
 
-    const extraYell = playClone(
-      pick(CHEER_YELLS),
-      rand(0.75, 0.92) * VICTORY_VOL_SCALE,
-      rand(0.97, 1.06),
-      0,
-      rand(250, 550) + wave * rand(500, 800)
-    );
-    if (extraYell) victoryCheer.push(extraYell);
-  }
-
-  // 5. スタジアム全体で「ワーーーッ！」と熱狂の拍手が包み込む音響（スウェル＋高密度拍手）
+  // 合成レイヤー：歓声スウェル＋拍手テクスチャ
   playCrowdSwell({
-    intensity: 1.5 * VICTORY_VOL_SCALE, // スウェルを強化
-    bright: rand(0.65, 0.9),
-    dur: rand(3.6, 5.0),
-    rise: rand(0.1, 0.2),
+    intensity: VICTORY_VOL,
+    bright: rand(0.6, 0.85),
+    dur: VICTORY_SWELL_DUR,
+    rise: rand(0.08, 0.16),
   });
   playApplauseTexture({
-    intensity: 1.5 * VICTORY_VOL_SCALE, // 拍手テクスチャを強化
-    dur: rand(3.6, 5.0),
-    density: rand(1.3, 1.7),
+    intensity: VICTORY_VOL,
+    dur: VICTORY_SWELL_DUR,
+    density: rand(1.1, 1.45),
   });
 
   victoryTimer = trackPlayTimer(
     setTimeout(() => {
       if (victoryGen !== cheerGen) return;
-      for (const a of victoryCheer) fadeOut(a, fadeMs + ((Math.random() * 200) | 0));
+      for (const a of victoryCheer) fadeOut(a, VICTORY_FADE_MS);
       victoryTimer = null;
-    }, holdMs)
+    }, VICTORY_HOLD_MS)
   );
 }
 
