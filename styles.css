@@ -465,6 +465,9 @@ html.viewport-locked body {
 
 .cta-row {
   margin-top: 18px;
+  position: relative;
+  z-index: 20;
+  pointer-events: auto;
 }
 
 .hint {
@@ -486,6 +489,9 @@ html.viewport-locked body {
   font-weight: 700;
   cursor: pointer;
   touch-action: manipulation;
+  pointer-events: auto;
+  position: relative;
+  z-index: 21;
   -webkit-tap-highlight-color: transparent;
   transition:
     transform 0.18s ease,

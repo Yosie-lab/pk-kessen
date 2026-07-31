@@ -3067,9 +3067,8 @@ let lastPointerDownTime = 0;
 function onPointerDown(e) {
   if (state.mode !== "play") return;
   const now = performance.now();
-  if (now - lastPointerDownTime < 80) return;
+  if (now - lastPointerDownTime < 40) return;
   lastPointerDownTime = now;
-  if (now - matchStartedAt < 120) return;
   if (e.target && e.target.closest && e.target.closest("button")) return;
   unlockAudio();
 
