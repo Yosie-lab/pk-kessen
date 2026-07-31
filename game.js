@@ -5703,8 +5703,11 @@ function renderBackdrop() {
 function render() {
   try {
     frameNow = performance.now();
+    ensureBgCache();
+    ctx.drawImage(bgCache.canvas, 0, 0, state.w, state.h);
+    drawCrowdPulseOverlay();
+
     if (state.mode === "title" || state.mode === "result") {
-      renderBackdrop();
       return;
     }
     // 奥（小さい y）から手前へ。ボールがキッカー背中に張り付いて見えないようにする
