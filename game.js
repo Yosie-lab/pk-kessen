@@ -5851,6 +5851,8 @@ function attachButtonHandler(btnEl, action) {
   btnEl.onclick = handler;
 }
 
+window.startMatch = startMatch;
+
 attachButtonHandler(els.btnStart);
 attachButtonHandler(els.btnRetry);
 
