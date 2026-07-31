@@ -481,7 +481,7 @@ export function resetMatchAudio() {
 }
 
 const CHEER_VOL_SCALE = 0.8;
-const VICTORY_VOL_SCALE = 0.92; // 歓喜の歓声ボリューム92%
+const VICTORY_VOL_SCALE = 1.5; // 増幅した歓喜音量（元の1.5倍）
 
 /** ゴール直後に必ず鳴る限界突破の極上爆発地鳴りアクセント */
 function playGoalSting(targetList = null, volScale = CHEER_VOL_SCALE) {
@@ -677,7 +677,7 @@ export function playVictoryCelebration() {
   playGoalSting(victoryCheer, VICTORY_VOL_SCALE);
 
   const holdMs = rand(3600, 5000) | 0;
-  const fadeMs = rand(800, 1400) | 0;
+  const fadeMs = rand(1200, 1600) | 0;
 
   // 1. 出だしから歓声と完全に同時に鳴り響く大拍手アンサンブル
   const instantClaps = pickN(APPLAUSE, 4);

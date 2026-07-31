@@ -3891,36 +3891,21 @@ function drawGoal() {
   ctx.closePath();
   ctx.fill();
 
-  // 側面・奥面の暗い塗り
-  ctx.fillStyle = "rgba(0,0,0,0.18)";
-  ctx.beginPath();
-  ctx.moveTo(fl.x, fl.y);
-  ctx.lineTo(bl.x, bl.y);
-  ctx.lineTo(blb.x, blb.y);
-  ctx.lineTo(flb.x, flb.y);
-  ctx.closePath();
-  ctx.fill();
+// Removed side shading blocks to avoid overlapping goal frames
 
-  ctx.fillStyle = "rgba(0,0,0,0.22)";
-  ctx.beginPath();
-  ctx.moveTo(fr.x, fr.y);
-  ctx.lineTo(br.x, br.y);
-  ctx.lineTo(brb.x, brb.y);
-  ctx.lineTo(frb.x, frb.y);
-  ctx.closePath();
-  ctx.fill();
 
-  const backShade = ctx.createLinearGradient(back.x, back.y, back.x, back.y + back.h);
-  backShade.addColorStop(0, "rgba(210,220,210,0.07)");
-  backShade.addColorStop(1, "rgba(0,0,0,0.2)");
-  ctx.fillStyle = backShade;
-  ctx.beginPath();
-  ctx.moveTo(bl.x, bl.y);
-  ctx.lineTo(br.x, br.y);
-  ctx.lineTo(brb.x, brb.y);
-  ctx.lineTo(blb.x, blb.y);
-  ctx.closePath();
-  ctx.fill();
+// Back shading removed to prevent extra overlay on goal frame
+// const backShade = ctx.createLinearGradient(back.x, back.y, back.x, back.y + back.h);
+// backShade.addColorStop(0, "rgba(210,220,210,0.07)");
+// backShade.addColorStop(1, "rgba(0,0,0,0.2)");
+// ctx.fillStyle = backShade;
+// ctx.beginPath();
+// ctx.moveTo(bl.x, bl.y);
+// ctx.lineTo(br.x, br.y);
+// ctx.lineTo(brb.x, brb.y);
+// ctx.lineTo(blb.x, blb.y);
+// ctx.closePath();
+// ctx.fill();
 
   // 上面（バーから奥）の薄い影
   ctx.fillStyle = "rgba(0,0,0,0.1)";
