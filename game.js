@@ -5841,7 +5841,7 @@ function attachButtonHandler(btnEl, action) {
   let handledAt = 0;
   const handler = (e) => {
     const now = performance.now();
-    if (now - handledAt < 250) return;
+    if (now - handledAt < 200) return;
     handledAt = now;
     try { unlockAudio(); } catch (_) {}
     if (typeof action === "function") {
@@ -5850,7 +5850,8 @@ function attachButtonHandler(btnEl, action) {
       startMatch();
     }
   };
-  btnEl.onclick = handler;
+  btnEl.addEventListener("pointerdown", handler, { passive: true });
+  btnEl.addEventListener("click", handler);
 }
 
 window.startMatch = startMatch;
