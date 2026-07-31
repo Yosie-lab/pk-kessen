@@ -49,6 +49,7 @@ const APPLAUSE = [
 
 let unlocked = false;
 let cheerTimer = null;
+let victoryTimer = null;
 let activeCheer = [];
 let cheerGen = 0;
 let playGen = 0;
@@ -472,6 +473,10 @@ function stopCheer() {
     clearTimeout(cheerTimer);
     cheerTimer = null;
   }
+  if (victoryTimer) {
+    clearTimeout(victoryTimer);
+    victoryTimer = null;
+  }
   for (const cancel of activeFadeCancels) cancel();
   activeFadeCancels.clear();
   const cheerClones = activeCheer.slice();
@@ -776,10 +781,11 @@ export function playVictoryCelebration() {
     density: rand(1.3, 1.7),
   });
 
-  trackPlayTimer(
+  victoryTimer = trackPlayTimer(
     setTimeout(() => {
       if (victoryGen !== cheerGen) return;
       for (const a of victoryCheer) fadeOut(a, fadeMs + ((Math.random() * 200) | 0));
+      victoryTimer = null;
     }, holdMs)
   );
 }
