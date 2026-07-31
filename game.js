@@ -1551,10 +1551,10 @@ function startMatch() {
 
   try {
     matchStartedAt = now;
-    unlockAudio();
-    clearMatchTimers();
-    resetMatchAudio();
-    playKickoffCheer();
+    try { unlockAudio(); } catch (_) {}
+    try { clearMatchTimers(); } catch (_) {}
+    try { resetMatchAudio(); } catch (_) {}
+    try { playKickoffCheer(); } catch (_) {}
     playerAimHistory.length = 0;
     // セッションレイアウトが未確立の場合のみ初期化
     state.mode = "play";

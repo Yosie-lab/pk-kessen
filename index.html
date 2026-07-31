@@ -99,31 +99,23 @@
     </div>
     <script>
       window.addEventListener("error", function (e) {
-        if (window.__PK_LOADED) {
-          var el = document.getElementById("boot-error");
-          if (el) el.hidden = true;
-          return;
-        }
         var el = document.getElementById("boot-error");
         if (el) {
           el.hidden = false;
-          el.textContent = "エラーが発生しました: " + (e.message || e.error || e);
+          el.style.display = "block";
+          el.textContent = "エラー: " + (e.message || e.error || e);
         }
       });
       window.addEventListener("unhandledrejection", function (e) {
-        if (window.__PK_LOADED) {
-          var el = document.getElementById("boot-error");
-          if (el) el.hidden = true;
-          return;
-        }
         var el = document.getElementById("boot-error");
         if (el) {
           el.hidden = false;
-          el.textContent = "エラーが発生しました: " + (e.reason || e);
+          el.style.display = "block";
+          el.textContent = "エラー: " + (e.reason || e);
         }
       });
     </script>
-    <script type="module" src="./game.js?v=79"></script>
+    <script type="module" src="./game.js?v=80"></script>
     <script>
       setTimeout(function () {
         if (window.__PK_LOADED) {
