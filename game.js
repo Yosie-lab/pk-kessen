@@ -5867,6 +5867,11 @@ canvas.addEventListener("touchstart", (e) => {
     onPointerDown(e);
   }
 }, { passive: false });
+window.addEventListener("pointerdown", (e) => {
+  if (state.mode === "play" && (state.phase === "ready" || state.phase === "ready-save")) {
+    onPointerDown(e);
+  }
+});
 canvas.addEventListener("pointermove", onPointerMove, { passive: true });
 
 let resizeTimer = 0;
