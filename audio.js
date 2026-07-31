@@ -731,6 +731,22 @@ export function playVictoryCelebration() {
       if (a) victoryCheer.push(a);
     }
   });
+  // 歓喜後半（1.5秒後〜）へ音を継続させる2ndウェーブ
+  trackPlayTimer(
+    setTimeout(() => {
+      if (victoryGen !== cheerGen) return;
+      mainBeds.forEach((key, i) => {
+        const a = playClone(
+          key,
+          MAIN_BED_VOL_SCALE * VICTORY_VOL_SCALE,
+          rand(0.98, 1.04),
+          0,
+          i * rand(20, 50)
+        );
+        if (a) victoryCheer.push(a);
+      });
+    }, 1500)
+  );
 
   // 3. 数万人の大歓呼・声の波
   const yellKeys = pickN(CHEER_YELLS, 6); // increased yell layers
