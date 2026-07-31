@@ -379,6 +379,7 @@ html.viewport-locked body {
   z-index: 5;
   display: grid;
   place-items: center;
+  pointer-events: none;
 }
 
 .screen[hidden] {
