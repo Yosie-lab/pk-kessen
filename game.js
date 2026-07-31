@@ -5839,14 +5839,11 @@ function attachButtonHandler(btnEl, action) {
   if (!btnEl) return;
   let handledAt = 0;
   const trigger = (e) => {
-    if (e && e.cancelable && e.type !== "click") {
-      try { e.preventDefault(); } catch (_) {}
-    }
     const now = performance.now();
-    if (now - handledAt < 250) return;
+    if (now - handledAt < 300) return;
     handledAt = now;
 
-    unlockAudio();
+    try { unlockAudio(); } catch (_) {}
 
     if (typeof action === "function") {
       action();
@@ -5855,9 +5852,8 @@ function attachButtonHandler(btnEl, action) {
     }
   };
 
-  btnEl.addEventListener("pointerdown", trigger, { passive: false });
-  btnEl.addEventListener("touchstart", trigger, { passive: false });
-  btnEl.addEventListener("click", trigger);
+  btnEl.onclick = trigger;
+  btnEl.addEventListener("pointerdown", trigger, { passive: true });
 }
 
 attachButtonHandler(els.btnStart);
