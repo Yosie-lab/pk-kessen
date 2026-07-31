@@ -1549,10 +1549,8 @@ let lastStartAt = 0;
 
 function startMatch() {
   const now = performance.now();
-  matchStartedAt = now;
 
   try {
-    matchStartedAt = now;
     try { unlockAudio(); } catch (_) {}
     try { clearMatchTimers(); } catch (_) {}
     try { resetMatchAudio(); } catch (_) {}
