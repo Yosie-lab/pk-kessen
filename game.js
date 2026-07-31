@@ -1543,8 +1543,7 @@ let lastStartAt = 0;
 
 function startMatch() {
   const now = performance.now();
-  if (now - lastStartAt < 400) return;
-  lastStartAt = now;
+  matchStartedAt = now;
 
   try {
     matchStartedAt = now;
@@ -5837,23 +5836,19 @@ document.addEventListener("visibilitychange", () => {
 
 function attachButtonHandler(btnEl, action) {
   if (!btnEl) return;
-  let handledAt = 0;
-  const trigger = (e) => {
-    const now = performance.now();
-    if (now - handledAt < 300) return;
-    handledAt = now;
-
+  const handler = (e) => {
     try { unlockAudio(); } catch (_) {}
-
     if (typeof action === "function") {
       action();
     } else {
       startMatch();
     }
   };
-
-  btnEl.onclick = trigger;
-  btnEl.addEventListener("pointerdown", trigger, { passive: true });
+  btnEl.addEventListener("click", handler);
+  btnEl.addEventListener("touchend", (e) => {
+    if (e.cancelable) e.preventDefault();
+    handler(e);
+  });
 }
 
 attachButtonHandler(els.btnStart);
