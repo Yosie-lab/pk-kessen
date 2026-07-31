@@ -1541,6 +1541,8 @@ function hideOverlayScreens() {
   els.hud.hidden = false;
   els.hud.removeAttribute("hidden");
   els.hud.style.display = "";
+  els.controls.hidden = false;
+  els.controls.removeAttribute("hidden");
 }
 
 let lastStartAt = 0;
