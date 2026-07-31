@@ -294,11 +294,12 @@ html.viewport-locked body {
 
 .prompt {
   max-width: 720px;
-  height: 4.25rem;
+  min-height: 4.25rem;
   margin: 12px auto 0;
+  padding: 4px 0;
   display: grid;
   place-items: center;
-  overflow: hidden;
+  overflow: visible;
   text-align: center;
   font-size: 0.95rem;
   font-weight: 500;
@@ -622,12 +623,13 @@ html.viewport-locked body {
   .prompt {
     margin-top: 8px;
     font-size: 0.85rem;
-    height: 3.85rem;
+    min-height: 3.85rem;
+    overflow: visible;
   }
 
   .prompt-headline {
     font-size: clamp(1.15rem, 3.6vw, 1.55rem);
-    line-height: 1.25;
+    line-height: 1.4;
   }
 
   .prompt-sub {
