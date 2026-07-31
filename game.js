@@ -3989,7 +3989,7 @@ function drawGoal() {
   strokeNetFace(fl, fr, bl, br, 14, 5, 0.22, 0.18);
   }
 
-  // —— 奥のフレーム（細い白パイプ） ——
+  // —— 奥のサポートフレーム（自然な奥行き影トーン） ——
   function strokePipe(a, b, width, color) {
     ctx.strokeStyle = color;
     ctx.lineWidth = width;
@@ -4000,21 +4000,19 @@ function drawGoal() {
     ctx.stroke();
   }
 
-  strokePipe(bl, br, 5, "#9aa498");
-  strokePipe(blb, brb, 4.5, "#8e968b");
-  strokePipe(bl, blb, 4.5, "#9aa498");
-  strokePipe(br, brb, 4.5, "#8a9286");
+  // 奥枠（主ポストを際立たせるため、細く控えめな影カラー）
+  strokePipe(bl, br, 3, "rgba(100, 110, 100, 0.4)");
+  strokePipe(blb, brb, 2.5, "rgba(80, 90, 80, 0.35)");
+  strokePipe(bl, blb, 2.5, "rgba(90, 100, 90, 0.35)");
+  strokePipe(br, brb, 2.5, "rgba(90, 100, 90, 0.35)");
 
-  // 手前→奥の支柱・レール
-  strokePipe(fl, bl, 3.2, "rgba(190,198,188,0.75)");
-  strokePipe(fr, br, 3.2, "rgba(170,178,168,0.7)");
-  strokePipe(flb, blb, 2.8, "rgba(160,168,158,0.55)");
-  strokePipe(frb, brb, 2.8, "rgba(150,158,148,0.55)");
-  // 上面サイドレール
-  strokePipe(lerp2(fl, fr, 0.25), lerp2(bl, br, 0.25), 2, "rgba(200,208,198,0.35)");
-  strokePipe(lerp2(fl, fr, 0.75), lerp2(bl, br, 0.75), 2, "rgba(200,208,198,0.35)");
+  // 手前→奥の斜めレール（シンプルな左右主レールのみ）
+  strokePipe(fl, bl, 2.2, "rgba(140, 150, 140, 0.45)");
+  strokePipe(fr, br, 2.2, "rgba(140, 150, 140, 0.45)");
+  strokePipe(flb, blb, 2.0, "rgba(110, 120, 110, 0.35)");
+  strokePipe(frb, brb, 2.0, "rgba(110, 120, 110, 0.35)");
 
-  // —— 手前ポスト／クロスバー（円筒の白い柱） ——
+  // —— 手前メインポスト／クロスバー（美しい白い柱） ——
   const postW = 11;
   const barH = 11;
 
@@ -4103,15 +4101,42 @@ function drawGoal() {
   ctx.restore();
 }
 
-/** キック／ダイブ瞬間のゴールレティクル（毎フレーム・背景キャッシュの外） */
+/** キック／ダイブ瞬間のゴールターゲットマーカー（背景キャッシュの外） */
 function drawGoalReticle() {
   if (state.mode !== "play" || (state.phase !== "aim-click" && state.phase !== "dive-click")) return;
   const g = goalRect();
   const pulse = 0.5 + Math.sin(frameNow / 90) * 0.5;
   const col = state.phase === "dive-click" ? "125,200,255" : "232,255,106";
-  ctx.strokeStyle = `rgba(${col},${0.35 + pulse * 0.45})`;
-  ctx.lineWidth = 4;
-  ctx.strokeRect(g.x - 2, g.y - 2, g.w + 4, g.h + 4);
+  const alpha = 0.45 + pulse * 0.45;
+  ctx.strokeStyle = `rgba(${col},${alpha})`;
+  ctx.lineWidth = 2.5;
+
+  // 4隅のコーナー用ターゲット線（枠自体と重なって多重に見えない控えめなコーナー括弧）
+  const cornerLen = 14;
+  // 左上
+  ctx.beginPath();
+  ctx.moveTo(g.x - 2, g.y - 2 + cornerLen);
+  ctx.lineTo(g.x - 2, g.y - 2);
+  ctx.lineTo(g.x - 2 + cornerLen, g.y - 2);
+  ctx.stroke();
+  // 右上
+  ctx.beginPath();
+  ctx.moveTo(g.x + g.w + 2 - cornerLen, g.y - 2);
+  ctx.lineTo(g.x + g.w + 2, g.y - 2);
+  ctx.lineTo(g.x + g.w + 2, g.y - 2 + cornerLen);
+  ctx.stroke();
+  // 左下
+  ctx.beginPath();
+  ctx.moveTo(g.x - 2, g.y + g.h + 2 - cornerLen);
+  ctx.lineTo(g.x - 2, g.y + g.h + 2);
+  ctx.lineTo(g.x - 2 + cornerLen, g.y + g.h + 2);
+  ctx.stroke();
+  // 右下
+  ctx.beginPath();
+  ctx.moveTo(g.x + g.w + 2 - cornerLen, g.y + g.h + 2);
+  ctx.lineTo(g.x + g.w + 2, g.y + g.h + 2);
+  ctx.lineTo(g.x + g.w + 2, g.y + g.h + 2 - cornerLen);
+  ctx.stroke();
 
   const locked = state.phase === "aim-click" ? state.aimLocked : state.diveLocked;
   if (state.pointerAim || locked) {
