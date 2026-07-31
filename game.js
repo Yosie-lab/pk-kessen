@@ -1549,6 +1549,8 @@ let lastStartAt = 0;
 
 function startMatch() {
   const now = performance.now();
+  if (now - lastStartAt < 400) return;
+  lastStartAt = now;
 
   try {
     try { unlockAudio(); } catch (_) {}
@@ -1556,7 +1558,6 @@ function startMatch() {
     try { resetMatchAudio(); } catch (_) {}
     try { playKickoffCheer(); } catch (_) {}
     playerAimHistory.length = 0;
-    // セッションレイアウトが未確立の場合のみ初期化
     state.mode = "play";
     state.suddenDeath = false;
     state.wasSuddenDeath = false;
@@ -1581,11 +1582,20 @@ function startMatch() {
     void els.hud.offsetHeight;
     loopRunning = true;
     startLoop();
-    beginYouShoot();
     clearSessionLayout("startMatch");
+    layoutPending = true;
     resize({ forceRemeasure: true });
-    captureSessionLayout();
-    layoutPending = false;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (state.mode !== "play") {
+          layoutPending = false;
+          return;
+        }
+        captureSessionLayout();
+        layoutPending = false;
+        beginYouShoot();
+      });
+    });
   } catch (err) {
     console.error(err);
   }
@@ -5701,13 +5711,13 @@ function renderBackdrop() {
 function render() {
   try {
     frameNow = performance.now();
+    if (state.mode === "title" || state.mode === "result") {
+      renderBackdrop();
+      return;
+    }
     ensureBgCache();
     ctx.drawImage(bgCache.canvas, 0, 0, state.w, state.h);
     drawCrowdPulseOverlay();
-
-    if (state.mode === "title" || state.mode === "result") {
-      return;
-    }
     // 奥（小さい y）から手前へ。ボールがキッカー背中に張り付いて見えないようにする
     const spot = penaltyLayout().spot;
     renderLayers.length = 0;
@@ -5825,8 +5835,9 @@ function attachButtonHandler(btnEl, action) {
   let handledAt = 0;
   const handler = (e) => {
     const now = performance.now();
-    if (now - handledAt < 200) return;
+    if (now - handledAt < 400) return;
     handledAt = now;
+    e.preventDefault();
     try { unlockAudio(); } catch (_) {}
     if (typeof action === "function") {
       action();
@@ -5834,8 +5845,7 @@ function attachButtonHandler(btnEl, action) {
       startMatch();
     }
   };
-  btnEl.addEventListener("pointerdown", handler, { passive: true });
-  btnEl.addEventListener("click", handler);
+  btnEl.addEventListener("pointerup", handler, { passive: false });
 }
 
 window.startMatch = startMatch;
