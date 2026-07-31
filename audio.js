@@ -1074,10 +1074,13 @@ function playDisappointedCrowd() {
 function fadeOut(audio, duration) {
   if (!audio) return;
   const currentGen = audio._instanceGen;
-  const STEPS = 10;
-  const stepMs = Math.max(16, duration / STEPS);
   const startVol = audio.volume;
-  let step = 0;
+  if (startVol <= 0 || duration <= 0) {
+    if (audio._instanceGen === currentGen) releasePoolAudio(audio);
+    return;
+  }
+
+  const startTime = performance.now();
   let done = false;
   let timerId = 0;
 
@@ -1098,13 +1101,18 @@ function fadeOut(audio, duration) {
       activeFadeCancels.delete(cancel);
       return;
     }
-    step++;
-    const t = Math.min(1, step / STEPS);
+
+    const elapsed = performance.now() - startTime;
+    const t = Math.min(1, elapsed / duration);
+    // Smooth S-curve (Cosine Easing) for natural auditory fade-out
+    const factor = 0.5 * (1 + Math.cos(t * Math.PI));
+
     try {
-      audio.volume = Math.max(0, Math.min(1, startVol * (1 - t)));
+      audio.volume = Math.max(0, Math.min(1, startVol * factor));
     } catch (_) {}
+
     if (t < 1) {
-      timerId = setTimeout(tick, stepMs);
+      timerId = setTimeout(tick, 16);
       pendingPlayTimers.add(timerId);
     } else {
       finish();
@@ -1122,6 +1130,5 @@ function fadeOut(audio, duration) {
     }
   };
   activeFadeCancels.add(cancel);
-  timerId = setTimeout(tick, stepMs);
-  pendingPlayTimers.add(timerId);
+  tick();
 }
