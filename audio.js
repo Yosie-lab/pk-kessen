@@ -696,8 +696,8 @@ export function playVictoryCelebration() {
   // 歓喜決定の瞬間：インパクト＋大拍手（出だしから同時に鳴り響く）
   playGoalSting(victoryCheer, VICTORY_VOL_SCALE);
 
-  const holdMs = rand(3200, 4200) | 0; // 最低3秒以上の安定した大歓声キープ
-  const fadeMs = rand(1500, 2000) | 0; // 自然な減衰フェードアウト
+  const holdMs = rand(3800, 4800) | 0; // 確実に4秒以上大音量をキープ
+  const fadeMs = rand(2000, 2500) | 0; // ゆったりと自然な減衰フェードアウト
 
   // 1. 出だしから歓声と完全に同時に鳴り響く大拍手アンサンブル（音量を統一）
   const instantClaps = pickN(APPLAUSE, 6); // keep count but lower per‑clap volume

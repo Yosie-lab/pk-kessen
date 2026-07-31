@@ -2931,13 +2931,14 @@ function triggerResultAudio(pending, shooter) {
   if (result.goal) {
     state.flash = 1;
     state.crowdPulse = 1;
-    const isWinningKick = (shooter === "you" && checkEarlyEnd() === "you");
-    if (shooter === "you" && !isWinningKick) playCheer({ lite: state.mobileLite });
+    const isEnd = (shooter === "you" && (checkEarlyEnd() === "you" || (state.history.you.length >= 4 && state.scores.you > state.scores.cpu) || (state.suddenDeath && state.history.you.length === state.history.cpu.length + 1 && state.scores.you > state.scores.cpu)));
+    if (shooter === "you" && !isEnd) playCheer({ lite: state.mobileLite });
     else if (shooter !== "you") playMiss();
   } else if (result.saved) {
     state.flash = 0.45;
-    if (shooter === "cpu") playCheer({ lite: state.mobileLite });
-    else playBlockedByKeeper({ lite: state.mobileLite });
+    const isSaveWin = (shooter === "cpu" && (checkEarlyEnd() === "you" || (state.suddenDeath && state.history.you.length === state.history.cpu.length && state.scores.you > state.scores.cpu)));
+    if (shooter === "cpu" && !isSaveWin) playCheer({ lite: state.mobileLite });
+    else if (shooter === "you") playBlockedByKeeper({ lite: state.mobileLite });
   } else if (result.post) {
     state.flash = 0.7;
     playMiss();
