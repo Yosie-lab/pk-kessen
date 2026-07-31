@@ -661,7 +661,7 @@ export function playCheer(opts = {}) {
   );
 }
 
-/** PK戦勝利：圧倒的大歓声＋大拍手の祝福（約4.6〜5.8秒間独立保証・10%ボリュームアップ） */
+/** PK戦勝利：圧倒的大歓声＋大拍手の祝福（約3.6〜5.0秒間独立保証・10%ボリュームアップ） */
 export function playVictoryCelebration() {
   unlockAudio();
   // 歓喜専用の独立ジェネレーション＆独立チェアーリストを生成（過去のタイマーによる消音干渉を100%遮断）
@@ -675,8 +675,8 @@ export function playVictoryCelebration() {
   const yellKeys = pickN(CHEER_YELLS, 4);
   const clapKeys = pickN(APPLAUSE, 6);
 
-  const holdMs = rand(4600, 5800) | 0;
-  const fadeMs = rand(1000, 1500) | 0;
+  const holdMs = rand(3600, 5000) | 0;
+  const fadeMs = rand(800, 1400) | 0;
 
   bedKeys.forEach((key, i) => {
     const a = playClone(key, 1.0 * (i === 0 ? 1 : 0.85) * VICTORY_VOL_SCALE, rand(0.94, 1.08), rand(0, 2.2), i * rand(20, 80));
@@ -711,7 +711,7 @@ export function playVictoryCelebration() {
     if (a) victoryCheer.push(a);
   });
 
-  // 時間差で押し寄せる歓喜と大拍手の大波（2波：約4.6〜5.8秒間を確実にカバー）
+  // 時間差で押し寄せる歓喜と大拍手の大波（2波：約3.6〜5.0秒間を確実にカバー）
   for (let wave = 0; wave < 2; wave++) {
     pickN(APPLAUSE, 3).forEach((key, i) => {
       const a = playClone(
@@ -719,7 +719,7 @@ export function playVictoryCelebration() {
         rand(0.6, 0.9) * VICTORY_VOL_SCALE,
         rand(0.95, 1.08),
         rand(0.1, 2.4),
-        rand(250, 600) + wave * rand(700, 1100) + i * rand(50, 120)
+        rand(200, 500) + wave * rand(600, 900) + i * rand(40, 100)
       );
       if (a) victoryCheer.push(a);
     });
@@ -729,7 +729,7 @@ export function playVictoryCelebration() {
       rand(0.7, 0.95) * VICTORY_VOL_SCALE,
       rand(0.96, 1.1),
       rand(0, 1.5),
-      rand(400, 800) + wave * rand(700, 1100)
+      rand(300, 700) + wave * rand(600, 900)
     );
     if (extraYell) victoryCheer.push(extraYell);
   }
@@ -737,12 +737,12 @@ export function playVictoryCelebration() {
   playCrowdSwell({
     intensity: 1.0 * VICTORY_VOL_SCALE,
     bright: rand(0.7, 1.0),
-    dur: rand(4.6, 5.8),
+    dur: rand(3.6, 5.0),
     rise: rand(0.03, 0.1),
   });
   playApplauseTexture({
     intensity: 1.0 * VICTORY_VOL_SCALE,
-    dur: rand(4.6, 5.8),
+    dur: rand(3.6, 5.0),
     density: rand(1.0, 1.5),
   });
 
