@@ -1575,24 +1575,23 @@ function startMatch() {
     hideOverlayScreens();
     updateHud();
     void els.hud.offsetHeight;
+    beginYouShoot();
     if (!sessionLayout) {
       layoutPending = true;
       resize({ forceRemeasure: true });
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          if (state.mode !== "play" || sessionLayout) {
+          if (state.mode !== "play") {
             layoutPending = false;
             return;
           }
           captureSessionLayout();
           layoutPending = false;
-          beginYouShoot();
         });
       });
     } else {
       resize({ source: "startMatch-restore" });
       layoutPending = false;
-      beginYouShoot();
     }
   } catch (err) {
     console.error(err);
