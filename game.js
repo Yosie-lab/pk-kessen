@@ -948,24 +948,25 @@ function computeGoalRect() {
   const availH = Math.max(140, h - inset.top - inset.bottom);
   const topOverhang = 22;
 
-  // PWA/スタンドアローン保存時、画面高の増大でゴールが拡大しないよう実質高さをクランプ固定
-  const effectiveH = isStandaloneMode() ? Math.min(h, 670) : h;
+  // PWA/スタンドアローン保存時、バー消去による画面高増大でゴールが巨大化するのを完全固定
+  const standalone = isStandaloneMode();
+  const effectiveH = standalone ? Math.min(h, 620) : h;
 
   const playableH = Math.max(80, Math.min(availH, effectiveH - inset.top - inset.bottom) - topOverhang);
-  const maxGhByHeight = playableH * 0.30;
-  const maxGhByWidth = (availW * 0.94) / 2.92;
-  const ghCap = effectiveH <= 300 ? 104 : effectiveH <= 380 ? 135 : effectiveH <= 460 ? 155 : 175;
+  const maxGhByHeight = playableH * 0.28;
+  const maxGhByWidth = (availW * 0.90) / 2.92;
+  const ghCap = effectiveH <= 300 ? 104 : effectiveH <= 380 ? 128 : effectiveH <= 460 ? 142 : 152;
   let gh = Math.min(maxGhByHeight, maxGhByWidth, ghCap);
 
-  const isMobilePortrait = w <= 430 && w < h;
+  const isMobilePortrait = w <= 430;
   if (isMobilePortrait) {
     gh *= 0.85;
   }
 
-  // 全体画面の比率を95%に設定
+  // 全体画面の比率を固定
   gh *= 0.95;
 
-  const gw = Math.min(availW * 0.94, gh * 3.0);
+  const gw = Math.min(availW * 0.90, gh * 3.0);
   const x = Math.round(inset.left + (availW - gw) * 0.5);
   const y = Math.round(inset.top + topOverhang);
   const roundedGw = Math.round(gw);
@@ -3969,22 +3970,10 @@ function drawGoal() {
 
   // 奥ネット（軽量メッシュ）
   strokeNetFace(bl, br, blb, brb, 18, 10, 0.7, 0.36);
-  // 左側面ネット
-  const leftBulge = {
-    tl: fl,
-    tr: { x: bl.x - depth * 0.05, y: bl.y + depth * 0.02 },
-    bl: flb,
-    br: { x: blb.x - depth * 0.07, y: blb.y + depth * 0.01 },
-  };
-  strokeNetFace(leftBulge.tl, leftBulge.tr, leftBulge.bl, leftBulge.br, 6, 10, 0.35, 0.24);
-  // 右側面
-  const rightBulge = {
-    tl: fr,
-    tr: { x: br.x + depth * 0.05, y: br.y + depth * 0.02 },
-    bl: frb,
-    br: { x: brb.x + depth * 0.07, y: brb.y + depth * 0.01 },
-  };
-  strokeNetFace(rightBulge.tl, rightBulge.tr, rightBulge.bl, rightBulge.br, 6, 10, 0.35, 0.24);
+  // 左側面ネット（枠の内側にジャストフィットさせ二重枠化を防止）
+  strokeNetFace(fl, bl, flb, blb, 6, 10, 0.2, 0.22);
+  // 右側面ネット
+  strokeNetFace(fr, br, frb, brb, 6, 10, 0.2, 0.22);
   // 天井ネット
   strokeNetFace(fl, fr, bl, br, 14, 5, 0.22, 0.18);
   }
