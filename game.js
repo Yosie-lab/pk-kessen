@@ -1450,6 +1450,7 @@ function updateHud() {
   els.roundLabel.textContent = state.suddenDeath
     ? `サドンデス ${state.kickIndex + 1}`
     : `${Math.min(state.kickIndex + 1, 5)} / 5`;
+  els.roundLabel.classList.toggle("sudden-death", state.suddenDeath);
 
   renderKicks(els.kicksYou, state.history.you);
   renderKicks(els.kicksCpu, state.history.cpu);
@@ -3065,7 +3066,8 @@ function endMatch(winner) {
   state.phase = "idle";
   showResultScreen();
   const isSuddenDeath = state.suddenDeath || state.wasSuddenDeath;
-  els.resultKicker.textContent = isSuddenDeath ? "SUDDEN DEATH" : "MATCH OVER";
+  els.resultKicker.textContent = isSuddenDeath ? "サドンデス" : "MATCH OVER";
+  els.resultKicker.classList.toggle("sudden-death", isSuddenDeath);
   els.resultTitle.textContent = winner === "you" ? "歓喜" : "残念";
   els.resultTitle.style.color = winner === "you" ? "var(--accent)" : "var(--danger)";
   els.resultScore.textContent = `${state.scores.you} - ${state.scores.cpu}`;

@@ -292,6 +292,13 @@ html.viewport-locked body {
   color: var(--muted);
 }
 
+.round.sudden-death {
+  font-size: clamp(0.95rem, 3.2vw, 1.18rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+}
+
 .prompt {
   max-width: 720px;
   min-height: 4.25rem;
@@ -547,6 +554,13 @@ html.viewport-locked body {
   font-weight: 700;
   letter-spacing: 0.28em;
   color: var(--flood);
+}
+
+.result-kicker.sudden-death {
+  font-size: clamp(1.2rem, 4.5vw, 1.55rem);
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  text-shadow: 0 0 18px rgba(232, 255, 106, 0.28);
 }
 
 .result-title {
