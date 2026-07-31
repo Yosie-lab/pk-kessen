@@ -382,7 +382,7 @@ html.viewport-locked body {
 }
 
 .screen[hidden] {
-  display: none;
+  display: none !important;
 }
 
 .title-screen {

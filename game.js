@@ -1535,8 +1535,11 @@ function scheduleLockFixedGoal() {
 
 function hideOverlayScreens() {
   els.title.hidden = true;
+  els.title.style.display = "none";
   els.result.hidden = true;
+  els.result.style.display = "none";
   els.hud.hidden = false;
+  els.hud.style.display = "";
 }
 
 let lastStartAt = 0;
