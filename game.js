@@ -1556,6 +1556,7 @@ function startMatch() {
     // セッションレイアウトが未確立の場合のみ初期化
     state.mode = "play";
     state.suddenDeath = false;
+    state.wasSuddenDeath = false;
     state.kickIndex = 0;
     state.scores = { you: 0, cpu: 0 };
     state.history = { you: [], cpu: [] };
@@ -3031,6 +3032,7 @@ function advanceTurn(lastShooter) {
       return;
     }
     state.suddenDeath = true;
+    state.wasSuddenDeath = true;
     state.kickIndex = 0;
     showControls("none");
     setPrompt("サドンデス！");
@@ -3049,7 +3051,8 @@ function endMatch(winner) {
   state.phase = "idle";
   els.controls.hidden = true;
   els.result.hidden = false;
-  els.resultKicker.textContent = state.suddenDeath ? "SUDDEN DEATH" : "MATCH OVER";
+  const isSuddenDeath = state.suddenDeath || state.wasSuddenDeath;
+  els.resultKicker.textContent = isSuddenDeath ? "SUDDEN DEATH" : "MATCH OVER";
   els.resultTitle.textContent = winner === "you" ? "歓喜" : "残念";
   els.resultTitle.style.color = winner === "you" ? "var(--accent)" : "var(--danger)";
   els.resultScore.textContent = `${state.scores.you} - ${state.scores.cpu}`;
