@@ -5839,8 +5839,11 @@ function attachButtonHandler(btnEl, action) {
   if (!btnEl) return;
   let handledAt = 0;
   const trigger = (e) => {
+    if (e && e.cancelable && e.type !== "click") {
+      try { e.preventDefault(); } catch (_) {}
+    }
     const now = performance.now();
-    if (now - handledAt < 300) return;
+    if (now - handledAt < 250) return;
     handledAt = now;
 
     unlockAudio();
@@ -5852,7 +5855,8 @@ function attachButtonHandler(btnEl, action) {
     }
   };
 
-  btnEl.addEventListener("pointerdown", trigger, { passive: true });
+  btnEl.addEventListener("pointerdown", trigger, { passive: false });
+  btnEl.addEventListener("touchstart", trigger, { passive: false });
   btnEl.addEventListener("click", trigger);
 }
 
