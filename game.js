@@ -2931,8 +2931,9 @@ function triggerResultAudio(pending, shooter) {
   if (result.goal) {
     state.flash = 1;
     state.crowdPulse = 1;
-    if (shooter === "you") playCheer({ lite: state.mobileLite });
-    else playMiss();
+    const isWinningKick = (shooter === "you" && checkEarlyEnd() === "you");
+    if (shooter === "you" && !isWinningKick) playCheer({ lite: state.mobileLite });
+    else if (shooter !== "you") playMiss();
   } else if (result.saved) {
     state.flash = 0.45;
     if (shooter === "cpu") playCheer({ lite: state.mobileLite });

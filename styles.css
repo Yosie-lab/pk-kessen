@@ -525,7 +525,8 @@ html.viewport-locked body {
 
 .result-kicker {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 1rem;
+  font-weight: 700;
   letter-spacing: 0.28em;
   color: var(--flood);
 }
