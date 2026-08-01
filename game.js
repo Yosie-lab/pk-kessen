@@ -514,6 +514,7 @@ const state = {
   mode: "title",
   phase: "idle",
   suddenDeath: false,
+  wasSuddenDeath: false,
   kickIndex: 0,
   turn: "you-shoot",
   scores: { you: 0, cpu: 0 },
@@ -1408,7 +1409,8 @@ function setPrompt(text, opts = {}) {
   }
 
   els.prompt.textContent = "";
-  els.prompt.classList.toggle("prompt-result", !!opts.result);
+  els.prompt.classList.toggle("prompt-result", !!opts.result || !!opts.suddenDeath);
+  els.prompt.classList.toggle("prompt-sudden-death", !!opts.suddenDeath);
 
   if (headline) {
     const head = document.createElement("span");
@@ -1438,7 +1440,7 @@ function setPrompt(text, opts = {}) {
   els.prompt.style.animation = "";
 
   // 結果コメント中は下部ヒントを出さない（場面転換時の重なり防止）
-  if (opts.result || state.phase === "result-beat") {
+  if (opts.result || opts.suddenDeath || state.phase === "result-beat" || state.phase === "sudden-death-beat") {
     showControls("none");
   }
   clearTextSelection();
@@ -1472,7 +1474,10 @@ function showControls(mode) {
   // 結果表示・飛翔・ホイッスル中は操作ヒントを出さない
   if (
     mode !== "none" &&
-    (state.phase === "result-beat" || state.phase === "flight" || state.phase === "whistle")
+    (state.phase === "result-beat" ||
+      state.phase === "sudden-death-beat" ||
+      state.phase === "flight" ||
+      state.phase === "whistle")
   ) {
     mode = "none";
   }
@@ -1488,6 +1493,7 @@ function showControls(mode) {
 let lockGoalTimer = 0;
 let resultBeatTimer = 0;
 let suddenDeathTimer = 0;
+const SUDDEN_DEATH_BEAT_MS = 1600;
 
 function clearMatchTimers() {
   if (lockGoalTimer) {
@@ -3049,12 +3055,14 @@ function advanceTurn(lastShooter) {
     state.suddenDeath = true;
     state.wasSuddenDeath = true;
     state.kickIndex = 0;
+    state.phase = "sudden-death-beat";
     showControls("none");
-    setPrompt("サドンデス！");
+    updateHud();
+    setPrompt("サドンデス！", { suddenDeath: true });
     suddenDeathTimer = setTimeout(() => {
       suddenDeathTimer = 0;
       beginYouShoot();
-    }, 700);
+    }, SUDDEN_DEATH_BEAT_MS);
     return;
   }
 

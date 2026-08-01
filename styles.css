@@ -299,6 +299,14 @@ html.viewport-locked body {
   color: var(--accent);
 }
 
+.prompt.prompt-sudden-death {
+  color: var(--accent);
+  text-shadow:
+    0 0 22px rgba(232, 255, 106, 0.45),
+    0 2px 4px rgba(0, 0, 0, 0.55),
+    0 4px 18px rgba(0, 0, 0, 0.72);
+}
+
 .prompt {
   max-width: 720px;
   min-height: 4.25rem;
