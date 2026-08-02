@@ -380,6 +380,14 @@ const COUNTRY_NAMES = {
   nl: { ja: "オランダ", en: "NETHERLANDS", es: "PAÍSES BAJOS", zh: "荷兰", ko: "네덜란드", fr: "PAYS-BAS" },
   be: { ja: "ベルギー", en: "BELGIUM", es: "BÉLGICA", zh: "比利时", ko: "벨기에", fr: "BELGIQUE" },
   de: { ja: "ドイツ", en: "GERMANY", es: "ALEMANIA", zh: "德国", ko: "독일", fr: "ALLEMAGNE" },
+  co: { ja: "コロンビア", en: "COLOMBIA", es: "COLOMBIA", zh: "哥伦比亚", ko: "콜롬비아", fr: "COLOMBIE" },
+  ch: { ja: "スイス", en: "SWITZERLAND", es: "SUIZA", zh: "瑞士", ko: "스위스", fr: "SUISSE" },
+  no: { ja: "ノルウェー", en: "NORWAY", es: "NORUEGA", zh: "挪威", ko: "노르웨이", fr: "NORVÈGE" },
+  mx: { ja: "メキシコ", en: "MEXICO", es: "MÉXICO", zh: "墨西哥", ko: "멕시코", fr: "MEXIQUE" },
+  us: { ja: "アメリカ", en: "USA", es: "ESTADOS UNIDOS", zh: "美国", ko: "미국", fr: "ÉTATS-UNIS" },
+  eg: { ja: "エジプト", en: "EGYPT", es: "EGIPTO", zh: "埃及", ko: "이집트", fr: "ÉGYPTE" },
+  cv: { ja: "カーボベルデ", en: "CAPE VERDE", es: "CABO VERDE", zh: "佛得角", ko: "카보베르데", fr: "CAP-VERT" },
+  hr: { ja: "クロアチア", en: "CROATIA", es: "CROACIA", zh: "克罗地亚", ko: "크로아티아", fr: "CROATIE" },
 };
 
 function getCountryName(id) {
