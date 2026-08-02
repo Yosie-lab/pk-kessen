@@ -1451,11 +1451,16 @@ function updateHud() {
   els.scoreCpu.textContent = String(state.scores.cpu);
   els.roundLabel.textContent = state.suddenDeath
     ? `サドンデス ${state.kickIndex + 1}`
-    : `${Math.min(state.kickIndex + 1, 5)} / 5`;
+    : regulationRoundLabel();
   els.roundLabel.classList.toggle("sudden-death", state.suddenDeath);
 
   renderKicks(els.kicksYou, state.history.you);
   renderKicks(els.kicksCpu, state.history.cpu);
+}
+
+function regulationRoundLabel() {
+  const paired = Math.min(state.history.you.length, state.history.cpu.length);
+  return `${Math.min(paired + 1, 5)} / 5`;
 }
 
 function renderKicks(container, history) {
@@ -1641,6 +1646,7 @@ function beginYouShoot() {
   state.whistlePending = false;
   clearWhistleTimer();
   showControls("ready");
+  updateHud();
   setPrompt({
     headline: `${SAMURAI_BLUE.shortName} kick`,
     sub: "ピッチをクリックしてキック開始",
@@ -1667,6 +1673,7 @@ function beginYouSave() {
   state.whistlePending = false;
   clearWhistleTimer();
   showControls("ready-save");
+  updateHud();
   setPrompt({
     headline: `${state.oppKit.name} kick`,
     sub: "クリックで開始。蹴る瞬間にダイブ",
@@ -2968,6 +2975,7 @@ function triggerResultAudio(pending, shooter) {
 }
 
 function finishKick(result, shooter) {
+  if (state.phase === "result-beat" || state.phase === "sudden-death-beat") return;
   showControls("none");
   const key = shooter === "you" ? "you" : "cpu";
   const outcome = result.goal ? "goal" : "miss";
@@ -3010,6 +3018,30 @@ function checkEarlyEnd() {
   return null;
 }
 
+function isRegulationComplete() {
+  return state.history.you.length === 5 && state.history.cpu.length === 5;
+}
+
+function enterSuddenDeath() {
+  if (state.suddenDeath || state.mode !== "play" || !isRegulationComplete()) return;
+  if (state.scores.you !== state.scores.cpu) {
+    endMatch(state.scores.you > state.scores.cpu ? "you" : "cpu");
+    return;
+  }
+  state.suddenDeath = true;
+  state.wasSuddenDeath = true;
+  state.kickIndex = 0;
+  state.phase = "sudden-death-beat";
+  showControls("none");
+  updateHud();
+  setPrompt("サドンデス！", { suddenDeath: true });
+  suddenDeathTimer = setTimeout(() => {
+    suddenDeathTimer = 0;
+    if (state.mode !== "play" || !state.suddenDeath || state.phase !== "sudden-death-beat") return;
+    beginYouShoot();
+  }, SUDDEN_DEATH_BEAT_MS);
+}
+
 function advanceTurn(lastShooter) {
   if (state.suddenDeath) {
     if (state.history.you.length === state.history.cpu.length) {
@@ -3045,27 +3077,12 @@ function advanceTurn(lastShooter) {
     return;
   }
 
-  state.kickIndex += 1;
-
-  if (state.history.you.length >= 5 && state.history.cpu.length >= 5) {
-    if (state.scores.you !== state.scores.cpu) {
-      endMatch(state.scores.you > state.scores.cpu ? "you" : "cpu");
-      return;
-    }
-    state.suddenDeath = true;
-    state.wasSuddenDeath = true;
-    state.kickIndex = 0;
-    state.phase = "sudden-death-beat";
-    showControls("none");
-    updateHud();
-    setPrompt("サドンデス！", { suddenDeath: true });
-    suddenDeathTimer = setTimeout(() => {
-      suddenDeathTimer = 0;
-      beginYouShoot();
-    }, SUDDEN_DEATH_BEAT_MS);
+  if (isRegulationComplete()) {
+    enterSuddenDeath();
     return;
   }
 
+  state.kickIndex += 1;
   beginYouShoot();
 }
 
