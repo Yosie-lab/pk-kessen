@@ -388,6 +388,7 @@ const COUNTRY_NAMES = {
   eg: { ja: "エジプト", en: "EGYPT", es: "EGIPTO", zh: "埃及", ko: "이집트", fr: "ÉGYPTE" },
   cv: { ja: "カーボベルデ", en: "CAPE VERDE", es: "CABO VERDE", zh: "佛得角", ko: "카보베르데", fr: "CAP-VERT" },
   hr: { ja: "クロアチア", en: "CROATIA", es: "CROACIA", zh: "克罗地亚", ko: "크로아티아", fr: "CROATIE" },
+  kr: { ja: "韓国", en: "KOREA", es: "COREA", zh: "韩国", ko: "대한민국", fr: "CORÉE" },
 };
 
 function getCountryName(id) {
@@ -530,6 +531,11 @@ const VENUES = {
     seats: ["#ffffff", "#111111", "#dd0000"],
     motif: "industrial",
     situations: ["night", "overcast", "rainNight", "fog"],
+  },
+  kr: {
+    seats: ["#cd2e3a", "#003478", "#ffffff"],
+    motif: "city",
+    situations: ["night", "dusk", "rainNight", "noon"],
   },
 };
 
@@ -924,6 +930,20 @@ const OPPONENT_KITS = [
     accent: "#ffcdd2",
     number: "#ffffff",
     trim: "#1a237e",
+  },
+  // 19 韓国：赤と紺
+  {
+    name: "韓国",
+    id: "kr",
+    flag: "🇰🇷",
+    rank: 19,
+    jersey: "#cd2e3a",
+    jerseyDark: "#a02430",
+    shorts: "#003478",
+    socks: "#cd2e3a",
+    accent: "#ffcdd2",
+    number: "#ffffff",
+    trim: "#003478",
   },
 ];
 
