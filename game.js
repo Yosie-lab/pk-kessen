@@ -102,6 +102,13 @@ const I18N = {
     coming: "来る！",
     bar: "バー",
     post: "ポスト",
+    barHitOut: "バーに当たって外れた!",
+    postHitOut: "ポストに当たって外れた!",
+    barHitGoalYou: "バーに当てて決めた！",
+    barHitGoalCpu: "バーに当たって決められた…",
+    postHitGoalYou: "ポストに当てて決めた！",
+    postHitGoalCpu: "ポストに当たって決められた…",
+    suddenDeathBanner: "サドンデス！",
   },
   en: {
     brand: "PK SHOWDOWN",
@@ -146,6 +153,13 @@ const I18N = {
     coming: "Here comes the kick!",
     bar: "Crossbar",
     post: "Post",
+    barHitOut: "Hit the crossbar and missed!",
+    postHitOut: "Hit the post and missed!",
+    barHitGoalYou: "Off the bar and in!",
+    barHitGoalCpu: "Hit the bar and went in...",
+    postHitGoalYou: "Off the post and in!",
+    postHitGoalCpu: "Hit the post and went in...",
+    suddenDeathBanner: "SUDDEN DEATH!",
   },
   es: {
     brand: "PK DESAFÍO",
@@ -190,6 +204,13 @@ const I18N = {
     coming: "¡Viene el disparo!",
     bar: "Larguero",
     post: "Poste",
+    barHitOut: "¡Dio en el larguero y salió!",
+    postHitOut: "¡Dio en el palo y salió!",
+    barHitGoalYou: "¡Al larguero y gol!",
+    barHitGoalCpu: "Dio en el larguero y entró...",
+    postHitGoalYou: "¡Al poste y gol!",
+    postHitGoalCpu: "Dio en el poste y entró...",
+    suddenDeathBanner: "¡MUERTE SÚBITA!",
   },
   zh: {
     brand: "PK决战",
@@ -234,6 +255,13 @@ const I18N = {
     coming: "来了！",
     bar: "横梁",
     post: "立柱",
+    barHitOut: "击中横梁偏出！",
+    postHitOut: "击中立柱偏出！",
+    barHitGoalYou: "击中横梁弹入！",
+    barHitGoalCpu: "击中横梁弹入球门…",
+    postHitGoalYou: "击中立柱弹入！",
+    postHitGoalCpu: "击中立柱弹入球门…",
+    suddenDeathBanner: "决胜时刻！",
   },
   ko: {
     brand: "PK결전",
@@ -278,6 +306,13 @@ const I18N = {
     coming: "온다!",
     bar: "크로스바",
     post: "골대",
+    barHitOut: "크로스바 맞고 벗어났다!",
+    postHitOut: "골대 맞고 벗어났다!",
+    barHitGoalYou: "크로스바 맞고 골!",
+    barHitGoalCpu: "크로스바 맞고 들어갔다…",
+    postHitGoalYou: "골대 맞고 골!",
+    postHitGoalCpu: "골대 맞고 들어갔다…",
+    suddenDeathBanner: "서든데스 돌입!",
   },
   fr: {
     brand: "PK DUEL",
@@ -322,6 +357,13 @@ const I18N = {
     coming: "Attention au tir !",
     bar: "Barre",
     post: "Poteau",
+    barHitOut: "A heurté la barre et est sorti !",
+    postHitOut: "A heurté le poteau et est sorti !",
+    barHitGoalYou: "Sur la barre et but !",
+    barHitGoalCpu: "A heurté la barre et est rentré...",
+    postHitGoalYou: "Sur le poteau et but !",
+    postHitGoalCpu: "A heurté le poteau et est rentré...",
+    suddenDeathBanner: "MORT SUBITE !",
   },
 };
 
@@ -2010,7 +2052,7 @@ function beginYouShoot() {
   showControls("ready");
   updateHud();
   const headText = state.suddenDeath
-    ? `sudden death — ${getCountryName("jp")} ${t("kick")}`
+    ? `${t("suddenDeathBanner")} — ${getCountryName("jp")} ${t("kick")}`
     : `${getCountryName("jp")} ${t("kick")}`;
   setPrompt({
     headline: headText,
@@ -2040,7 +2082,7 @@ function beginYouSave() {
   showControls("ready-save");
   updateHud();
   const headText = state.suddenDeath
-    ? `sudden death — ${getCountryName(state.oppKit?.id || "ar")} ${t("kick")}`
+    ? `${t("suddenDeathBanner")} — ${getCountryName(state.oppKit?.id || "ar")} ${t("kick")}`
     : `${getCountryName(state.oppKit?.id || "ar")} ${t("kick")}`;
   setPrompt({
     headline: headText,
@@ -3292,30 +3334,29 @@ function triggerResultPrompt(pending, shooter) {
   if (!pending || pending.promptTriggered) return;
   pending.promptTriggered = true;
   const result = pending.result;
-  const wood = result.post === "bar" ? "バー" : "ポスト";
 
   if (result.goal) {
     if (result.post) {
       if (result.post === "bar") {
         setPrompt(
-          shooter === "you" ? "バーに当てて決めた" : "バーに当たって決められた",
+          shooter === "you" ? t("barHitGoalYou") : t("barHitGoalCpu"),
           { result: true }
         );
       } else {
         setPrompt(
-          shooter === "you" ? "ポストに当てて決めた" : "ポストに当たって決められた…",
+          shooter === "you" ? t("postHitGoalYou") : t("postHitGoalCpu"),
           { result: true }
         );
       }
     } else {
-      setPrompt(shooter === "you" ? "ゴーール！！" : "決められた…", { result: true });
+      setPrompt(shooter === "you" ? t("goalYou") : t("goalCpu"), { result: true });
     }
   } else if (result.saved) {
-    setPrompt(shooter === "you" ? "止められた〜" : "止めた〜!!", { result: true });
+    setPrompt(shooter === "you" ? t("savedCpu") : t("savedYou"), { result: true });
   } else if (result.post) {
-    setPrompt(`${wood}に当たって外れた!`, { result: true });
+    setPrompt(result.post === "bar" ? t("barHitOut") : t("postHitOut"), { result: true });
   } else {
-    setPrompt(shooter === "you" ? "枠を外した！" : "外した！", { result: true });
+    setPrompt(shooter === "you" ? t("outYou") : t("outCpu"), { result: true });
   }
 }
 
@@ -3402,7 +3443,7 @@ function enterSuddenDeath() {
   state.phase = "sudden-death-beat";
   showControls("none");
   updateHud();
-  setPrompt("サドンデス！", { suddenDeath: true });
+  setPrompt(t("suddenDeathBanner"), { suddenDeath: true });
   suddenDeathTimer = setTimeout(() => {
     suddenDeathTimer = 0;
     if (state.mode !== "play" || !state.suddenDeath || state.phase !== "sudden-death-beat") return;
