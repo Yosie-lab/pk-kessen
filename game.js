@@ -36,6 +36,7 @@ const els = {
   btnSettings: document.getElementById("btn-settings"),
   settingsModal: document.getElementById("settings-modal"),
   btnCloseSettings: document.getElementById("btn-close-settings"),
+  accessBlockedScreen: document.getElementById("access-blocked-screen"),
 };
 
 const DIRS = ["left", "center", "right"];
@@ -74,6 +75,9 @@ const I18N = {
     settingsLang: "言語 / Language",
     settingsTeam: "マイチーム / My Team",
     close: "閉じる",
+    blockedTitle: "アクセス制限",
+    blockedDesc: "正規の購入ガイド（PDF）からアクセスしてください。",
+    blockedSub: "本ゲームはBooth購入者専用コンテンツです。購入時にダウンロードしたPDFガイド内の「ゲームを起動する」ボタンをタップしてアクセスしてください。",
     kick: "キック",
     kickHint: "クリックで助走開始",
     youKickSub: "ピッチをクリックしてキック開始",
@@ -121,6 +125,9 @@ const I18N = {
     settingsLang: "Language",
     settingsTeam: "My Team",
     close: "Close",
+    blockedTitle: "Access Restricted",
+    blockedDesc: "Please open from the official purchase guide (PDF).",
+    blockedSub: "This content is exclusive to Booth purchasers. Please tap the 'Launch Game' button in your downloaded PDF guide to gain access.",
     kick: "KICK",
     kickHint: "Tap to start run-up",
     youKickSub: "Tap pitch to start kick",
@@ -173,6 +180,9 @@ const I18N = {
     settingsLang: "Idioma",
     settingsTeam: "Mi Equipo",
     close: "Cerrar",
+    blockedTitle: "Acceso Restringido",
+    blockedDesc: "Por favor, accede desde la guía oficial de compra (PDF).",
+    blockedSub: "Contenido exclusivo para compradores en Booth. Pulsa el botón 'Iniciar Juego' en tu guía PDF para acceder.",
     kick: "TIRO",
     kickHint: "Toca para iniciar carrera",
     youKickSub: "Toca el campo para tirar",
@@ -225,6 +235,9 @@ const I18N = {
     settingsLang: "语言",
     settingsTeam: "我的球队",
     close: "关闭",
+    blockedTitle: "访问受限",
+    blockedDesc: "请从正版购买指南（PDF）中访问。",
+    blockedSub: "本游戏为Booth购买者专属内容。请点击下载的PDF指南中的“启动游戏”按钮进行访问。",
     kick: "罚球",
     kickHint: "点击开始助跑",
     youKickSub: "点击球场开始罚球",
@@ -277,6 +290,9 @@ const I18N = {
     settingsLang: "언어 / Language",
     settingsTeam: "마이 팀",
     close: "닫기",
+    blockedTitle: "접근 제한",
+    blockedDesc: "정식 구매 가이드(PDF)에서 접속해 주세요.",
+    blockedSub: "본 게임은 Booth 구매자 전용 콘텐츠입니다. 다운로드한 PDF 가이드의 '게임 시작' 버튼을 눌러 접속해 주세요.",
     kick: "킥",
     kickHint: "클릭하여 런업 시작",
     youKickSub: "피치를 클릭하여 킥 시작",
@@ -329,6 +345,9 @@ const I18N = {
     settingsLang: "Langue",
     settingsTeam: "Mon Équipe",
     close: "Fermer",
+    blockedTitle: "Accès Restreint",
+    blockedDesc: "Veuillez ouvrir depuis le guide d'achat officiel (PDF).",
+    blockedSub: "Contenu exclusif réservé aux acheteurs Booth. Veuillez appuyer sur le bouton 'Lancer le jeu' dans votre guide PDF.",
     kick: "TIR",
     kickHint: "Touchez pour démarrer",
     youKickSub: "Touchez le terrain pour tirer",
@@ -402,8 +421,40 @@ function getCountryName(id) {
 let currentLang = localStorage.getItem("pk_kessen_lang") || "ja";
 if (!I18N[currentLang]) currentLang = "ja";
 
-function t(key) {
-  return I18N[currentLang]?.[key] || I18N.ja[key] || "";
+const VALID_PASS_KEYS = ["booth_vip_key_9981", "pk_kessen_vip", "pk_booth_2026"];
+const AUTH_STORAGE_KEY = "pk_kessen_auth_token";
+
+function verifyAccessAuth() {
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const passParam = urlParams.get("pass");
+    if (passParam && VALID_PASS_KEYS.includes(passParam)) {
+      localStorage.setItem(AUTH_STORAGE_KEY, passParam);
+      return true;
+    }
+    const storedToken = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (storedToken && VALID_PASS_KEYS.includes(storedToken)) {
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function checkAccessControl() {
+  const isAuthorized = verifyAccessAuth();
+  if (!isAuthorized) {
+    state.mode = "blocked";
+    if (els.title) els.title.hidden = true;
+    if (els.hud) els.hud.hidden = true;
+    if (els.controls) els.controls.hidden = true;
+    if (els.btnSettings) els.btnSettings.hidden = true;
+    if (els.accessBlockedScreen) {
+      els.accessBlockedScreen.hidden = false;
+      els.accessBlockedScreen.removeAttribute("hidden");
+    }
+    return false;
+  }
+  return true;
 }
 
 function applyLanguageUI() {
@@ -430,6 +481,13 @@ function applyLanguageUI() {
   if (teamLabel) teamLabel.textContent = t("settingsTeam");
   const closeBtn = document.getElementById("btn-close-settings");
   if (closeBtn) closeBtn.setAttribute("aria-label", t("close"));
+
+  const blockedTitleEl = document.getElementById("blocked-title");
+  if (blockedTitleEl) blockedTitleEl.textContent = t("blockedTitle");
+  const blockedDescEl = document.getElementById("blocked-desc");
+  if (blockedDescEl) blockedDescEl.textContent = t("blockedDesc");
+  const blockedSubEl = document.getElementById("blocked-sub");
+  if (blockedSubEl) blockedSubEl.textContent = t("blockedSub");
 
   document.querySelectorAll(".lang-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.lang === currentLang);
@@ -2054,6 +2112,7 @@ function showResultScreen() {
 let lastStartAt = 0;
 
 function startMatch() {
+  if (!checkAccessControl()) return;
   const now = performance.now();
   if (now - lastStartAt < 400) return;
   lastStartAt = now;
@@ -6410,6 +6469,7 @@ document.querySelectorAll(".lang-btn").forEach((btn) => {
   });
 });
 
+checkAccessControl();
 applyLanguageUI();
 
 window.addEventListener("keydown", (e) => {

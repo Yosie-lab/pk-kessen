@@ -998,3 +998,60 @@ html.viewport-locked body {
   font-weight: 700;
   box-shadow: 0 0 12px rgba(232, 255, 106, 0.35);
 }
+
+/* —— アクセス制限（未購入者ブロック）画面 —— */
+.access-blocked-screen {
+  background: radial-gradient(circle at center, #1a0a0a 0%, #050202 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+.access-blocked-screen[hidden] {
+  display: none !important;
+}
+
+.blocked-card {
+  width: 90%;
+  max-width: 380px;
+  background: rgba(22, 10, 10, 0.92);
+  border: 1px solid rgba(255, 77, 77, 0.38);
+  border-radius: 20px;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85), 0 0 30px rgba(255, 77, 77, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  animation: popIn 0.3s cubic-bezier(0.18, 1.2, 0.32, 1) both;
+}
+
+.blocked-card .lock-icon {
+  font-size: 3.2rem;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 0 12px rgba(255, 77, 77, 0.5));
+}
+
+.blocked-card h2 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #ff5555;
+  margin: 0 0 10px 0;
+  letter-spacing: 0.05em;
+}
+
+.blocked-card .blocked-desc {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 14px;
+  line-height: 1.45;
+}
+
+.blocked-card .blocked-sub {
+  font-size: 0.84rem;
+  color: #bfa8a8;
+  line-height: 1.55;
+  margin: 0;
+}

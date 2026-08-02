@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=106" />
+    <link rel="stylesheet" href="styles.css?v=107" />
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (registrations) {
@@ -93,6 +93,15 @@
         </div>
       </section>
 
+      <section class="screen access-blocked-screen" id="access-blocked-screen" hidden>
+        <div class="blocked-card">
+          <div class="lock-icon">🔒</div>
+          <h2 id="blocked-title">アクセス制限</h2>
+          <p class="blocked-desc" id="blocked-desc">正規の購入ガイド（PDF）からアクセスしてください。</p>
+          <p class="blocked-sub" id="blocked-sub">本ゲームはBooth購入者専用コンテンツです。<br>購入時にダウンロードしたPDFガイド内の「ゲームを起動する」ボタンをタップしてアクセスしてください。</p>
+        </div>
+      </section>
+
       <button type="button" class="btn-settings" id="btn-settings" aria-label="Settings">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"></circle>
@@ -144,7 +153,7 @@
         }
       });
     </script>
-    <script type="module" src="./game.js?v=106"></script>
+    <script type="module" src="./game.js?v=107"></script>
     <script>
       setTimeout(function () {
         if (window.__PK_LOADED) {
