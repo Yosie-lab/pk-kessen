@@ -3493,10 +3493,12 @@ function advanceTurn(lastShooter) {
 function endMatch(winner) {
   state.mode = "result";
   state.phase = "idle";
+  state.lastWinner = winner;
   showResultScreen();
-  els.resultKicker.textContent = "MATCH OVER";
-  els.resultKicker.classList.remove("sudden-death");
-  els.resultTitle.textContent = winner === "you" ? "歓喜" : "残念";
+  const isSuddenDeath = state.suddenDeath || state.wasSuddenDeath;
+  els.resultKicker.textContent = isSuddenDeath ? t("suddenDeathBanner") : t("matchOver");
+  els.resultKicker.classList.toggle("sudden-death", isSuddenDeath);
+  els.resultTitle.textContent = winner === "you" ? t("victory") : t("defeat");
   els.resultTitle.style.color = winner === "you" ? "var(--accent)" : "var(--danger)";
   els.resultScore.textContent = `${state.scores.you} - ${state.scores.cpu}`;
   if (winner === "you") playVictoryCelebration();
