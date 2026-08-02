@@ -60,6 +60,8 @@ const SAMURAI_BLUE = {
 /** 6ヶ国語（日本語・英語・スペイン語・中国語・韓国語・フランス語）多言語辞書 */
 const I18N = {
   ja: {
+    brand: "PK決戦",
+    brandMini: "PK決戦",
     eyebrow: "SUDDEN DEATH",
     tagline: "もつれた試合を、一発で決める。",
     hintTitle: "キックオフのあと、ピッチをクリックするとホイッスルが鳴り助走が始まります。",
@@ -67,7 +69,7 @@ const I18N = {
     btnRetry: "もう一度",
     victory: "歓喜",
     defeat: "残念",
-    matchOver: "MATCH OVER",
+    matchOver: "試合終了",
     settingsTitle: "設定 / Settings",
     settingsLang: "言語 / Language",
     close: "閉じる",
@@ -100,9 +102,10 @@ const I18N = {
     coming: "来る！",
     bar: "バー",
     post: "ポスト",
-    brandMini: "PK決戦",
   },
   en: {
+    brand: "PK SHOWDOWN",
+    brandMini: "PK SHOWDOWN",
     eyebrow: "SUDDEN DEATH",
     tagline: "Decide the intense match in a single kick.",
     hintTitle: "After kickoff, tap the pitch to sound the whistle and begin run-up.",
@@ -143,15 +146,16 @@ const I18N = {
     coming: "Here comes the kick!",
     bar: "Crossbar",
     post: "Post",
-    brandMini: "PK KESSEN",
   },
   es: {
+    brand: "PK DESAFÍO",
+    brandMini: "PK DESAFÍO",
     eyebrow: "SUDDEN DEATH",
     tagline: "Decide el partido con un solo tiro.",
     hintTitle: "Tras el saque, toca el campo para sonar el silbato y empezar.",
     btnStart: "SAQUE INICIAL",
     btnRetry: "JUGAR DE NUEVO",
-    victory: "VICTORIA",
+    victory: "¡VICTORIA!",
     defeat: "DERROTA",
     matchOver: "FIN DEL PARTIDO",
     settingsTitle: "Configuración",
@@ -186,9 +190,10 @@ const I18N = {
     coming: "¡Viene el disparo!",
     bar: "Larguero",
     post: "Poste",
-    brandMini: "PK KESSEN",
   },
   zh: {
+    brand: "PK决战",
+    brandMini: "PK决战",
     eyebrow: "决胜时刻",
     tagline: "一击定乾坤，决战生死时刻。",
     hintTitle: "开球后，点击球场鸣哨并开始助跑。",
@@ -229,17 +234,18 @@ const I18N = {
     coming: "来了！",
     bar: "横梁",
     post: "立柱",
-    brandMini: "PK决战",
   },
   ko: {
+    brand: "PK결전",
+    brandMini: "PK결전",
     eyebrow: "서든데스",
     tagline: "팽팽한 슛아웃, 한 방으로 승부를 가려라.",
     hintTitle: "킥오프 후 피치가 탭되면 휘슬이 울리고 런업이 시작됩니다.",
     btnStart: "킥오프",
     btnRetry: "다시 하기",
-    victory: "환호",
+    victory: "승리",
     defeat: "패배",
-    matchOver: "MATCH OVER",
+    matchOver: "경기 종료",
     settingsTitle: "설정 / Settings",
     settingsLang: "언어 / Language",
     close: "닫기",
@@ -272,9 +278,10 @@ const I18N = {
     coming: "온다!",
     bar: "크로스바",
     post: "골대",
-    brandMini: "PK결전",
   },
   fr: {
+    brand: "PK DUEL",
+    brandMini: "PK DUEL",
     eyebrow: "SUDDEN DEATH",
     tagline: "Décidez du match intense en un seul tir.",
     hintTitle: "Après le coup d'envoi, touchez le terrain pour siffler et commencer la course.",
@@ -315,7 +322,6 @@ const I18N = {
     coming: "Attention au tir !",
     bar: "Barre",
     post: "Poteau",
-    brandMini: "PK KESSEN",
   },
 };
 
@@ -348,6 +354,10 @@ function t(key) {
 
 function applyLanguageUI() {
   document.documentElement.lang = currentLang;
+  const brandEl = document.querySelector(".brand");
+  if (brandEl) brandEl.textContent = t("brand");
+  const brandMiniEl = document.querySelector(".brand-mini");
+  if (brandMiniEl) brandMiniEl.textContent = t("brandMini");
   const eyebrowEl = document.querySelector(".eyebrow");
   if (eyebrowEl) eyebrowEl.textContent = t("eyebrow");
   const tagEl = document.querySelector(".tagline");
@@ -357,9 +367,6 @@ function applyLanguageUI() {
   if (els.btnStart) els.btnStart.textContent = t("btnStart");
   if (els.btnRetry) els.btnRetry.textContent = t("btnRetry");
   if (els.aimHint) els.aimHint.textContent = t("kickHint");
-
-  const brandMiniEl = document.querySelector(".brand-mini");
-  if (brandMiniEl) brandMiniEl.textContent = t("brandMini");
 
   const modalTitle = document.getElementById("modal-title-settings");
   if (modalTitle) modalTitle.textContent = t("settingsTitle");
