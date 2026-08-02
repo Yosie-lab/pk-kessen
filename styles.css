@@ -947,9 +947,9 @@ html.viewport-locked body {
 
 .team-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  max-height: 180px;
+  max-height: 220px;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -967,9 +967,9 @@ html.viewport-locked body {
   background: rgba(255, 255, 255, 0.05);
   border: 1.5px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
-  padding: 8px 4px;
+  padding: 8px 6px;
   color: #d1ded6;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -978,9 +978,11 @@ html.viewport-locked body {
   align-items: center;
   justify-content: center;
   gap: 4px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.25;
+  min-height: 2.5rem;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .team-btn:hover {

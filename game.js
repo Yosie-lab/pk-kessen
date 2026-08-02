@@ -392,8 +392,10 @@ const COUNTRY_NAMES = {
 
 function getCountryName(id) {
   const dict = COUNTRY_NAMES[id];
-  if (!dict) return (id || "").toUpperCase();
-  return dict[currentLang] || dict.ja || dict.en;
+  if (dict) return dict[currentLang] || dict.ja || dict.en;
+  const kit = ALL_TEAMS.find((k) => k.id === id);
+  if (kit?.name) return kit.name;
+  return (id || "").toUpperCase();
 }
 
 let currentLang = localStorage.getItem("pk_kessen_lang") || "ja";
@@ -6361,6 +6363,7 @@ if (els.btnSettings) {
   els.btnSettings.addEventListener("click", (e) => {
     e.stopPropagation();
     if (els.settingsModal) {
+      renderTeamButtons();
       els.settingsModal.hidden = false;
       els.settingsModal.removeAttribute("hidden");
     }
