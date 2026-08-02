@@ -57,9 +57,10 @@ const SAMURAI_BLUE = {
   trim: "#ffffff",
 };
 
-/** 4ヶ国語（日本語・英語・スペイン語・中国語）多言語辞書 */
+/** 6ヶ国語（日本語・英語・スペイン語・中国語・韓国語・フランス語）多言語辞書 */
 const I18N = {
   ja: {
+    eyebrow: "SUDDEN DEATH",
     tagline: "もつれた試合を、一発で決める。",
     hintTitle: "キックオフのあと、ピッチをクリックするとホイッスルが鳴り助走が始まります。",
     btnStart: "キックオフ",
@@ -70,6 +71,7 @@ const I18N = {
     settingsTitle: "設定 / Settings",
     settingsLang: "言語 / Language",
     close: "閉じる",
+    kick: "キック",
     kickHint: "クリックで助走開始",
     youKickSub: "ピッチをクリックしてキック開始",
     cpuKickSub: "クリックで開始。蹴る瞬間にダイブ",
@@ -98,8 +100,10 @@ const I18N = {
     coming: "来る！",
     bar: "バー",
     post: "ポスト",
+    brandMini: "PK決戦",
   },
   en: {
+    eyebrow: "SUDDEN DEATH",
     tagline: "Decide the intense match in a single kick.",
     hintTitle: "After kickoff, tap the pitch to sound the whistle and begin run-up.",
     btnStart: "KICK OFF",
@@ -110,6 +114,7 @@ const I18N = {
     settingsTitle: "Settings",
     settingsLang: "Language",
     close: "Close",
+    kick: "KICK",
     kickHint: "Tap to start run-up",
     youKickSub: "Tap pitch to start kick",
     cpuKickSub: "Tap to start. Dive when opponent kicks!",
@@ -138,8 +143,10 @@ const I18N = {
     coming: "Here comes the kick!",
     bar: "Crossbar",
     post: "Post",
+    brandMini: "PK KESSEN",
   },
   es: {
+    eyebrow: "SUDDEN DEATH",
     tagline: "Decide el partido con un solo tiro.",
     hintTitle: "Tras el saque, toca el campo para sonar el silbato y empezar.",
     btnStart: "SAQUE INICIAL",
@@ -150,6 +157,7 @@ const I18N = {
     settingsTitle: "Configuración",
     settingsLang: "Idioma",
     close: "Cerrar",
+    kick: "TIRO",
     kickHint: "Toca para iniciar carrera",
     youKickSub: "Toca el campo para tirar",
     cpuKickSub: "Toca para iniciar. ¡Lánzate al tirar!",
@@ -178,8 +186,10 @@ const I18N = {
     coming: "¡Viene el disparo!",
     bar: "Larguero",
     post: "Poste",
+    brandMini: "PK KESSEN",
   },
   zh: {
+    eyebrow: "决胜时刻",
     tagline: "一击定乾坤，决战生死时刻。",
     hintTitle: "开球后，点击球场鸣哨并开始助跑。",
     btnStart: "开球",
@@ -190,6 +200,7 @@ const I18N = {
     settingsTitle: "设置",
     settingsLang: "语言",
     close: "关闭",
+    kick: "罚球",
     kickHint: "点击开始助跑",
     youKickSub: "点击球场开始罚球",
     cpuKickSub: "点击开始。对方射门瞬间扑救！",
@@ -218,8 +229,10 @@ const I18N = {
     coming: "来了！",
     bar: "横梁",
     post: "立柱",
+    brandMini: "PK决战",
   },
   ko: {
+    eyebrow: "서든데스",
     tagline: "팽팽한 슛아웃, 한 방으로 승부를 가려라.",
     hintTitle: "킥오프 후 피치가 탭되면 휘슬이 울리고 런업이 시작됩니다.",
     btnStart: "킥오프",
@@ -230,6 +243,7 @@ const I18N = {
     settingsTitle: "설정 / Settings",
     settingsLang: "언어 / Language",
     close: "닫기",
+    kick: "킥",
     kickHint: "클릭하여 런업 시작",
     youKickSub: "피치를 클릭하여 킥 시작",
     cpuKickSub: "클릭하여 시작. 차는 순간 다이빙",
@@ -258,8 +272,10 @@ const I18N = {
     coming: "온다!",
     bar: "크로스바",
     post: "골대",
+    brandMini: "PK결전",
   },
   fr: {
+    eyebrow: "SUDDEN DEATH",
     tagline: "Décidez du match intense en un seul tir.",
     hintTitle: "Après le coup d'envoi, touchez le terrain pour siffler et commencer la course.",
     btnStart: "COUP D'ENVOI",
@@ -270,6 +286,7 @@ const I18N = {
     settingsTitle: "Paramètres",
     settingsLang: "Langue",
     close: "Fermer",
+    kick: "TIR",
     kickHint: "Touchez pour démarrer",
     youKickSub: "Touchez le terrain pour tirer",
     cpuKickSub: "Touchez pour démarrer. Plongez au moment du tir !",
@@ -298,8 +315,29 @@ const I18N = {
     coming: "Attention au tir !",
     bar: "Barre",
     post: "Poteau",
+    brandMini: "PK KESSEN",
   },
 };
+
+const COUNTRY_NAMES = {
+  jp: { ja: "日本", en: "JAPAN", es: "JAPÓN", zh: "日本", ko: "일본", fr: "JAPON" },
+  ar: { ja: "アルゼンチン", en: "ARGENTINA", es: "ARGENTINA", zh: "阿根廷", ko: "아르헨티나", fr: "ARGENTINE" },
+  es: { ja: "スペイン", en: "SPAIN", es: "ESPAÑA", zh: "西班牙", ko: "스페인", fr: "ESPAGNE" },
+  fr: { ja: "フランス", en: "FRANCE", es: "FRANCIA", zh: "法国", ko: "프랑스", fr: "FRANCE" },
+  eng: { ja: "イングランド", en: "ENGLAND", es: "INGLATERRA", zh: "英格兰", ko: "잉글랜드", fr: "ANGLETERRE" },
+  pt: { ja: "ポルトガル", en: "PORTUGAL", es: "PORTUGAL", zh: "葡萄牙", ko: "포르투갈", fr: "PORTUGAL" },
+  br: { ja: "ブラジル", en: "BRAZIL", es: "BRASIL", zh: "巴西", ko: "브라질", fr: "BRÉSIL" },
+  ma: { ja: "モロッコ", en: "MOROCCO", es: "MARRUECOS", zh: "摩洛哥", ko: "모로코", fr: "MAROC" },
+  nl: { ja: "オランダ", en: "NETHERLANDS", es: "PAÍSES BAJOS", zh: "荷兰", ko: "네덜란드", fr: "PAYS-BAS" },
+  be: { ja: "ベルギー", en: "BELGIUM", es: "BÉLGICA", zh: "比利时", ko: "벨기에", fr: "BELGIQUE" },
+  de: { ja: "ドイツ", en: "GERMANY", es: "ALEMANIA", zh: "德国", ko: "독일", fr: "ALLEMAGNE" },
+};
+
+function getCountryName(id) {
+  const dict = COUNTRY_NAMES[id];
+  if (!dict) return (id || "").toUpperCase();
+  return dict[currentLang] || dict.ja || dict.en;
+}
 
 let currentLang = localStorage.getItem("pk_kessen_lang") || "ja";
 if (!I18N[currentLang]) currentLang = "ja";
@@ -310,6 +348,8 @@ function t(key) {
 
 function applyLanguageUI() {
   document.documentElement.lang = currentLang;
+  const eyebrowEl = document.querySelector(".eyebrow");
+  if (eyebrowEl) eyebrowEl.textContent = t("eyebrow");
   const tagEl = document.querySelector(".tagline");
   if (tagEl) tagEl.textContent = t("tagline");
   const hintEl = document.querySelector(".title-content .hint:not(.boot-error)");
@@ -317,6 +357,9 @@ function applyLanguageUI() {
   if (els.btnStart) els.btnStart.textContent = t("btnStart");
   if (els.btnRetry) els.btnRetry.textContent = t("btnRetry");
   if (els.aimHint) els.aimHint.textContent = t("kickHint");
+
+  const brandMiniEl = document.querySelector(".brand-mini");
+  if (brandMiniEl) brandMiniEl.textContent = t("brandMini");
 
   const modalTitle = document.getElementById("modal-title-settings");
   if (modalTitle) modalTitle.textContent = t("settingsTitle");
@@ -328,6 +371,30 @@ function applyLanguageUI() {
   document.querySelectorAll(".lang-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.lang === currentLang);
   });
+
+  updateHud();
+
+  if (state.mode === "play") {
+    if (state.turn === "you-shoot" && (state.phase === "ready" || state.phase === "whistle")) {
+      const headText = state.suddenDeath
+        ? `sudden death — ${getCountryName("jp")} ${t("kick")}`
+        : `${getCountryName("jp")} ${t("kick")}`;
+      setPrompt({ headline: headText, sub: t("youKickSub") });
+    } else if (state.turn === "you-save" && (state.phase === "ready-save" || state.phase === "whistle")) {
+      const headText = state.suddenDeath
+        ? `sudden death — ${getCountryName(state.oppKit?.id || "ar")} ${t("kick")}`
+        : `${getCountryName(state.oppKit?.id || "ar")} ${t("kick")}`;
+      setPrompt({ headline: headText, sub: t("cpuKickSub") });
+    }
+  }
+
+  if (state.mode === "result") {
+    const isSuddenDeath = state.suddenDeath || state.wasSuddenDeath;
+    els.resultKicker.textContent = isSuddenDeath ? "sudden death" : t("matchOver");
+    if (state.lastWinner) {
+      els.resultTitle.textContent = state.lastWinner === "you" ? t("victory") : t("defeat");
+    }
+  }
 }
 
 function setLanguage(lang) {
@@ -337,13 +404,6 @@ function setLanguage(lang) {
       localStorage.setItem("pk_kessen_lang", lang);
     } catch (_) {}
     applyLanguageUI();
-    if (state.mode === "result") {
-      const isSuddenDeath = state.suddenDeath || state.wasSuddenDeath;
-      els.resultKicker.textContent = isSuddenDeath ? "sudden death" : t("matchOver");
-      if (state.lastWinner) {
-        els.resultTitle.textContent = state.lastWinner === "you" ? t("victory") : t("defeat");
-      }
-    }
   }
 }
 
@@ -1742,8 +1802,10 @@ function setPrompt(text, opts = {}) {
 function updateHud() {
   els.scoreYou.textContent = String(state.scores.you);
   els.scoreCpu.textContent = String(state.scores.cpu);
+  els.labelYou.textContent = getCountryName("jp");
+  els.labelCpu.textContent = getCountryName(state.oppKit?.id || "ar");
   els.roundLabel.textContent = state.suddenDeath
-    ? `サドンデス ${state.kickIndex + 1}`
+    ? `${t("eyebrow")} ${state.kickIndex + 1}`
     : regulationRoundLabel();
   els.roundLabel.classList.toggle("sudden-death", state.suddenDeath);
 
@@ -1940,8 +2002,11 @@ function beginYouShoot() {
   clearWhistleTimer();
   showControls("ready");
   updateHud();
+  const headText = state.suddenDeath
+    ? `sudden death — ${getCountryName("jp")} ${t("kick")}`
+    : `${getCountryName("jp")} ${t("kick")}`;
   setPrompt({
-    headline: `${SAMURAI_BLUE.shortName} kick`,
+    headline: headText,
     sub: t("youKickSub"),
   });
 }
@@ -1967,8 +2032,11 @@ function beginYouSave() {
   clearWhistleTimer();
   showControls("ready-save");
   updateHud();
+  const headText = state.suddenDeath
+    ? `sudden death — ${getCountryName(state.oppKit?.id || "ar")} ${t("kick")}`
+    : `${getCountryName(state.oppKit?.id || "ar")} ${t("kick")}`;
   setPrompt({
-    headline: `${state.oppKit.name} kick`,
+    headline: headText,
     sub: t("cpuKickSub"),
   });
 }
