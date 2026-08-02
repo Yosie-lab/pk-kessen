@@ -2936,7 +2936,7 @@ function triggerResultPrompt(pending, shooter) {
       setPrompt(shooter === "you" ? "ゴーール！！" : "決められた…", { result: true });
     }
   } else if (result.saved) {
-    setPrompt(shooter === "you" ? "止められた〜" : "止めた〜", { result: true });
+    setPrompt(shooter === "you" ? "止められた〜" : "止めた〜!!", { result: true });
   } else if (result.post) {
     setPrompt(`${wood}に当たって外れた!`, { result: true });
   } else {
