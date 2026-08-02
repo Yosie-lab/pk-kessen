@@ -293,18 +293,36 @@ html.viewport-locked body {
 }
 
 .round.sudden-death {
-  font-size: clamp(0.95rem, 3.2vw, 1.18rem);
+  font-size: clamp(1.05rem, 3.6vw, 1.32rem);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--accent);
 }
 
-.prompt.prompt-sudden-death {
+.prompt.prompt-result.prompt-sudden-death {
+  min-height: 4.75rem;
+  height: 4.75rem;
+  font-size: clamp(2.35rem, 8.2vw, 3.45rem);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
   color: var(--accent);
   text-shadow:
-    0 0 22px rgba(232, 255, 106, 0.45),
+    0 0 28px rgba(232, 255, 106, 0.55),
     0 2px 4px rgba(0, 0, 0, 0.55),
-    0 4px 18px rgba(0, 0, 0, 0.72);
+    0 4px 22px rgba(0, 0, 0, 0.72);
+  animation: prompt-sudden-death-in 0.55s cubic-bezier(0.16, 1.25, 0.28, 1) both;
+}
+
+@keyframes prompt-sudden-death-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .prompt {
@@ -683,6 +701,17 @@ html.viewport-locked body {
     line-height: 1.34;
   }
 
+  .prompt.prompt-result.prompt-sudden-death {
+    height: 4.25rem;
+    min-height: 4.25rem;
+    font-size: clamp(1.95rem, 7vw, 2.75rem);
+    line-height: 1.18;
+  }
+
+  .round.sudden-death {
+    font-size: clamp(0.92rem, 3.4vw, 1.12rem);
+  }
+
   .brand {
     font-size: clamp(3rem, 15vw, 4.5rem);
   }
@@ -740,6 +769,17 @@ html.viewport-locked body {
     min-height: 3.75rem;
     max-height: unset;
     font-size: clamp(1.38rem, 4.4vw, 1.85rem);
+  }
+
+  .prompt.prompt-result.prompt-sudden-death {
+    height: 4.1rem;
+    min-height: 4.1rem;
+    font-size: clamp(1.72rem, 6.2vw, 2.35rem);
+    line-height: 1.16;
+  }
+
+  .round.sudden-death {
+    font-size: clamp(0.88rem, 3.2vw, 1.05rem);
   }
 }
 
