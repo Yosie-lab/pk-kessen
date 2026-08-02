@@ -3073,9 +3073,8 @@ function endMatch(winner) {
   state.mode = "result";
   state.phase = "idle";
   showResultScreen();
-  const isSuddenDeath = state.suddenDeath || state.wasSuddenDeath;
-  els.resultKicker.textContent = isSuddenDeath ? "サドンデス" : "MATCH OVER";
-  els.resultKicker.classList.toggle("sudden-death", isSuddenDeath);
+  els.resultKicker.textContent = "MATCH OVER";
+  els.resultKicker.classList.remove("sudden-death");
   els.resultTitle.textContent = winner === "you" ? "歓喜" : "残念";
   els.resultTitle.style.color = winner === "you" ? "var(--accent)" : "var(--danger)";
   els.resultScore.textContent = `${state.scores.you} - ${state.scores.cpu}`;
