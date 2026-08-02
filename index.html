@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=105" />
+    <link rel="stylesheet" href="styles.css?v=106" />
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (registrations) {
@@ -116,6 +116,8 @@
               <button type="button" class="lang-btn" data-lang="ko">🇰🇷 한국어</button>
               <button type="button" class="lang-btn" data-lang="fr">🇫🇷 Français</button>
             </div>
+            <label class="setting-label setting-label-team" id="setting-label-team">マイチーム / My Team</label>
+            <div class="team-grid" id="team-grid"></div>
           </div>
         </div>
       </div>
@@ -142,7 +144,7 @@
         }
       });
     </script>
-    <script type="module" src="./game.js?v=105"></script>
+    <script type="module" src="./game.js?v=106"></script>
     <script>
       setTimeout(function () {
         if (window.__PK_LOADED) {

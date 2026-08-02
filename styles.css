@@ -940,3 +940,59 @@ html.viewport-locked body {
   font-weight: 700;
   box-shadow: 0 0 12px rgba(232, 255, 106, 0.35);
 }
+
+.setting-label-team {
+  margin-top: 18px;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.team-grid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.team-grid::-webkit-scrollbar-thumb {
+  background: rgba(232, 255, 106, 0.3);
+  border-radius: 4px;
+}
+
+.team-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px 4px;
+  color: #d1ded6;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.team-btn:hover {
+  background: rgba(232, 255, 106, 0.12);
+  border-color: rgba(232, 255, 106, 0.4);
+  color: #ffffff;
+}
+
+.team-btn.active {
+  background: #e8ff6a;
+  border-color: #e8ff6a;
+  color: #0c1a14;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(232, 255, 106, 0.35);
+}

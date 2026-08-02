@@ -72,6 +72,7 @@ const I18N = {
     matchOver: "試合終了",
     settingsTitle: "設定 / Settings",
     settingsLang: "言語 / Language",
+    settingsTeam: "マイチーム / My Team",
     close: "閉じる",
     kick: "キック",
     kickHint: "クリックで助走開始",
@@ -118,6 +119,7 @@ const I18N = {
     matchOver: "MATCH OVER",
     settingsTitle: "Settings",
     settingsLang: "Language",
+    settingsTeam: "My Team",
     close: "Close",
     kick: "KICK",
     kickHint: "Tap to start run-up",
@@ -169,6 +171,7 @@ const I18N = {
     matchOver: "FIN DEL PARTIDO",
     settingsTitle: "Configuración",
     settingsLang: "Idioma",
+    settingsTeam: "Mi Equipo",
     close: "Cerrar",
     kick: "TIRO",
     kickHint: "Toca para iniciar carrera",
@@ -220,6 +223,7 @@ const I18N = {
     matchOver: "比赛结束",
     settingsTitle: "设置",
     settingsLang: "语言",
+    settingsTeam: "我的球队",
     close: "关闭",
     kick: "罚球",
     kickHint: "点击开始助跑",
@@ -271,6 +275,7 @@ const I18N = {
     matchOver: "경기 종료",
     settingsTitle: "설정 / Settings",
     settingsLang: "언어 / Language",
+    settingsTeam: "마이 팀",
     close: "닫기",
     kick: "킥",
     kickHint: "클릭하여 런업 시작",
@@ -322,6 +327,7 @@ const I18N = {
     matchOver: "FIN DU MATCH",
     settingsTitle: "Paramètres",
     settingsLang: "Langue",
+    settingsTeam: "Mon Équipe",
     close: "Fermer",
     kick: "TIR",
     kickHint: "Touchez pour démarrer",
@@ -409,6 +415,8 @@ function applyLanguageUI() {
   if (modalTitle) modalTitle.textContent = t("settingsTitle");
   const langLabel = document.getElementById("setting-label-lang");
   if (langLabel) langLabel.textContent = t("settingsLang");
+  const teamLabel = document.getElementById("setting-label-team");
+  if (teamLabel) teamLabel.textContent = t("settingsTeam");
   const closeBtn = document.getElementById("btn-close-settings");
   if (closeBtn) closeBtn.setAttribute("aria-label", t("close"));
 
@@ -416,17 +424,19 @@ function applyLanguageUI() {
     btn.classList.toggle("active", btn.dataset.lang === currentLang);
   });
 
+  renderTeamButtons();
   updateHud();
 
   if (state.mode === "play") {
+    const myId = state.youKit?.id || "jp";
     if (state.turn === "you-shoot" && (state.phase === "ready" || state.phase === "whistle")) {
       const headText = state.suddenDeath
-        ? `sudden death — ${getCountryName("jp")} ${t("kick")}`
-        : `${getCountryName("jp")} ${t("kick")}`;
+        ? `${t("suddenDeathBanner")} — ${getCountryName(myId)} ${t("kick")}`
+        : `${getCountryName(myId)} ${t("kick")}`;
       setPrompt({ headline: headText, sub: t("youKickSub") });
     } else if (state.turn === "you-save" && (state.phase === "ready-save" || state.phase === "whistle")) {
       const headText = state.suddenDeath
-        ? `sudden death — ${getCountryName(state.oppKit?.id || "ar")} ${t("kick")}`
+        ? `${t("suddenDeathBanner")} — ${getCountryName(state.oppKit?.id || "ar")} ${t("kick")}`
         : `${getCountryName(state.oppKit?.id || "ar")} ${t("kick")}`;
       setPrompt({ headline: headText, sub: t("cpuKickSub") });
     }
@@ -434,7 +444,7 @@ function applyLanguageUI() {
 
   if (state.mode === "result") {
     const isSuddenDeath = state.suddenDeath || state.wasSuddenDeath;
-    els.resultKicker.textContent = isSuddenDeath ? "sudden death" : t("matchOver");
+    els.resultKicker.textContent = isSuddenDeath ? t("suddenDeathBanner") : t("matchOver");
     if (state.lastWinner) {
       els.resultTitle.textContent = state.lastWinner === "you" ? t("victory") : t("defeat");
     }
@@ -907,6 +917,46 @@ const OPPONENT_KITS = [
   },
 ];
 
+const ALL_TEAMS = [SAMURAI_BLUE, ...OPPONENT_KITS];
+
+let currentTeamId = localStorage.getItem("pk_kessen_team") || "jp";
+
+function getTeamKit(id) {
+  return ALL_TEAMS.find((k) => k.id === id) || SAMURAI_BLUE;
+}
+
+function renderTeamButtons() {
+  const container = document.getElementById("team-grid");
+  if (!container) return;
+  container.innerHTML = "";
+  ALL_TEAMS.forEach((kit) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `team-btn ${kit.id === currentTeamId ? "active" : ""}`;
+    btn.dataset.team = kit.id;
+    btn.textContent = `${kit.flag} ${getCountryName(kit.id)}`;
+    btn.addEventListener("click", () => setTeam(kit.id));
+    container.appendChild(btn);
+  });
+}
+
+function setTeam(teamId) {
+  if (ALL_TEAMS.some((k) => k.id === teamId)) {
+    currentTeamId = teamId;
+    try {
+      localStorage.setItem("pk_kessen_team", teamId);
+    } catch (_) {}
+    state.youKit = getTeamKit(currentTeamId);
+    if (state.oppKit && state.oppKit.id === state.youKit.id) {
+      pickOpponentKit();
+    } else {
+      invalidateBgCache();
+      updateHud();
+    }
+    renderTeamButtons();
+  }
+}
+
 const state = {
   mode: "title",
   phase: "idle",
@@ -916,9 +966,9 @@ const state = {
   turn: "you-shoot",
   scores: { you: 0, cpu: 0 },
   history: { you: [], cpu: [] },
-  youKit: SAMURAI_BLUE,
+  youKit: getTeamKit(currentTeamId),
   oppKit: OPPONENT_KITS[0],
-  lastOppIndex: -1,
+  lastOppId: null,
   scene: buildScene(OPPONENT_KITS[0]),
   aim: { x: 0.5, y: 0.45 },
   shot: null,
@@ -1097,21 +1147,21 @@ function drawCrowdPulseOverlay() {
 }
 
 function pickOpponentKit() {
-  let idx = Math.floor(Math.random() * OPPONENT_KITS.length);
-  if (OPPONENT_KITS.length > 1) {
-    while (idx === state.lastOppIndex) {
-      idx = Math.floor(Math.random() * OPPONENT_KITS.length);
+  state.youKit = getTeamKit(currentTeamId);
+  const availableOpponents = ALL_TEAMS.filter((k) => k.id !== state.youKit.id);
+  let idx = Math.floor(Math.random() * availableOpponents.length);
+  if (availableOpponents.length > 1 && state.lastOppId) {
+    let attempts = 0;
+    while (availableOpponents[idx].id === state.lastOppId && attempts < 10) {
+      idx = Math.floor(Math.random() * availableOpponents.length);
+      attempts++;
     }
   }
-  state.lastOppIndex = idx;
-  state.oppKit = OPPONENT_KITS[idx];
-  state.youKit = SAMURAI_BLUE;
+  state.oppKit = availableOpponents[idx] || availableOpponents[0];
+  state.lastOppId = state.oppKit.id;
   state.scene = buildScene(state.oppKit);
   invalidateBgCache();
-  if (els.labelYou) els.labelYou.textContent = SAMURAI_BLUE.shortName;
-  if (els.labelCpu) els.labelCpu.textContent = state.oppKit.name;
-  if (els.flagYou) els.flagYou.textContent = SAMURAI_BLUE.flag;
-  if (els.flagCpu) els.flagCpu.textContent = state.oppKit.flag;
+  updateHud();
 }
 
 function clamp(v, a, b) {
@@ -1846,8 +1896,10 @@ function setPrompt(text, opts = {}) {
 function updateHud() {
   els.scoreYou.textContent = String(state.scores.you);
   els.scoreCpu.textContent = String(state.scores.cpu);
-  els.labelYou.textContent = getCountryName("jp");
+  els.labelYou.textContent = getCountryName(state.youKit?.id || "jp");
   els.labelCpu.textContent = getCountryName(state.oppKit?.id || "ar");
+  if (els.flagYou) els.flagYou.textContent = state.youKit?.flag || "🇯🇵";
+  if (els.flagCpu) els.flagCpu.textContent = state.oppKit?.flag || "🇦🇷";
   els.roundLabel.textContent = state.suddenDeath
     ? `${t("eyebrow")} ${state.kickIndex + 1}`
     : regulationRoundLabel();
@@ -2046,9 +2098,10 @@ function beginYouShoot() {
   clearWhistleTimer();
   showControls("ready");
   updateHud();
+  const myId = state.youKit?.id || "jp";
   const headText = state.suddenDeath
-    ? `${t("suddenDeathBanner")} — ${getCountryName("jp")} ${t("kick")}`
-    : `${getCountryName("jp")} ${t("kick")}`;
+    ? `${t("suddenDeathBanner")} — ${getCountryName(myId)} ${t("kick")}`
+    : `${getCountryName(myId)} ${t("kick")}`;
   setPrompt({
     headline: headText,
     sub: t("youKickSub"),
