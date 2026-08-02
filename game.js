@@ -33,6 +33,9 @@ const els = {
   resultScore: document.getElementById("result-score"),
   btnStart: document.getElementById("btn-start"),
   btnRetry: document.getElementById("btn-retry"),
+  btnSettings: document.getElementById("btn-settings"),
+  settingsModal: document.getElementById("settings-modal"),
+  btnCloseSettings: document.getElementById("btn-close-settings"),
 };
 
 const DIRS = ["left", "center", "right"];
@@ -53,6 +56,216 @@ const SAMURAI_BLUE = {
   number: "#ffffff",
   trim: "#ffffff",
 };
+
+/** 4ヶ国語（日本語・英語・スペイン語・中国語）多言語辞書 */
+const I18N = {
+  ja: {
+    tagline: "もつれた試合を、一発で決める。",
+    hintTitle: "キックオフのあと、ピッチをクリックするとホイッスルが鳴り助走が始まります。",
+    btnStart: "キックオフ",
+    btnRetry: "もう一度",
+    victory: "歓喜",
+    defeat: "残念",
+    matchOver: "MATCH OVER",
+    settingsTitle: "設定 / Settings",
+    settingsLang: "言語 / Language",
+    close: "閉じる",
+    kickHint: "クリックで助走開始",
+    youKickSub: "ピッチをクリックしてキック開始",
+    cpuKickSub: "クリックで開始。蹴る瞬間にダイブ",
+    whistle: "ホイッスル！",
+    runup: "助走！キックの瞬間にゴールをクリック",
+    runupSave: "CPU助走！キックの瞬間にゴールをクリックしてダイブ",
+    diveNow: "今だ！ゴールをクリックしてダイブ",
+    shootNow: "今だ！ゴールをクリック",
+    dive: "ダイブ！",
+    reactionLate: "反応遅れ…",
+    shoot: "シュート！",
+    timingLate: "タイミング遅れ…",
+    missedFrame: "枠を外した！",
+    goalYou: "ゴーール！！",
+    goalCpu: "決められた…",
+    savedYou: "止めた〜!",
+    savedCpu: "止められた〜",
+    postHitOut: "に当たって外れた!",
+    barHitGoalYou: "バーに当てて決めた",
+    barHitGoalCpu: "バーに当たって決められた",
+    postHitGoalYou: "ポストに当てて決めた",
+    postHitGoalCpu: "ポストに当たって決められた…",
+    outYou: "枠を外した！",
+    outCpu: "外した！",
+    saveChance: "セーブチャンス！",
+    coming: "来る！",
+    bar: "バー",
+    post: "ポスト",
+  },
+  en: {
+    tagline: "Decide the intense match in a single kick.",
+    hintTitle: "After kickoff, tap the pitch to sound the whistle and begin run-up.",
+    btnStart: "KICK OFF",
+    btnRetry: "RETRY",
+    victory: "VICTORY",
+    defeat: "DEFEAT",
+    matchOver: "MATCH OVER",
+    settingsTitle: "Settings",
+    settingsLang: "Language",
+    close: "Close",
+    kickHint: "Tap to start run-up",
+    youKickSub: "Tap pitch to start kick",
+    cpuKickSub: "Tap to start. Dive when opponent kicks!",
+    whistle: "Whistle!",
+    runup: "Run-up! Tap goal when kicking",
+    runupSave: "CPU Run-up! Tap goal when kicking to dive",
+    diveNow: "Now! Tap goal to dive",
+    shootNow: "Now! Tap goal to shoot",
+    dive: "DIVE!",
+    reactionLate: "Late reaction...",
+    shoot: "SHOOT!",
+    timingLate: "Late timing...",
+    missedFrame: "MISSED!",
+    goalYou: "GOAL!!",
+    goalCpu: "Conceded...",
+    savedYou: "SAVED!",
+    savedCpu: "Saved by keeper...",
+    postHitOut: " hit the woodwork and missed!",
+    barHitGoalYou: "Off the bar and in!",
+    barHitGoalCpu: "Hit the bar and went in...",
+    postHitGoalYou: "Off the post and in!",
+    postHitGoalCpu: "Hit the post and went in...",
+    outYou: "Shot wide!",
+    outCpu: "Off target!",
+    saveChance: "Save Chance!",
+    coming: "Here comes the kick!",
+    bar: "Crossbar",
+    post: "Post",
+  },
+  es: {
+    tagline: "Decide el partido con un solo tiro.",
+    hintTitle: "Tras el saque, toca el campo para sonar el silbato y empezar.",
+    btnStart: "SAQUE INICIAL",
+    btnRetry: "JUGAR DE NUEVO",
+    victory: "VICTORIA",
+    defeat: "DERROTA",
+    matchOver: "FIN DEL PARTIDO",
+    settingsTitle: "Configuración",
+    settingsLang: "Idioma",
+    close: "Cerrar",
+    kickHint: "Toca para iniciar carrera",
+    youKickSub: "Toca el campo para tirar",
+    cpuKickSub: "Toca para iniciar. ¡Lánzate al tirar!",
+    whistle: "¡Silbato!",
+    runup: "¡Carrera! Toca la portería al tirar",
+    runupSave: "¡Carrera CPU! Toca la portería para lanzarte",
+    diveNow: "¡Ahora! Toca la portería para lanzarte",
+    shootNow: "¡Ahora! Toca la portería para tirar",
+    dive: "¡ESTIRADA!",
+    reactionLate: "Reacción tardía...",
+    shoot: "¡DISPARO!",
+    timingLate: "Tiempo tardío...",
+    missedFrame: "¡FUERA!",
+    goalYou: "¡¡GOL!!",
+    goalCpu: "Encajado...",
+    savedYou: "¡PARADA!",
+    savedCpu: "Detenido por el portero...",
+    postHitOut: " ¡dio en el palo y salió!",
+    barHitGoalYou: "¡Al larguero y gol!",
+    barHitGoalCpu: "Dio en el larguero y entró...",
+    postHitGoalYou: "¡Al poste y gol!",
+    postHitGoalCpu: "Dio en el poste y entró...",
+    outYou: "¡Fuera!",
+    outCpu: "¡Desviado!",
+    saveChance: "¡Oportunidad de parada!",
+    coming: "¡Viene el disparo!",
+    bar: "Larguero",
+    post: "Poste",
+  },
+  zh: {
+    tagline: "一击定乾坤，决战生死时刻。",
+    hintTitle: "开球后，点击球场鸣哨并开始助跑。",
+    btnStart: "开球",
+    btnRetry: "再来一局",
+    victory: "胜利",
+    defeat: "遗憾",
+    matchOver: "比赛结束",
+    settingsTitle: "设置",
+    settingsLang: "语言",
+    close: "关闭",
+    kickHint: "点击开始助跑",
+    youKickSub: "点击球场开始罚球",
+    cpuKickSub: "点击开始。对方射门瞬间扑救！",
+    whistle: "鸣哨！",
+    runup: "助跑！射门瞬间点击球门",
+    runupSave: "对手助跑！射门瞬间点击球门扑救",
+    diveNow: "就是现在！点击球门扑救",
+    shootNow: "就是现在！点击球门射门",
+    dive: "扑救！",
+    reactionLate: "反应慢了…",
+    shoot: "射门！",
+    timingLate: "时机慢了…",
+    missedFrame: "偏出球门！",
+    goalYou: "进球！！",
+    goalCpu: "被进球了…",
+    savedYou: "扑住了〜!",
+    savedCpu: "被扑出了〜",
+    postHitOut: "打中门框偏出！",
+    barHitGoalYou: "打中横梁弹入网窝！",
+    barHitGoalCpu: "打中横梁弹入球门…",
+    postHitGoalYou: "打中立柱弹入网窝！",
+    postHitGoalCpu: "打中立柱弹入球门…",
+    outYou: "踢偏了！",
+    outCpu: "踢飞了！",
+    saveChance: "扑救机会！",
+    coming: "来了！",
+    bar: "横梁",
+    post: "立柱",
+  },
+};
+
+let currentLang = localStorage.getItem("pk_kessen_lang") || "ja";
+if (!I18N[currentLang]) currentLang = "ja";
+
+function t(key) {
+  return I18N[currentLang]?.[key] || I18N.ja[key] || "";
+}
+
+function applyLanguageUI() {
+  document.documentElement.lang = currentLang;
+  const tagEl = document.querySelector(".tagline");
+  if (tagEl) tagEl.textContent = t("tagline");
+  const hintEl = document.querySelector(".title-content .hint:not(.boot-error)");
+  if (hintEl) hintEl.textContent = t("hintTitle");
+  if (els.btnStart) els.btnStart.textContent = t("btnStart");
+  if (els.btnRetry) els.btnRetry.textContent = t("btnRetry");
+  if (els.aimHint) els.aimHint.textContent = t("kickHint");
+
+  const modalTitle = document.getElementById("modal-title-settings");
+  if (modalTitle) modalTitle.textContent = t("settingsTitle");
+  const langLabel = document.getElementById("setting-label-lang");
+  if (langLabel) langLabel.textContent = t("settingsLang");
+  const closeBtn = document.getElementById("btn-close-settings");
+  if (closeBtn) closeBtn.setAttribute("aria-label", t("close"));
+
+  document.querySelectorAll(".lang-btn").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.lang === currentLang);
+  });
+}
+
+function setLanguage(lang) {
+  if (I18N[lang]) {
+    currentLang = lang;
+    try {
+      localStorage.setItem("pk_kessen_lang", lang);
+    } catch (_) {}
+    applyLanguageUI();
+    if (state.mode === "result") {
+      const isSuddenDeath = state.suddenDeath || state.wasSuddenDeath;
+      els.resultKicker.textContent = isSuddenDeath ? "sudden death" : t("matchOver");
+      if (state.lastWinner) {
+        els.resultTitle.textContent = state.lastWinner === "you" ? t("victory") : t("defeat");
+      }
+    }
+  }
+}
 
 /**
  * 国ごとのスタジアム景色（対戦相手のホーム想定）
@@ -1649,7 +1862,7 @@ function beginYouShoot() {
   updateHud();
   setPrompt({
     headline: `${SAMURAI_BLUE.shortName} kick`,
-    sub: "ピッチをクリックしてキック開始",
+    sub: t("youKickSub"),
   });
 }
 
@@ -1676,7 +1889,7 @@ function beginYouSave() {
   updateHud();
   setPrompt({
     headline: `${state.oppKit.name} kick`,
-    sub: "クリックで開始。蹴る瞬間にダイブ",
+    sub: t("cpuKickSub"),
   });
 }
 
@@ -2559,7 +2772,7 @@ function startCpuRunup() {
   state.keeperHeight = "mid";
   state.keeperProgress = 0;
   showControls("none");
-  setPrompt("CPU助走！キックの瞬間にゴールをクリックしてダイブ");
+  setPrompt(t("runupSave"));
 }
 
 function lockPlayerDive(clientX, clientY, elapsed) {
@@ -2584,7 +2797,7 @@ function lockPlayerDive(clientX, clientY, elapsed) {
   assignPendingSpin(pending);
 
   showControls("none");
-  setPrompt(inside ? "ダイブ！" : "反応遅れ…");
+  setPrompt(inside ? t("dive") : t("reactionLate"));
 }
 
 function autoLockMissedDive() {
@@ -2603,7 +2816,7 @@ function autoLockMissedDive() {
   bindFlightPath(pending, result);
   assignPendingSpin(pending);
   showControls("none");
-  setPrompt("反応遅れ…");
+  setPrompt(t("reactionLate"));
 }
 
 function stepCpuShot(now) {
@@ -2628,7 +2841,7 @@ function stepCpuShot(now) {
     if (state.phase !== "dive-click") {
       state.phase = "dive-click";
       showControls("dive-click");
-      setPrompt("今だ！ゴールをクリックしてダイブ");
+      setPrompt(t("diveNow"));
     }
     applyPendingEarlyDive(elapsed);
   }
@@ -2654,7 +2867,7 @@ function stepCpuShot(now) {
       launchBall(now, pending);
       state.phase = "flight";
       showControls("none");
-      setPrompt(pending.result.saved ? "セーブチャンス！" : "来る！");
+      setPrompt(pending.result.saved ? t("saveChance") : t("coming"));
     }
   }
 
@@ -2708,7 +2921,7 @@ function signalAndStartRunup(kind) {
   state.whistleStartedAt = performance.now();
   state.phase = "whistle";
   showControls("none");
-  setPrompt("ホイッスル！");
+  setPrompt(t("whistle"));
   rollKeeperFeint();
 
   try {
@@ -2774,7 +2987,7 @@ function startPlayerRunup() {
   state.kicker = initStrikeKicker("you", runFrom, approach);
   state.keeperProgress = 0;
   showControls("none");
-  setPrompt("助走！キックの瞬間にゴールをクリック");
+  setPrompt(t("runup"));
 }
 
 function applyPendingEarlyAim(elapsed) {
@@ -2821,7 +3034,7 @@ function lockPlayerAim(clientX, clientY, elapsed) {
   assignPendingSpin(pending);
 
   showControls("none");
-  setPrompt(inside ? "シュート！" : "枠を外した！");
+  setPrompt(inside ? t("shoot") : t("outYou"));
 }
 
 function autoLockMissedAim(elapsed) {
@@ -2846,7 +3059,7 @@ function autoLockMissedAim(elapsed) {
   bindFlightPath(pending, result);
   assignPendingSpin(pending);
   showControls("none");
-  setPrompt(inside ? "タイミング遅れ…" : "枠を外した！");
+  setPrompt(inside ? t("timingLate") : t("outYou"));
 }
 
 function stepPlayerShot(now) {
@@ -2871,7 +3084,7 @@ function stepPlayerShot(now) {
     if (state.phase !== "aim-click") {
       state.phase = "aim-click";
       showControls("aim-click");
-      setPrompt("今だ！ゴールをクリック");
+      setPrompt(t("shootNow"));
     }
     applyPendingEarlyAim(elapsed);
   }
@@ -5889,6 +6102,38 @@ window.startMatch = startMatch;
 
 attachButtonHandler(els.btnStart);
 attachButtonHandler(els.btnRetry);
+
+if (els.btnSettings) {
+  els.btnSettings.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (els.settingsModal) {
+      els.settingsModal.hidden = false;
+      els.settingsModal.removeAttribute("hidden");
+    }
+  });
+}
+if (els.btnCloseSettings) {
+  els.btnCloseSettings.addEventListener("click", () => {
+    if (els.settingsModal) els.settingsModal.hidden = true;
+  });
+}
+if (els.settingsModal) {
+  els.settingsModal.addEventListener("click", (e) => {
+    if (e.target === els.settingsModal) {
+      els.settingsModal.hidden = true;
+    }
+  });
+}
+document.querySelectorAll(".lang-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const lang = btn.dataset.lang;
+    if (lang) {
+      setLanguage(lang);
+    }
+  });
+});
+
+applyLanguageUI();
 
 window.addEventListener("keydown", (e) => {
   if (state.mode === "title" && (e.key === "Enter" || e.key === " ")) {
