@@ -17,8 +17,9 @@ metadata:
 
 - **定例**: 毎朝 6:00（JST を想定。Automations のタイムゾーン設定に合わせる）
 - **手動**: Agent チャットで `/ai-daily-news-briefing` を実行
-- **Automation 設定**: Cursor → Customize → Automations → Schedule = Daily / Time = 06:00、プロンプト例:
-  > `/ai-daily-news-briefing` を実行。過去24時間のAIニュースを仕事・ビジネス向けに重要度順で日本語要約して。
+- **Automation 設定**: `.cursor/automations/ai-daily-news-briefing/AUTOMATION.md` を参照
+  - Cloud: [cursor.com/automations](https://cursor.com/automations) → cron `0 6 * * *` / TZ `Asia/Tokyo` / リポジトリなし
+  - 詳細手順: `references/setup-guide.md`（Automation 側）
 
 ## 前提
 
