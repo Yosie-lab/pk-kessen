@@ -413,13 +413,19 @@ const COUNTRY_NAMES = {
 function getCountryName(id) {
   const dict = COUNTRY_NAMES[id];
   if (dict) return dict[currentLang] || dict.ja || dict.en;
-  const kit = ALL_TEAMS.find((k) => k.id === id);
-  if (kit?.name) return kit.name;
+  if (typeof ALL_TEAMS !== "undefined" && Array.isArray(ALL_TEAMS)) {
+    const kit = ALL_TEAMS.find((k) => k.id === id);
+    if (kit?.name) return kit.name;
+  }
   return (id || "").toUpperCase();
 }
 
 let currentLang = localStorage.getItem("pk_kessen_lang") || "ja";
 if (!I18N[currentLang]) currentLang = "ja";
+
+function t(key) {
+  return I18N[currentLang]?.[key] || I18N.ja[key] || "";
+}
 
 const VALID_PASS_KEYS = ["booth_vip_key_9981", "pk_kessen_vip", "pk_booth_2026"];
 const AUTH_STORAGE_KEY = "pk_kessen_auth_token";
