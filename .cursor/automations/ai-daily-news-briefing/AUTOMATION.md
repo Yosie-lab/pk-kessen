@@ -55,7 +55,7 @@ Cloud Automation は別途 Cloud Agent 利用料が発生します。従量課�
 
 ```bash
 mkdir -p ~/.cursor/skills
-cp -r /path/to/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
+cp -r ~/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
 ```
 
 ---

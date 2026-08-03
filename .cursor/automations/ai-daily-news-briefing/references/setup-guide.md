@@ -26,8 +26,12 @@
 
 ```bash
 mkdir -p ~/.cursor/skills
-cp -r ~/path/to/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
+# リポジトリを clone した場所に合わせてパスを置き換える（例: ~/pk-kessen）
+cp -r ~/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
 ```
+
+> **注意**: `~/path/to/pk-kessen` は説明用の仮パスです。  
+> 自分の clone 先に置き換えてください。場所が不明なら `find ~ -name "ai-daily-news-briefing" -path "*/.cursor/skills/*" 2>/dev/null` で検索。
 
 Cursor を再起動 → **Customize → Skills** に表示されることを確認。
 
@@ -127,7 +131,7 @@ Automation を使わず、朝 Cursor を開いて以下でも OK:
 
 ```bash
 mkdir -p ~/.cursor/skills
-cp -r /path/to/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
+cp -r ~/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
 ```
 
 Cursor 再起動後、Customize → Skills に `ai-daily-news-briefing` が表示されます。
