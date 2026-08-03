@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@400;500;700;900&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=110" />
+    <link rel="stylesheet" href="styles.css?v=111" />
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.getRegistrations().then(function (registrations) {
@@ -102,6 +102,26 @@
         </div>
       </section>
 
+      <section class="screen trial-limit-screen" id="trial-limit-screen" hidden>
+        <div class="trial-card">
+          <div class="trophy-icon">⚽️</div>
+          <h2 id="trial-title">無料体験のご利用ありがとうございます！</h2>
+          <p class="trial-desc" id="trial-desc">無料体験版（最大2試合）が終了いたしました。</p>
+          <div class="trial-features">
+            <h3 id="trial-features-title">✨ 製品版（フルバージョン）の特長</h3>
+            <ul>
+              <li id="trial-feat-1">・試合数制限なしで遊べる完全買い切り（動画広告・追加課金ゼロ！）</li>
+              <li id="trial-feat-2">・マイチーム機能で全11ヶ国の代表チームから自由に選択可能</li>
+              <li id="trial-feat-3">・6ヶ国語対応＆PWAアプリ対応で通信量ゼロ・完全オフラインプレイ</li>
+            </ul>
+          </div>
+          <a href="https://booth.pm/" target="_blank" rel="noopener noreferrer" class="btn primary btn-buy-booth" id="btn-buy-booth">
+            🛒 Boothで製品版を購入する
+          </a>
+          <p class="trial-sub" id="trial-sub">※購入後にダウンロードしたPDFガイド内の「ゲームを起動する」ボタンをタップすると、製品版（無制限）としてアクセスできます。</p>
+        </div>
+      </section>
+
       <button type="button" class="btn-settings" id="btn-settings" aria-label="Settings">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"></circle>
@@ -153,7 +173,7 @@
         }
       });
     </script>
-    <script type="module" src="./game.js?v=110"></script>
+    <script type="module" src="./game.js?v=111"></script>
     <script>
       setTimeout(function () {
         if (window.__PK_LOADED) {

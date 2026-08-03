@@ -37,6 +37,7 @@ const els = {
   settingsModal: document.getElementById("settings-modal"),
   btnCloseSettings: document.getElementById("btn-close-settings"),
   accessBlockedScreen: document.getElementById("access-blocked-screen"),
+  trialLimitScreen: document.getElementById("trial-limit-screen"),
 };
 
 const DIRS = ["left", "center", "right"];
@@ -78,6 +79,14 @@ const I18N = {
     blockedTitle: "アクセス制限",
     blockedDesc: "正規の購入ガイド（PDF）からアクセスしてください。",
     blockedSub: "本ゲームはBooth購入者専用コンテンツです。購入時にダウンロードしたPDFガイド内の「ゲームを起動する」ボタンをタップしてアクセスしてください。",
+    trialTitle: "無料体験のご利用ありがとうございます！",
+    trialDesc: "無料体験版（最大2試合）が終了いたしました。",
+    trialFeaturesTitle: "✨ 製品版（フルバージョン）の特長",
+    trialFeat1: "・試合数制限なしで遊べる完全買い切り（動画広告・追加課金ゼロ！）",
+    trialFeat2: "・マイチーム機能で全11ヶ国の代表チームから自由に選択可能",
+    trialFeat3: "・6ヶ国語対応＆PWAアプリ対応で通信量ゼロ・完全オフラインプレイ",
+    btnBuyBooth: "🛒 Boothで製品版を購入する",
+    trialSub: "※購入後にダウンロードしたPDFガイド内の「ゲームを起動する」ボタンをタップすると、製品版（無制限）としてアクセスできます。",
     kick: "キック",
     kickHint: "クリックで助走開始",
     youKickSub: "ピッチをクリックしてキック開始",
@@ -128,6 +137,14 @@ const I18N = {
     blockedTitle: "Access Restricted",
     blockedDesc: "Please open from the official purchase guide (PDF).",
     blockedSub: "This content is exclusive to Booth purchasers. Please tap the 'Launch Game' button in your downloaded PDF guide to gain access.",
+    trialTitle: "Thank You for Trying the Demo!",
+    trialDesc: "You have completed the 2-match free trial.",
+    trialFeaturesTitle: "✨ Full Version Features",
+    trialFeat1: "・Unlimited matches with a 1-time purchase (No ads / No in-app purchases!)",
+    trialFeat2: "・Choose your favorite team from 11 national teams",
+    trialFeat3: "・6-language support & PWA offline play with zero data usage",
+    btnBuyBooth: "🛒 Buy Full Version on Booth",
+    trialSub: "※ Tap the 'Launch Game' button in your purchased PDF guide to unlock the full unlimited version.",
     kick: "KICK",
     kickHint: "Tap to start run-up",
     youKickSub: "Tap pitch to start kick",
@@ -183,6 +200,14 @@ const I18N = {
     blockedTitle: "Acceso Restringido",
     blockedDesc: "Por favor, accede desde la guía oficial de compra (PDF).",
     blockedSub: "Contenido exclusivo para compradores en Booth. Pulsa el botón 'Iniciar Juego' en tu guía PDF para acceder.",
+    trialTitle: "¡Gracias por probar la demo!",
+    trialDesc: "Has completado la prueba gratuita de 2 partidos.",
+    trialFeaturesTitle: "✨ Características de la Versión Completa",
+    trialFeat1: "・Partidos ilimitados sin anuncios ni compras integradas",
+    trialFeat2: "・Selecciona tu equipo favorito entre 11 selecciones",
+    trialFeat3: "・Compatible con 6 idiomas y modo PWA sin consumo de datos",
+    btnBuyBooth: "🛒 Comprar Versión Completa en Booth",
+    trialSub: "※ Toca el botón 'Iniciar Juego' en tu guía PDF para desbloquear la versión ilimitada.",
     kick: "TIRO",
     kickHint: "Toca para iniciar carrera",
     youKickSub: "Toca el campo para tirar",
@@ -238,6 +263,14 @@ const I18N = {
     blockedTitle: "访问受限",
     blockedDesc: "请从正版购买指南（PDF）中访问。",
     blockedSub: "本游戏为Booth购买者专属内容。请点击下载的PDF指南中的“启动游戏”按钮进行访问。",
+    trialTitle: "感谢体验试玩版！",
+    trialDesc: "您已完成2场比赛的免费试玩。",
+    trialFeaturesTitle: "✨ 正式版（完整版）特色",
+    trialFeat1: "・一次购买无比赛限制（无视频广告、无内购！）",
+    trialFeat2: "・可自由选择全11支国家代表队",
+    trialFeat3: "・支持6种语言＆PWA应用化离线无流量畅玩",
+    btnBuyBooth: "🛒 前往Booth购买正式版",
+    trialSub: "※ 购买后从下载的PDF指南中点击“启动游戏”按钮即可开启完整版。",
     kick: "罚球",
     kickHint: "点击开始助跑",
     youKickSub: "点击球场开始罚球",
@@ -293,6 +326,14 @@ const I18N = {
     blockedTitle: "접근 제한",
     blockedDesc: "정식 구매 가이드(PDF)에서 접속해 주세요.",
     blockedSub: "본 게임은 Booth 구매자 전용 콘텐츠입니다. 다운로드한 PDF 가이드의 '게임 시작' 버튼을 눌러 접속해 주세요.",
+    trialTitle: "무료 체험 플레이 감사드립니다!",
+    trialDesc: "무료 체험판(최대 2경기)이 종료되었습니다.",
+    trialFeaturesTitle: "✨ 정식판(풀 버전)의 특징",
+    trialFeat1: "・경기 수 제한 없이 즐기는 완전 구매형(광고/추가결제 제로!)",
+    trialFeat2: "・전 11개국 대표팀 중 자유롭게 선택 가능",
+    trialFeat3: "・6개 국어 지원 & PWA 앱 대응으로 데이터 제로 오프라인 플레이",
+    btnBuyBooth: "🛒 Booth에서 정식판 구매하기",
+    trialSub: "※ 구매 후 다운로드한 PDF 가이드의 '게임 시작' 버튼을 누르면 정식판으로 접속됩니다.",
     kick: "킥",
     kickHint: "클릭하여 런업 시작",
     youKickSub: "피치를 클릭하여 킥 시작",
@@ -348,6 +389,14 @@ const I18N = {
     blockedTitle: "Accès Restreint",
     blockedDesc: "Veuillez ouvrir depuis le guide d'achat officiel (PDF).",
     blockedSub: "Contenu exclusif réservé aux acheteurs Booth. Veuillez appuyer sur le bouton 'Lancer le jeu' dans votre guide PDF.",
+    trialTitle: "Merci d'avoir essayé la démo !",
+    trialDesc: "Vous avez terminé la période d'essai de 2 matchs.",
+    trialFeaturesTitle: "✨ Caractéristiques de la Version Complète",
+    trialFeat1: "・Matchs illimités sans publicité ni achat in-app",
+    trialFeat2: "・Choisissez votre équipe parmi 11 sélections nationales",
+    trialFeat3: "・Support de 6 langues & mode PWA hors ligne sans données",
+    btnBuyBooth: "🛒 Acheter la Version Complète sur Booth",
+    trialSub: "※ Appuyez sur le bouton dans votre guide PDF après achat pour débloquer la version complète.",
     kick: "TIR",
     kickHint: "Touchez pour démarrer",
     youKickSub: "Touchez le terrain pour tirer",
@@ -427,8 +476,39 @@ function t(key) {
   return I18N[currentLang]?.[key] || I18N.ja[key] || "";
 }
 
-const VALID_PASS_KEYS = ["booth_vip_key_9981", "pk_kessen_vip", "pk_booth_2026", "demo", "trial", "booth_trial_demo"];
+const VIP_PASS_KEYS = ["booth_vip_key_9981", "pk_kessen_vip", "pk_booth_2026"];
+const TRIAL_PASS_KEYS = ["demo", "trial", "booth_trial_demo"];
+const VALID_PASS_KEYS = [...VIP_PASS_KEYS, ...TRIAL_PASS_KEYS];
 const AUTH_STORAGE_KEY = "pk_kessen_auth_token";
+const TRIAL_PLAY_STORAGE_KEY = "pk_kessen_trial_plays";
+const MAX_TRIAL_PLAYS = 2;
+
+function isCurrentSessionTrial() {
+  try {
+    const token = localStorage.getItem(AUTH_STORAGE_KEY);
+    return TRIAL_PASS_KEYS.includes(token);
+  } catch (_) {
+    return false;
+  }
+}
+
+function getTrialPlayCount() {
+  try {
+    return parseInt(localStorage.getItem(TRIAL_PLAY_STORAGE_KEY) || "0", 10);
+  } catch (_) {
+    return 0;
+  }
+}
+
+function incrementTrialPlayCount() {
+  try {
+    const count = getTrialPlayCount() + 1;
+    localStorage.setItem(TRIAL_PLAY_STORAGE_KEY, count.toString());
+    return count;
+  } catch (_) {
+    return 2;
+  }
+}
 
 function verifyAccessAuth() {
   try {
@@ -473,6 +553,21 @@ function checkAccessControl() {
     }
     return false;
   }
+
+  // 体験版（2試合制限）の判定
+  if (isCurrentSessionTrial() && getTrialPlayCount() >= MAX_TRIAL_PLAYS) {
+    state.mode = "trial_limit";
+    if (els.title) els.title.hidden = true;
+    if (els.hud) els.hud.hidden = true;
+    if (els.controls) els.controls.hidden = true;
+    if (els.btnSettings) els.btnSettings.hidden = true;
+    if (els.trialLimitScreen) {
+      els.trialLimitScreen.hidden = false;
+      els.trialLimitScreen.removeAttribute("hidden");
+    }
+    return false;
+  }
+
   return true;
 }
 
@@ -507,6 +602,23 @@ function applyLanguageUI() {
   if (blockedDescEl) blockedDescEl.textContent = t("blockedDesc");
   const blockedSubEl = document.getElementById("blocked-sub");
   if (blockedSubEl) blockedSubEl.textContent = t("blockedSub");
+
+  const trialTitleEl = document.getElementById("trial-title");
+  if (trialTitleEl) trialTitleEl.textContent = t("trialTitle");
+  const trialDescEl = document.getElementById("trial-desc");
+  if (trialDescEl) trialDescEl.textContent = t("trialDesc");
+  const trialFeatTitleEl = document.getElementById("trial-features-title");
+  if (trialFeatTitleEl) trialFeatTitleEl.textContent = t("trialFeaturesTitle");
+  const trialFeat1El = document.getElementById("trial-feat-1");
+  if (trialFeat1El) trialFeat1El.textContent = t("trialFeat1");
+  const trialFeat2El = document.getElementById("trial-feat-2");
+  if (trialFeat2El) trialFeat2El.textContent = t("trialFeat2");
+  const trialFeat3El = document.getElementById("trial-feat-3");
+  if (trialFeat3El) trialFeat3El.textContent = t("trialFeat3");
+  const btnBuyBoothEl = document.getElementById("btn-buy-booth");
+  if (btnBuyBoothEl) btnBuyBoothEl.textContent = t("btnBuyBooth");
+  const trialSubEl = document.getElementById("trial-sub");
+  if (trialSubEl) trialSubEl.textContent = t("trialSub");
 
   document.querySelectorAll(".lang-btn").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.lang === currentLang);
@@ -2132,6 +2244,9 @@ let lastStartAt = 0;
 
 function startMatch() {
   if (!checkAccessControl()) return;
+  if (isCurrentSessionTrial()) {
+    incrementTrialPlayCount();
+  }
   const now = performance.now();
   if (now - lastStartAt < 400) return;
   lastStartAt = now;
