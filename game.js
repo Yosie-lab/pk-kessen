@@ -3788,8 +3788,8 @@ let lastTapTime = 0;
 function onPointerDown(e) {
   if (state.mode !== "play") return;
   const now = performance.now();
-  if (now - lastPointerDownTime < 40) return;
-  lastPointerDownTime = now;
+  if (now - lastTapTime < TAP_DEBOUNCE_MS) return;
+  lastTapTime = now;
   if (e.target && e.target.closest && e.target.closest("button")) return;
   unlockAudio();
 
