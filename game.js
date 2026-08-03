@@ -432,12 +432,25 @@ const AUTH_STORAGE_KEY = "pk_kessen_auth_token";
 
 function verifyAccessAuth() {
   try {
+    // 1. URLクエリパラメータの確認 (?pass=...)
     const urlParams = new URLSearchParams(window.location.search);
     const passParam = urlParams.get("pass");
     if (passParam && VALID_PASS_KEYS.includes(passParam)) {
       localStorage.setItem(AUTH_STORAGE_KEY, passParam);
       return true;
     }
+
+    // 2. ホーム画面（PWAスタンドアロンモード）からの起動判定
+    const isPWA =
+      window.navigator.standalone === true ||
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (document.referrer && document.referrer.includes("android-app://"));
+    if (isPWA) {
+      localStorage.setItem(AUTH_STORAGE_KEY, VALID_PASS_KEYS[0]);
+      return true;
+    }
+
+    // 3. localStorage に保持されている過去の認証トークン確認
     const storedToken = localStorage.getItem(AUTH_STORAGE_KEY);
     if (storedToken && VALID_PASS_KEYS.includes(storedToken)) {
       return true;

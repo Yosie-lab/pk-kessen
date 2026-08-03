@@ -2,7 +2,7 @@
   "name": "PK決戦 - PK Shootout",
   "short_name": "PK決戦",
   "description": "日本代表 vs 世界強豪！本格PK対戦アクションゲーム。キッカーとキーパーを交互に操作してPK戦を制せ！",
-  "start_url": "./index.html",
+  "start_url": "./index.html?pass=booth_vip_key_9981",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0c1a14",
