@@ -427,7 +427,7 @@ function t(key) {
   return I18N[currentLang]?.[key] || I18N.ja[key] || "";
 }
 
-const VALID_PASS_KEYS = ["booth_vip_key_9981", "pk_kessen_vip", "pk_booth_2026"];
+const VALID_PASS_KEYS = ["booth_vip_key_9981", "pk_kessen_vip", "pk_booth_2026", "demo", "trial", "booth_trial_demo"];
 const AUTH_STORAGE_KEY = "pk_kessen_auth_token";
 
 function verifyAccessAuth() {
