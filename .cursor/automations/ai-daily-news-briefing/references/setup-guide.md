@@ -1,90 +1,113 @@
-# Automation セットアップ手順
+# Automation セットアップ手順（従量課金なし）
 
-Cursor Automations は **UI からのみ作成** できます（2026年8月時点で公開 API なし）。
+## 結論
+
+**Mac の Cursor デスクトップ → Customize → Automations** で設定してください。  
+**cursor.com/automations（Cloud）は使わないでください** — Cloud Agent の従量課金が発生します。
 
 ---
 
-## 方法A: Cloud Automation（推奨）
+## 課金の違い
 
-Mac がスリープ中でも毎朝6時に実行されます。
+| 方式 | 実行場所 | 課金 |
+|------|---------|------|
+| ✅ ローカル IDE Automation | Mac 上の Cursor | プラン内の利用枠のみ |
+| ✅ 手動 `/ai-daily-news-briefing` | Mac 上の Agent チャット | 同上 |
+| ❌ Cloud Automation | cursor.com / クラウド VM | **Cloud Agent 従量課金** |
+| ❌ `/automate` → Cloud 作成 | 同上 | **従量課金** |
 
-### 手順
+---
 
-1. [cursor.com/automations](https://cursor.com/automations) を開く
-2. **New Automation** をクリック
-3. 以下を設定:
+## 手順（ローカル IDE Automation）
 
-| フィールド | 入力値 |
-|-----------|--------|
-| Name | `AI デイリーブリーフィング（毎朝6時）` |
-| Repository | **None / なし** |
-| Trigger | **Scheduled** |
-| Schedule | Custom cron → `0 6 * * *` |
-| Timezone | `Asia/Tokyo` |
-| Status | **Active**（トグル ON） |
+### 1. スキルをグローバルに配置（推奨・1回だけ）
 
-4. **Prompt** 欄に `../AUTOMATION.md` のプロンプトブロックをコピー＆ペースト
-5. **Save** をクリック
-6. **Run now** でテスト実行
+どのプロジェクトからでも `/ai-daily-news-briefing` を使えるようにします。
 
-### オプション: Slack 通知
-
-結果を Slack に届けたい場合:
-
-1. Automation 編集画面 → **Add Tool** → **Send to Slack**
-2. 送信先チャンネルを指定（例: `#ai-news`）
-3. プロンプト末尾に追加:
-
-```text
-要約が完成したら、上記フォーマットの全文を指定 Slack チャンネルに投稿してください。
+```bash
+mkdir -p ~/.cursor/skills
+cp -r ~/path/to/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
 ```
 
----
+Cursor を再起動 → **Customize → Skills** に表示されることを確認。
 
-## 方法B: ローカル IDE Automation（Mac）
+### 2. Automation を作成
 
-Cursor デスクトップアプリから設定。Mac が起動・ログイン中のみ実行。
-
-### 手順
-
-1. Cursor → **Customize**（サイドバー）→ **Automations**
-2. **New Automation** をクリック
+1. Cursor（Mac）→ **Customize** → **Automations**
+2. **New Automation**
 3. 以下を設定:
 
 | フィールド | 入力値 |
 |-----------|--------|
 | Name | `AI デイリーブリーフィング（毎朝6時）` |
-| Prompt | `AUTOMATION.md` のプロンプトをコピー |
+| Prompt | 下記「プロンプト」をコピー |
 | Schedule | **Daily** |
 | Time | **06:00** |
-| Workspace folder | 任意（スキル読込用に本リポジトリを指定推奨） |
+| Workspace folder | ホームフォルダ or よく使うプロジェクト（Browse で選択） |
 | Agent Mode | **Agent** |
+| Permission Mode | **Default Approvals** |
 
-4. **Save** → **Run now** でテスト
+4. **Save**
+5. **Run now** でテスト → 日本語要約が返ることを確認
+6. 一覧で **Enabled**（有効）になっていることを確認
 
-### スキル読込について
+### プロンプト（コピー用）
 
-- Workspace folder に `.cursor/skills/` があるリポジトリを指定すると `/ai-daily-news-briefing` が使える
-- グローバルスキル（`~/.cursor/skills/`）にコピーしても全プロジェクトで利用可能
+```text
+/ai-daily-news-briefing を実行してください。
+
+過去24時間のAIニュースを WebSearch で収集し、仕事・ビジネス向けに重要度順で日本語要約してください。
+コード変更・PR 作成は不要。要約の出力のみ。
+```
 
 ---
 
-## 方法C: `/automate` スキル（Mac の Agent チャット）
+## 手動実行（追加課金なし）
 
-Cursor デスクトップの Agent チャットで以下を送信:
+Automation を使わず、朝 Cursor を開いて以下でも OK:
 
 ```text
-/automate
-
-毎朝6時（JST）に過去24時間のAI関連ニュースを仕事・ビジネス向けに重要度順で日本語要約するAutomationを作成してください。
-
-- 名前: AI デイリーブリーフィング（毎朝6時）
-- スケジュール: 毎日 06:00 Asia/Tokyo（cron: 0 6 * * *）
-- リポジトリ: なし
-- プロンプト: .cursor/automations/ai-daily-news-briefing/AUTOMATION.md を参照
+/ai-daily-news-briefing
 ```
 
-`/automate` ビルトインスキルが Automation 設定を自動生成します。
+プラン内の利用枠のみ消費。Cloud 課金は発生しません。
+
+---
+
+## Mac が 6 時にスリープしている場合
+
+ローカル Automation は Mac + Cursor が起動中のみ動作します。
+
+### 対処A: 電源設定（電源接続時）
+
+1. **システム設定 → バッテリー → オプション**
+2. 「電源アダプタ接続時」→ ディスプレイオフ後も Mac をスリープさせない
+
+### 対処B: 起動後にキャッチアップ
+
+6 時を逃しても問題なし。Cursor を開いて:
+
+- Automations 一覧 → **Run now**
+- または Agent チャットで `/ai-daily-news-briefing`
+
+---
+
+## 利用枠を節約するコツ
+
+| コツ | 効果 |
+|------|------|
+| 短いプロンプト + スキル参照 | トークン削減 |
+| WebSearch 6回（スキル既定） | 過剰検索を避ける |
+| Agent Mode（Edit 不要） | コード変更なしで軽量 |
+| 結果を Markdown ファイルに保存しない | ファイル操作コスト削減 |
+
+---
+
+## やってはいけないこと
+
+- ❌ [cursor.com/automations](https://cursor.com/automations) で Cloud Automation を作成
+- ❌ Agent チャットで `/automate` し Cloud 版を作る
+- ❌ Automation に MCP / Computer use / Slack 等の Cloud ツールを追加（Cloud 実行になる場合あり）
 
 ---
 
@@ -92,21 +115,19 @@ Cursor デスクトップの Agent チャットで以下を送信:
 
 | 症状 | 対処 |
 |------|------|
-| 6時に実行されない | Timezone が `Asia/Tokyo` か確認。Status が Active か確認 |
-| スキルが読み込まれない | リポジトリなし Automation では `standalone-prompt.md` を使用 |
-| 英語で出力される | プロンプトに「必ず日本語」を明記（既に含まれています） |
-| 古いニュースが混ざる | Run now の実行時刻を基準に24時間以内か確認 |
-| 課金が気になる | Cloud Automation は従量課金。ローカル Automation に切替 |
+| 6 時に実行されない | Mac がスリープしていないか確認。Cursor が起動中か確認 |
+| スキルが見つからない | `~/.cursor/skills/` にコピー済みか確認。Cursor 再起動 |
+| `/ai-daily-news-briefing` が効かない | `standalone-prompt.md` の全文プロンプトを Automation に貼る |
+| 英語で出力 | プロンプトに「必ず日本語」を追記 |
+| 従量課金が発生 | Cloud Automation を無効化。ローカルのみ使用 |
 
 ---
 
-## グローバルスキルの配置（任意）
-
-全プロジェクトで `/ai-daily-news-briefing` を使う場合、Mac のターミナルで:
+## グローバルスキル配置コマンド（再掲）
 
 ```bash
 mkdir -p ~/.cursor/skills
 cp -r /path/to/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
 ```
 
-Cursor を再起動すると Customize → Skills に表示されます。
+Cursor 再起動後、Customize → Skills に `ai-daily-news-briefing` が表示されます。

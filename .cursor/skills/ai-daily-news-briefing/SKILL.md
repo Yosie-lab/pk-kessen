@@ -3,8 +3,9 @@ name: ai-daily-news-briefing
 description: 過去24時間のAI関連ニュースを収集し、仕事・ビジネスへの影響度が高い順に日本語で要約する。毎朝6時の定例ブリーフィング、AI業界動向のキャッチアップ、投資・開発判断の材料が必要なときに使う。
 disable-model-invocation: true
 metadata:
-  schedule: "0 6 * * *"
-  schedule-note: "Cursor Automations で Daily 06:00 または cron 0 6 * * * に設定し、このスキルを実行するプロンプトを登録する"
+  schedule: "daily 06:00 JST"
+  schedule-note: "Mac ローカル IDE Automation（Customize → Automations → Daily 06:00）。Cloud Automation は従量課金のため非推奨"
+  billing: "local-only"
   language: ja
   audience: "個人完結型・AI/自動化/直販ビジネス向け"
 ---
@@ -17,9 +18,9 @@ metadata:
 
 - **定例**: 毎朝 6:00（JST を想定。Automations のタイムゾーン設定に合わせる）
 - **手動**: Agent チャットで `/ai-daily-news-briefing` を実行
-- **Automation 設定**: `.cursor/automations/ai-daily-news-briefing/AUTOMATION.md` を参照
-  - Cloud: [cursor.com/automations](https://cursor.com/automations) → cron `0 6 * * *` / TZ `Asia/Tokyo` / リポジトリなし
-  - 詳細手順: `references/setup-guide.md`（Automation 側）
+- **Automation 設定（従量課金なし）**: Mac → Customize → Automations → Daily 06:00
+  - 詳細: `.cursor/automations/ai-daily-news-briefing/references/setup-guide.md`
+  - ⚠️ **cursor.com/automations（Cloud）は使わない** — Cloud Agent 従量課金が発生
 
 ## 前提
 

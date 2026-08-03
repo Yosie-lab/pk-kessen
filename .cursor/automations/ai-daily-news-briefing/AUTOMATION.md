@@ -3,83 +3,94 @@ name: ai-daily-news-briefing
 displayName: "AI デイリーブリーフィング（毎朝6時）"
 description: 過去24時間のAI関連ニュースを仕事・ビジネス向けに重要度順で日本語要約する定時Automation
 enabled: true
+billing: local-only
+billing-note: "Cloud Automation（cursor.com/automations）は Cloud Agent 従量課金。本設定はローカル IDE Automation 専用"
 permission: private
-repository: none
+repository: workspace-with-skill
 timezone: Asia/Tokyo
 model: default
 triggers:
   - type: schedule
-    cron: "0 6 * * *"
-    label: "毎日 06:00 JST"
+    platform: local-ide
+    schedule: daily
+    time: "06:00"
+    label: "毎日 06:00 JST（Mac ローカル）"
 tools: []
 related_skill: ai-daily-news-briefing
 ---
 
 # AI デイリーブリーフィング Automation
 
-このファイルは Cursor Automations への登録用定義です。  
-**Cursor には Automation 作成 API がないため**、[setup-guide.md](references/setup-guide.md) の手順で UI から登録してください。
+## ⚠️ 課金について（必読）
 
-## 推奨設定（Cloud Automation）
+| 方式 | 課金 | 本プロジェクトでの推奨 |
+|------|------|----------------------|
+| **ローカル IDE Automation** | Cursor プラン内の利用枠 | ✅ **推奨** |
+| 手動 `/ai-daily-news-briefing` | 同上 | ✅ 追加課金なし |
+| **Cloud Automation**（cursor.com/automations） | **Cloud Agent 従量課金** | ❌ **使わない** |
+
+Cloud Automation は別途 Cloud Agent 利用料が発生します。従量課金を避けるため、**Mac の Cursor デスクトップ → Customize → Automations** で設定してください。
+
+詳細手順: [references/setup-guide.md](references/setup-guide.md)
+
+---
+
+## 推奨設定（ローカル IDE Automation）
 
 | 項目 | 値 |
 |------|-----|
 | 名前 | `AI デイリーブリーフィング（毎朝6時）` |
-| リポジトリ | **なし**（ニュース収集のみ。Mac オフでも実行） |
-| トリガー | Scheduled / cron `0 6 * * *` |
-| タイムゾーン | `Asia/Tokyo` |
-| 権限 | Private |
-| 状態 | Active |
+| 実行場所 | **Mac ローカル**（Customize → Automations） |
+| スケジュール | **Daily** / **06:00** |
+| Workspace folder | スキルがあるフォルダ（下記参照） |
+| Agent Mode | **Agent** |
+| Permission Mode | **Default Approvals**（承認ダイアログ最小化） |
 
-## プロンプト
+### Workspace folder の指定
 
-以下を Automation のプロンプト欄に **そのままコピー＆ペースト** してください。
+いずれか1つ:
 
-```text
-/ai-daily-news-briefing スキルを実行してください。
+1. **本リポジトリ**（`.cursor/skills/` あり）→ 短いプロンプトで `/ai-daily-news-briefing` が使える
+2. **`~/.cursor/skills/` にスキルをコピーした任意のフォルダ** → 全プロジェクト共通
 
-過去24時間以内の AI 関連ニュースを WebSearch で収集し、仕事・ビジネスへの影響度が高い順に日本語で要約してください。
-
-## 必須ルール
-- 回答は必ず日本語。結論ファースト。挨拶・前置き不要
-- 対象期間: 実行時刻から遡って24時間（JST で明記）
-- WebSearch を最低6回（英語・日本語混在）実行
-- 個人完結型（AI/自動化/直販）の視点で示唆を書く
-- 不確かな情報は推測せず「未確認」と明記
-
-## 収集カテゴリ（各1クエリ以上）
-1. 大手モデル・API（OpenAI / Anthropic / Google / Microsoft）
-2. 規制・政策
-3. エンタープライズ向けツール・料金
-4. 開発者向け SDK / フレームワーク
-5. 資金調達・M&A
-6. 日本国内の生成AIビジネスニュース
-
-## スコアリング（各ニュース 1〜5点）
-- 収益・コストへの影響（0〜2）
-- 仕事のやり方の変化（0〜2）
-- 競争優位の変化（0〜1）
-- 規制・リスク（0〜1）
-- 実用性（0〜1）
-
-## 出力形式
-1. 📅 対象期間
-2. ⚡ 3行サマリー
-3. 🔴 重要ニュース TOP 3〜7（見出し / 概要 / ビジネス影響 / 個人向けアクション / ソースURL）
-4. 🟡 その他の注目（表形式）
-5. 👀 ウォッチリスト
-6. ✅ 今日の1アクション（5分以内でできる具体行動1つ）
-
-コード変更・PR 作成は不要。要約の出力のみ行ってください。
+```bash
+mkdir -p ~/.cursor/skills
+cp -r /path/to/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
 ```
 
-## スキル未読込時の代替プロンプト
+---
 
-リポジトリなし Automation ではプロジェクトスキルが読み込まれない場合があります。  
-その場合は `references/standalone-prompt.md` の全文プロンプトを使用してください。
+## プロンプト（ローカル用・短い版）
+
+スキルが読み込まれる Workspace を指定した場合、以下をコピー:
+
+```text
+/ai-daily-news-briefing を実行してください。
+
+過去24時間のAIニュースを WebSearch で収集し、仕事・ビジネス向けに重要度順で日本語要約してください。
+コード変更・PR 作成は不要。要約の出力のみ。
+```
+
+## プロンプト（スタンドアロン・全文版）
+
+Workspace にスキルがない場合は [references/standalone-prompt.md](references/standalone-prompt.md) を使用。
+
+---
+
+## Mac が 6 時にスリープしている場合
+
+ローカル Automation は **Mac 起動・Cursor 起動中** にのみ実行されます。
+
+| 対処 | 内容 |
+|------|------|
+| 電源設定 | システム設定 → バッテリー → 「ディスプレイオフ時に自動スリープ」= オフ（電源接続時） |
+| 起動後キャッチアップ | 6 時を逃した場合、起動後に Automation の **Run now** で手動実行 |
+| 代替 | 朝 Cursor を開いたら `/ai-daily-news-briefing` を手動実行（追加課金なし） |
+
+---
 
 ## 検証
 
-1. Automation 作成後 **Run now** で手動実行
+1. Customize → Automations → **Run now** で手動実行
 2. 日本語要約が返ることを確認
-3. 翌朝 6:00 JST に自動実行されることを確認
+3. 翌朝 6:00 に自動実行されることを確認（Mac 起動中）
