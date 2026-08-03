@@ -3781,7 +3781,9 @@ function endMatch(winner) {
   else playMiss();
 }
 
-let lastPointerDownTime = 0;
+// タップ間隔のデバウンス（ミリ秒）
+const TAP_DEBOUNCE_MS = 15;   // キック・セーブ共通
+let lastTapTime = 0;
 
 function onPointerDown(e) {
   if (state.mode !== "play") return;
@@ -6551,11 +6553,12 @@ document.addEventListener("visibilitychange", () => {
 
 function attachButtonHandler(btnEl, action) {
   if (!btnEl) return;
-  let handledAt = 0;
-  const handler = (e) => {
+  const BUTTON_DEBOUNCE_MS = 150;
+  let lastBtnTap = 0;
+  const btnHandler = (e) => {
     const now = performance.now();
-    if (now - handledAt < 400) return;
-    handledAt = now;
+    if (now - lastBtnTap < BUTTON_DEBOUNCE_MS) return;
+    lastBtnTap = now;
     e.preventDefault();
     try { unlockAudio(); } catch (_) {}
     if (typeof action === "function") {
@@ -6564,8 +6567,11 @@ function attachButtonHandler(btnEl, action) {
       startMatch();
     }
   };
-  btnEl.addEventListener("pointerup", handler, { passive: false });
+  btnEl.addEventListener("pointerup", btnHandler, { passive: false });
 }
+
+// 音声ロックは最初のタップ前に解除しておく（1回だけ実行）
+window.addEventListener("pointerdown", unlockAudio, { once: true });
 
 window.startMatch = startMatch;
 
