@@ -65,11 +65,14 @@ cp -r ~/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
 スキルが読み込まれる Workspace を指定した場合、以下をコピー:
 
 ```text
-/ai-daily-news-briefing を実行してください。
+今日のニュース
 
-過去24時間のAIニュースを WebSearch で収集し、仕事・ビジネス向けに重要度順で日本語要約してください。
-コード変更・PR 作成は不要。要約の出力のみ。
+過去24時間のAIニュースを WebSearch で収集し、仕事・ビジネス・株価向けに重要度順で日本語要約してください。
+結果はチャットに出し、news/今日のニュース.md と news/archive/YYYY-MM-DD.md も更新してください。
+ゲーム本体のコード変更は不要。
 ```
+
+手動トリガー: Agent チャットで **「今日のニュース」** と送るだけで同じ処理が走る。
 
 ## プロンプト（スタンドアロン・全文版）
 

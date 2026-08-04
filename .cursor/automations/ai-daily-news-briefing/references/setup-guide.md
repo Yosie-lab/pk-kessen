@@ -58,10 +58,11 @@ Cursor を再起動 → **Customize → Skills** に表示されることを確�
 ### プロンプト（コピー用）
 
 ```text
-/ai-daily-news-briefing を実行してください。
+今日のニュース
 
-過去24時間のAIニュースを WebSearch で収集し、仕事・ビジネス向けに重要度順で日本語要約してください。
-コード変更・PR 作成は不要。要約の出力のみ。
+過去24時間のAIニュースを WebSearch で収集し、仕事・ビジネス・株価向けに重要度順で日本語要約してください。
+結果はチャットに出し、news/今日のニュース.md と news/archive/YYYY-MM-DD.md も更新してください。
+ゲーム本体のコード変更は不要。
 ```
 
 ---
@@ -71,9 +72,16 @@ Cursor を再起動 → **Customize → Skills** に表示されることを確�
 Automation を使わず、朝 Cursor を開いて以下でも OK:
 
 ```text
+今日のニュース
+```
+
+または:
+
+```text
 /ai-daily-news-briefing
 ```
 
+最新結果は常に `news/今日のニュース.md` で見られる。  
 プラン内の利用枠のみ消費。Cloud 課金は発生しません。
 
 ---
