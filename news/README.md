@@ -27,3 +27,8 @@ Mac の Cursor → **Customize → Automations** で Daily 06:00 を設定。
 手順: [../.cursor/automations/ai-daily-news-briefing/references/setup-guide.md](../.cursor/automations/ai-daily-news-briefing/references/setup-guide.md)
 
 ⚠️ Cloud Automation（cursor.com/automations）は Cloud Agent 従量課金のため使わない。
+
+## 権限（読み取り専用）
+
+外部アクセスは **WebSearch のみ**。git push / PR / Slack・SNS 投稿は禁止。  
+Mac の Automations では Permission Mode を **Ask Every Time** に設定する。
