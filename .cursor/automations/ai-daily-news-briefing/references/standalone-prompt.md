@@ -19,6 +19,7 @@ Mac の Customize → Automations に貼る全文プロンプト。
 - 専門用語には短い解説を付ける
 - 投資助言はしない（株価は観測・事実ベース）
 - チャット出力に加え `news/今日のニュース.md` と `news/archive/YYYY-MM-DD.md` を更新
+- **外部アクセスは読み取り専用**（WebSearch のみ）。git push・PR作成・Slack/SNS投稿は禁止
 - ゲーム本体のコード変更は不要
 
 ## 収集カテゴリ（各1クエリ以上）

@@ -16,6 +16,8 @@ triggers:
     time: "06:00"
     label: "毎日 06:00 JST（Mac ローカル）"
 tools: []
+# 外部アクセスは読み取り専用（WebSearch のみ）。git push / PR / Slack / 投稿は禁止
+external_access: read-only
 related_skill: ai-daily-news-briefing
 ---
 
@@ -44,7 +46,8 @@ Cloud Automation は別途 Cloud Agent 利用料が発生します。従量課�
 | スケジュール | **Daily** / **06:00** |
 | Workspace folder | スキルがあるフォルダ（下記参照） |
 | Agent Mode | **Agent** |
-| Permission Mode | **Default Approvals**（承認ダイアログ最小化） |
+| Permission Mode | **Ask Every Time**（書き込みは都度承認。外部は読み取り専用） |
+| 外部アクセス | **読み取り専用** — WebSearch のみ。push / PR / Slack / 投稿は禁止 |
 
 ### Workspace folder の指定
 
@@ -69,6 +72,7 @@ cp -r ~/pk-kessen/.cursor/skills/ai-daily-news-briefing ~/.cursor/skills/
 
 過去24時間のAIニュースを WebSearch で収集し、仕事・ビジネス・株価向けに重要度順で日本語要約してください。
 結果はチャットに出し、news/今日のニュース.md と news/archive/YYYY-MM-DD.md も更新してください。
+外部アクセスは読み取り専用（WebSearch のみ）。git push・PR作成・Slack/SNS投稿は禁止。
 ゲーム本体のコード変更は不要。
 ```
 

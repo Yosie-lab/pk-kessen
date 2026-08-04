@@ -49,7 +49,7 @@ Cursor を再起動 → **Customize → Skills** に表示されることを確�
 | Time | **06:00** |
 | Workspace folder | ホームフォルダ or よく使うプロジェクト（Browse で選択） |
 | Agent Mode | **Agent** |
-| Permission Mode | **Default Approvals** |
+| Permission Mode | **Ask Every Time**（外部は読み取り専用。書き込みは都度承認） |
 
 4. **Save**
 5. **Run now** でテスト → 日本語要約が返ることを確認
@@ -62,6 +62,7 @@ Cursor を再起動 → **Customize → Skills** に表示されることを確�
 
 過去24時間のAIニュースを WebSearch で収集し、仕事・ビジネス・株価向けに重要度順で日本語要約してください。
 結果はチャットに出し、news/今日のニュース.md と news/archive/YYYY-MM-DD.md も更新してください。
+外部アクセスは読み取り専用（WebSearch のみ）。git push・PR作成・Slack/SNS投稿は禁止。
 ゲーム本体のコード変更は不要。
 ```
 
