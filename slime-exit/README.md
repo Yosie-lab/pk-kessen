@@ -4,6 +4,8 @@
 
 トーン: **かわいい7割 / ほの怖3割**｜目標: **作品完成優先**
 
+<!-- sync trigger: standalone repo deploy -->
+
 ## 成果物
 
 | # | 内容 | パス |
