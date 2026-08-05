@@ -41,7 +41,7 @@ git push -u origin main
 
 - 反映まで1〜2分かかることがある
 - iPhone Safari でスーパーリロード
-- `file://` ではなく必ず HTTPS で open
+- `file://` ではなく必ず HTTPS で開く
 
 ## 5. Cursor Agent / Actions から push できない場合
 
