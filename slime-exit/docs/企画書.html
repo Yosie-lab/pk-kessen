@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ぷにっと脱出（Slime Exit）企画書</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #2a2438;
+      --muted: #6b6280;
+      --accent: #ff6eb4;
+      --accent2: #7c5cff;
+      --mint: #5eead4;
+      --cream: #fff7fb;
+      --card: #ffffff;
+      --danger: #c45c8a;
+      --line: #eadff0;
+    }
+
+    * { box-sizing: border-box; }
+
+    @page {
+      size: A4;
+      margin: 16mm 14mm 16mm 14mm;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      color: var(--ink);
+      background: #f3eef8;
+      font-family: "Zen Maru Gothic", "M PLUS Rounded 1c", sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.65;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto 12mm;
+      padding: 18mm 16mm 16mm;
+      background:
+        radial-gradient(ellipse 80% 40% at 10% 0%, rgba(255, 110, 180, 0.16), transparent 55%),
+        radial-gradient(ellipse 70% 35% at 100% 10%, rgba(124, 92, 255, 0.14), transparent 50%),
+        linear-gradient(180deg, #fffafd 0%, #f7f2fc 100%);
+      box-shadow: 0 10px 40px rgba(60, 40, 80, 0.12);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .page::before {
+      content: "";
+      position: absolute;
+      inset: 8mm;
+      border: 1.5px solid rgba(255, 110, 180, 0.28);
+      border-radius: 18px;
+      pointer-events: none;
+    }
+
+    .page-inner { position: relative; z-index: 1; }
+
+    h1, h2, h3 {
+      font-family: "M PLUS Rounded 1c", sans-serif;
+      line-height: 1.35;
+      margin: 0 0 0.55em;
+    }
+
+    h1 {
+      font-size: 22pt;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      background: linear-gradient(120deg, #ff4fa3, #7c5cff 55%, #3dd6c6);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    h2 {
+      font-size: 13.5pt;
+      font-weight: 800;
+      color: #4a3570;
+      padding: 0.15em 0 0.15em 0.55em;
+      border-left: 5px solid var(--accent);
+      margin-top: 1.35em;
+      margin-bottom: 0.7em;
+    }
+
+    h3 {
+      font-size: 11pt;
+      font-weight: 700;
+      color: #5b4580;
+      margin-top: 1em;
+    }
+
+    p { margin: 0 0 0.7em; }
+
+    .eyebrow {
+      display: inline-block;
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      color: var(--accent2);
+      background: rgba(124, 92, 255, 0.1);
+      border: 1px solid rgba(124, 92, 255, 0.22);
+      border-radius: 999px;
+      padding: 0.25em 0.9em;
+      margin-bottom: 0.7em;
+    }
+
+    .subtitle {
+      font-size: 12pt;
+      font-weight: 700;
+      color: #5a4a72;
+      margin-bottom: 0.35em;
+    }
+
+    .lead {
+      font-size: 10.5pt;
+      color: var(--muted);
+      max-width: 42em;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 1.1em 0 0.4em;
+    }
+
+    .chip {
+      font-size: 8.5pt;
+      font-weight: 700;
+      padding: 0.35em 0.75em;
+      border-radius: 999px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      color: #5a4a72;
+    }
+
+    .chip strong { color: var(--accent); }
+
+    .hero-card {
+      margin-top: 1.1em;
+      padding: 1em 1.1em;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,240,250,0.9));
+      border: 1px solid rgba(255, 110, 180, 0.25);
+      box-shadow: 0 8px 24px rgba(124, 92, 255, 0.08);
+    }
+
+    .hero-card strong { color: #d43d8a; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.5em 0 1em;
+      font-size: 9.2pt;
+      background: var(--card);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+    }
+
+    th, td {
+      padding: 0.45em 0.55em;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: linear-gradient(90deg, rgba(255,110,180,0.14), rgba(124,92,255,0.1));
+      font-weight: 700;
+      color: #4a3570;
+      white-space: nowrap;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    ul, ol {
+      margin: 0.3em 0 0.9em;
+      padding-left: 1.3em;
+    }
+
+    li { margin: 0.2em 0; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 0.6em 0 1em;
+    }
+
+    .box {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0.75em 0.9em;
+    }
+
+    .box h3 { margin-top: 0; }
+
+    .note {
+      font-size: 9pt;
+      color: var(--muted);
+      background: rgba(94, 234, 212, 0.12);
+      border-left: 4px solid var(--mint);
+      padding: 0.55em 0.8em;
+      border-radius: 0 10px 10px 0;
+      margin: 0.6em 0 1em;
+    }
+
+    .warn {
+      font-size: 9pt;
+      color: #6a3a55;
+      background: rgba(255, 110, 180, 0.1);
+      border-left: 4px solid var(--accent);
+      padding: 0.55em 0.8em;
+      border-radius: 0 10px 10px 0;
+      margin: 0.6em 0 1em;
+    }
+
+    .footer {
+      margin-top: 1.4em;
+      padding-top: 0.6em;
+      border-top: 1px dashed rgba(124, 92, 255, 0.28);
+      font-size: 8.5pt;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      gap: 1em;
+    }
+
+    .toc a {
+      color: #5b4580;
+      text-decoration: none;
+    }
+
+    .flow {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 8.8pt;
+      line-height: 1.55;
+      background: #2a2438;
+      color: #f8eef7;
+      border-radius: 12px;
+      padding: 0.85em 1em;
+      white-space: pre-wrap;
+      margin: 0.5em 0 1em;
+    }
+
+    .term {
+      border-bottom: 1px dotted rgba(124, 92, 255, 0.55);
+      cursor: help;
+    }
+
+    .cover-mark {
+      font-size: 42pt;
+      line-height: 1;
+      margin: 0.2em 0 0.1em;
+      filter: drop-shadow(0 6px 0 rgba(255, 110, 180, 0.18));
+    }
+
+    .kpi {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 0.7em 0 1em;
+    }
+
+    .kpi .box {
+      text-align: center;
+      padding: 0.65em 0.4em;
+    }
+
+    .kpi .num {
+      display: block;
+      font-family: "M PLUS Rounded 1c", sans-serif;
+      font-size: 16pt;
+      font-weight: 800;
+      color: #d43d8a;
+      line-height: 1.2;
+    }
+
+    .kpi .lbl {
+      font-size: 8pt;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    @media print {
+      body { background: white; }
+      .page {
+        box-shadow: none;
+        margin: 0;
+        page-break-after: always;
+        break-after: page;
+      }
+      .page:last-child { page-break-after: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========== COVER / P1 ========== -->
+  <section class="page">
+    <div class="page-inner">
+      <div class="eyebrow">GAME DESIGN DOCUMENT v1.0</div>
+      <div class="cover-mark">🟣</div>
+      <h1>ぷにっと脱出<br />（Slime Exit）</h1>
+      <p class="subtitle">〜異変を食べて大きくなれ！〜</p>
+      <p class="lead">
+        ぷにぷにスライムが、一見同じ迷路の部屋を進み「前と違う違和感（異変）」を見破りながら成長して脱出する、
+        <strong>約1分</strong>の異変観察＆育成パズル。トーンは<strong>かわいい7割／ほの怖3割</strong>。
+      </p>
+
+      <div class="meta-row">
+        <span class="chip"><strong>Platform</strong> Web / GitHub Pages</span>
+        <span class="chip"><strong>Tone</strong> Cute 70% / Soft-horror 30%</span>
+        <span class="chip"><strong>Goal</strong> 作品完成優先</span>
+        <span class="chip"><strong>Loop</strong> 1ステージ ≈ 1分</span>
+      </div>
+
+      <div class="hero-card">
+        <strong>コア体験（一言）:</strong>
+        「5秒観察 → 即判定 → ぷにっと成長」の高速ループに、異変発見のアハ体験と変異図鑑の未回収欲を重ねる。
+      </div>
+
+      <h2>目次</h2>
+      <ol class="toc">
+        <li>コンセプトと成功条件</li>
+        <li>技術選定（美しく滑らかに）</li>
+        <li>コアループ／数値設計</li>
+        <li>異変・育成・失敗・エリア</li>
+        <li>画面構成・演出・音</li>
+        <li>縦スライス定義と制作順序</li>
+        <li>リスクと検証指標</li>
+      </ol>
+
+      <div class="kpi">
+        <div class="box"><span class="num">7</span><span class="lbl">部屋／ステージ</span></div>
+        <div class="box"><span class="num">5–8s</span><span class="lbl">1部屋の目安</span></div>
+        <div class="box"><span class="num">≈1分</span><span class="lbl">クリア時間</span></div>
+        <div class="box"><span class="num">SE3</span><span class="lbl">主ターゲット</span></div>
+      </div>
+
+      <div class="note">
+        <strong>用語:</strong>
+        <span class="term" title="最初から最後まで通る最小の完成プレイ">垂直スライス（縦スライス）</span>＝遊べる最小単位の試作。
+        <span class="term" title="行動を妨げる手間">摩擦</span>＝やり直しの手間。
+        <span class="term" title="乱数の種">シード</span>＝同じ配置を再現するための番号。
+      </div>
+
+      <div class="footer">
+        <span>Slime Exit / GDD v1.0</span>
+        <span>成果物① 企画書 — 1/3</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== P2 ========== -->
+  <section class="page">
+    <div class="page-inner">
+      <h2>1. コンセプトと成功条件</h2>
+
+      <h3>1.1 プレイヤーに渡す感情</h3>
+      <table>
+        <thead>
+          <tr><th>瞬間</th><th>感情</th><th>設計での作り方</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>入室</td><td>少しの緊張</td><td>「前と同じ？違う？」を想起させる間</td></tr>
+          <tr><td>異変発見</td><td>アハ！</td><td>差分が「言い当てたくなる」粒度</td></tr>
+          <tr><td>正解</td><td>かわいさのご褒美</td><td>0.6〜0.9秒の成長演出＋SE</td></tr>
+          <tr><td>失敗</td><td>惜しい→もう1回</td><td>0.8秒以内リスタート＋異変チラ見せ</td></tr>
+          <tr><td>クリア</td><td>達成＋次が気になる</td><td>新エリア／図鑑スタンプ</td></tr>
+        </tbody>
+      </table>
+
+      <h3>1.2 完成定義（v1）</h3>
+      <table>
+        <thead>
+          <tr><th>項目</th><th>必須</th><th>後回し可</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>エリア</td><td>ダンジョン1本（7部屋）</td><td>お菓子・宇宙</td></tr>
+          <tr><td>異変</td><td>12種（逃げ／捕食）</td><td>音系の本格実装</td></tr>
+          <tr><td>成長</td><td>Lv1→7サイズ変化</td><td>SSR分岐フォーム</td></tr>
+          <tr><td>図鑑</td><td>見つけた異変の記録</td><td>完全コンプ報酬</td></tr>
+          <tr><td>配信</td><td>GitHub PagesでHTTPS再生</td><td>PWA高度最適化</td></tr>
+          <tr><td>収益</td><td>なし（作品完成優先）</td><td>広告・DLC</td></tr>
+        </tbody>
+      </table>
+
+      <h3>1.3 トーン指針（かわいい7 / ほの怖3）</h3>
+      <div class="grid-2">
+        <div class="box">
+          <h3>かわいい（7）</h3>
+          <ul>
+            <li>丸み・パステル・ぷにっと弾む</li>
+            <li>失敗も「ぷしゅ〜」で愛嬌</li>
+            <li>異変はクスッと系を多め</li>
+          </ul>
+        </div>
+        <div class="box">
+          <h3>ほの怖（3）</h3>
+          <ul>
+            <li>影の遅れ、時計の視線</li>
+            <li>青白い炎、逆再生の水音</li>
+            <li>怖さは「説明しない余白」で出す</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="warn">
+        ジャンプスケア（突然の大きな音・フラッシュ）は禁止。ほの怖は「気づいたときのゾワッ」に限定する。
+      </div>
+
+      <h2>2. 技術選定（美しく滑らかに）</h2>
+      <p>GitHub Pages・iPhone SE3・個人完結制作を前提に、仕上がりの美しさと実装速度のバランスで選定する。</p>
+
+      <table>
+        <thead>
+          <tr><th>候補</th><th>美しさ</th><th>滑らかさ</th><th>Pages適合</th><th>判定</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>PixiJS v8 + Vite</strong></td><td>◎ スプライト／フィルタ</td><td>◎ GPU描画</td><td>○ 静的出力</td><td><strong>採用</strong></td></tr>
+          <tr><td>純Canvas 2D</td><td>○ 手描き次第</td><td>○ 軽量</td><td>◎ 超単純</td><td>縦スライス予備</td></tr>
+          <tr><td>Phaser 3</td><td>○</td><td>○</td><td>○</td><td>過剰機能が多い</td></tr>
+          <tr><td>Unity WebGL</td><td>◎</td><td>△ 初期読込重い</td><td>△ 容量大</td><td>不採用</td></tr>
+        </tbody>
+      </table>
+
+      <h3>2.1 採用スタック</h3>
+      <table>
+        <thead>
+          <tr><th>層</th><th>技術</th><th>役割</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>描画</td><td>PixiJS v8</td><td>部屋・スライム・パーティクル・イージング</td></tr>
+          <tr><td>ビルド</td><td>Vite</td><td>高速開発、`dist/` を Pages へ</td></tr>
+          <tr><td>状態</td><td>明示的FSM</td><td>title / play / result と部屋フェーズ管理</td></tr>
+          <tr><td>音声</td><td>Web Audio</td><td>初回タップでアンロック、短いSE優先</td></tr>
+          <tr><td>永続化</td><td>localStorage</td><td>図鑑進捗のみ（軽量）</td></tr>
+          <tr><td>ターゲット</td><td>iPhone SE3 Safari</td><td>375×667、タッチ、音量サイレント対策</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <strong>FSM（有限状態機械）:</strong> 状態を「今なに中か」で厳密に分け、入力と描画が暴走しないようにする設計パターン。
+        本ゲームでは <code>ready → observe → decide → resolve → grow/fail</code> を部屋単位で回す。
+      </div>
+
+      <h3>2.2 パフォーマンス原則（SE予算）</h3>
+      <ul>
+        <li><code>requestAnimationFrame</code> 内で都度 <code>new</code>／配列生成をしない（GC＝ゴミ集めによるカクつき防止）</li>
+        <li>異変差分は「差し替えスプライト」中心。重いフィルタはクリア演出のみ</li>
+        <li>音は短いSEをプリロード。BGMはループ1本＋異変時のレイヤ重ね</li>
+        <li>リサイズはデバウンス（連続イベントの間引き）</li>
+      </ul>
+
+      <div class="footer">
+        <span>Slime Exit / GDD v1.0</span>
+        <span>2 / 5</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== P3 ========== -->
+  <section class="page">
+    <div class="page-inner">
+      <h2>3. コアループ／数値設計</h2>
+
+      <h3>3.1 1部屋フロー</h3>
+      <div class="flow">入室 → 観察(2〜5秒) → 判定
+  ├ 正常だと思う → 正面ドアへ前進
+  └ 異変だと思う → 引き返し / 異変をタップ捕食
+       ↓
+   判定結果
+  ├ 正解 → 成長演出(0.6〜0.9s) → 次部屋
+  └ 不正解 → ぷしゅ〜縮み → 0.8s以内にLv1へ再開</div>
+
+      <h3>3.2 ステージ構成</h3>
+      <table>
+        <thead>
+          <tr><th>項目</th><th>値</th><th>意図</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>部屋数</td><td>7</td><td>約1分、失敗時の苛立ちを抑制</td></tr>
+          <tr><td>正常部屋比率</td><td>55〜60%</td><td>テンポ維持（探し疲れ防止）</td></tr>
+          <tr><td>異変部屋比率</td><td>40〜45%</td><td>緊張の維持</td></tr>
+          <tr><td>連続正常の上限</td><td>2</td><td>油断のあとに罠が続くのを防止</td></tr>
+          <tr><td>1部屋異変数</td><td>原則1</td><td>認知負荷の制御</td></tr>
+          <tr><td>基準部屋</td><td>開始時3秒提示</td><td>「正常」の学習</td></tr>
+        </tbody>
+      </table>
+
+      <h3>3.3 操作（タッチ）</h3>
+      <table>
+        <thead>
+          <tr><th>操作</th><th>入力</th><th>備考</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>前進</td><td>中央〜上部タップ／上スワイプ</td><td>誤操作しにくい広いヒット</td></tr>
+          <tr><td>引き返し</td><td>下スワイプ or 左下ボタン</td><td>常時表示は小さめ</td></tr>
+          <tr><td>捕食</td><td>異変オブジェクト直タップ</td><td>判定を少し広め</td></tr>
+          <tr><td>ヒント</td><td>長押しで正常チラ見せ</td><td>1ステージ1〜2回まで</td></tr>
+        </tbody>
+      </table>
+
+      <h3>3.4 異変タイプと正解アクション</h3>
+      <table>
+        <thead>
+          <tr><th>タイプ</th><th>正しい対処</th><th>微ヒント</th><th>失敗しやすい誤操作</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>逃げ系（危険）</td><td>引き返す</td><td>冷たい青光</td><td>食べようとする</td></tr>
+          <tr><td>捕食系（エキス）</td><td>タップ捕食</td><td>甘いピンク光</td><td>引き返してしまう</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        序盤チュートリアルで色ヒントを学習させ、中盤以降はヒント強度を下げる。
+        「異変＝全部食べていい」にすると判断が消え、ゲームが薄くなる。
+      </div>
+
+      <h2>4. 育成・失敗・エリア</h2>
+
+      <h3>4.1 成長2レーン</h3>
+      <table>
+        <thead>
+          <tr><th>レーン</th><th>条件</th><th>変化</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>通常成長</td><td>正常部屋を正解突破</td><td>サイズ＋1、光沢・色の濃さ</td></tr>
+          <tr><td>変異成長</td><td>捕食系を正解捕食</td><td>パーツ追加（ツノ・羽など）</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.2 Lv段階（7部屋）</h3>
+      <table>
+        <thead>
+          <tr><th>Lv</th><th>見た目</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>手のひらサイズ、目だけ</td></tr>
+          <tr><td>2–3</td><td>ぷにっと弾む、ハイライト増</td></tr>
+          <tr><td>4–5</td><td>エリア色へ寄り、軌跡出現</td></tr>
+          <tr><td>6–7</td><td>表情リッチ、脱出ドヤ顔</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.3 失敗</h3>
+      <ul>
+        <li>異変無視で前進 → トラップ → 「ぷしゅ〜」で Lv1 へ</li>
+        <li>結果で異変を短くチラ見せ（学習可能に）</li>
+        <li>同じシード近傍で再開可能にし、「さっきの部屋」を覚えられるようにする</li>
+        <li>連続失敗2回でスライムが微ヒント（震え／目線）</li>
+      </ul>
+
+      <h3>4.4 エリアロードマップ（完成後拡張）</h3>
+      <table>
+        <thead>
+          <tr><th>エリア</th><th>v1</th><th>異変の味</th><th>進化系統</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ダンジョン</td><td>必須</td><td>青炎・壁画・二重影</td><td>冒険（ツノ／盾）</td></tr>
+          <tr><td>お菓子の城</td><td>完成後</td><td>溶ける床・逆さまキャンディ</td><td>天使／ダーク分岐</td></tr>
+          <tr><td>宇宙船</td><td>完成後</td><td>重力・偽警報</td><td>スーツ／ビーム核</td></tr>
+        </tbody>
+      </table>
+
+      <div class="footer">
+        <span>Slime Exit / GDD v1.0</span>
+        <span>3 / 5</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== P4 ========== -->
+  <section class="page">
+    <div class="page-inner">
+      <h2>5. 画面構成・演出・音</h2>
+
+      <h3>5.1 画面一覧</h3>
+      <table>
+        <thead>
+          <tr><th>画面</th><th>要素</th><th>SE注記</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>タイトル</td><td>ロゴ、スライムアイドル、はじめる</td><td>縦1画面に収める</td></tr>
+          <tr><td>プレイ</td><td>部屋背景、装飾、ドア、スライム、操作</td><td>HUDは最小、ゴールを隠さない</td></tr>
+          <tr><td>成長演出</td><td>スケール、パーツ装着、SE</td><td>0.9秒以内</td></tr>
+          <tr><td>失敗</td><td>縮み、異変チラ見せ、即再開</td><td>長いゲームオーバー禁止</td></tr>
+          <tr><td>クリア</td><td>脱出、図鑑スタンプ、もう一回</td><td>短く祝福</td></tr>
+          <tr><td>図鑑</td><td>異変／変異リスト</td><td>ポーズから</td></tr>
+        </tbody>
+      </table>
+
+      <h3>5.2 ビジュアル方向</h3>
+      <ul>
+        <li>パステル基調＋アクセントのピンク／ラベンダー</li>
+        <li>線は太め・角丸。影は柔らかく（多重ドロップシャドウ禁止）</li>
+        <li>スライムはベクトル風スプライト（拡大しても綺麗）</li>
+        <li>異変差分は「差し替えパーツ」で明確に（プレイヤーが言語化できる差）</li>
+      </ul>
+
+      <h3>5.3 サウンド</h3>
+      <table>
+        <thead>
+          <tr><th>種類</th><th>方針</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>BGM</td><td>やさしいループ。異変部屋で低音レイヤを薄く足す</td></tr>
+          <tr><td>成長SE</td><td>「ぷにっ」系。毎回聞きたくなる短さ</td></tr>
+          <tr><td>失敗SE</td><td>「ぷしゅ〜」。不快音は使わない</td></tr>
+          <tr><td>音異変</td><td>v1後半。サイレント時はバイブで代替ヒント</td></tr>
+        </tbody>
+      </table>
+
+      <h2>6. 縦スライス定義と制作順序</h2>
+
+      <h3>6.1 成果物ロードマップ（依頼どおり1つずつ）</h3>
+      <table>
+        <thead>
+          <tr><th>#</th><th>成果物</th><th>完了条件</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>①</td><td><strong>企画書PDF（本ドキュメント）</strong></td><td>技術・ループ・完成定義が合意できる</td></tr>
+          <tr><td>②</td><td>異変リスト</td><td>ダンジョン12＋拡張候補をカード化</td></tr>
+          <tr><td>③</td><td>遊べる縦スライス</td><td>Pages上で7部屋を通しプレイ可能</td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.2 縦スライス（③）の受け入れ基準</h3>
+      <ul>
+        <li>タイトル → 7部屋 → クリア／失敗再開が通る</li>
+        <li>正常／異変が混在し、前進・引き返し・捕食が機能</li>
+        <li>正解でスライムがLvアップして見た目が変わる</li>
+        <li>iPhone SE相当幅でレイアウトが崩れない</li>
+        <li><code>file://</code> ではなく HTTPS（Pages）またはローカルHTTPで動作</li>
+      </ul>
+
+      <h3>6.3 実装順序（③に向けて）</h3>
+      <ol>
+        <li>Vite + PixiJS スケルトン、FSM、リサイズ</li>
+        <li>正常部屋テンプレ＋ドア遷移</li>
+        <li>異変差し替え3種で判定ロジック</li>
+        <li>成長演出と失敗リスタート</li>
+        <li>異変を12種まで拡張、図鑑の最低限</li>
+        <li>SE／微パーティクルで艶出し</li>
+      </ol>
+
+      <h2>7. リスクと検証指標</h2>
+      <table>
+        <thead>
+          <tr><th>リスク</th><th>兆候</th><th>対策</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>異変が難しすぎる</td><td>連続失敗で離脱</td><td>ヒント段階、チラ見せ、判定拡大</td></tr>
+          <tr><td>異変が簡単すぎる</td><td>観察ゼロでクリア</td><td>小異変比率を上げる</td></tr>
+          <tr><td>成長が弱い</td><td>正解が嬉しくない</td><td>スケール＋パーツ＋SEを強化</td></tr>
+          <tr><td>テンポ崩壊</td><td>演出が長い</td><td>演出上限0.9秒を死守</td></tr>
+          <tr><td>SEで重い</td><td>フレーム落ち</td><td>モバイル軽量モード</td></tr>
+        </tbody>
+      </table>
+
+      <h3>7.1 自分テストの指標（広告なし）</h3>
+      <table>
+        <thead>
+          <tr><th>指標</th><th>目標</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1セッションの再プレイ</td><td>平均3回以上「もう一回」したくなる</td></tr>
+          <tr><td>初見クリア率</td><td>20〜40%（簡単すぎ／難しすぎの中間）</td></tr>
+          <tr><td>1部屋平均時間</td><td>4〜8秒</td></tr>
+          <tr><td>失敗後の即再開率</td><td>70%以上が3秒以内に再開</td></tr>
+        </tbody>
+      </table>
+
+      <div class="hero-card">
+        <strong>次の成果物②:</strong> 異変リスト（ダンジョン12種を「差分／逃げor捕食／難易度／トーン」付きでカード化。お菓子・宇宙の拡張候補も併記）。
+      </div>
+
+      <div class="footer">
+        <span>Slime Exit / GDD v1.0 — 作品完成優先 / Web(GitHub Pages) / PixiJS+Vite</span>
+        <span>5 / 5</span>
+      </div>
+    </div>
+  </section>
+
+</body>
+</html>

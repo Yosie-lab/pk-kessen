@@ -4,3 +4,5 @@ Thumbs.db
 .env
 .env.*
 node_modules/
+.cursor/
+USER_RULES_PASTE.txt
