@@ -1,0 +1,44 @@
+# pk-kessen の slime-exit/ を Yosie-lab/slime-exit へ同期する
+# 初回: リポジトリ Settings → Secrets → SLIME_EXIT_PUSH_TOKEN
+#   （Fine-grained PAT: slime-exit への Contents Read and write）
+name: Sync Slime Exit to standalone repo
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cursor/slime-exit-planning-553a
+      - master
+    paths:
+      - "slime-exit/**"
+      - ".github/workflows/sync-slime-exit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push slime-exit/ to Yosie-lab/slime-exit
+        env:
+          PUSH_TOKEN: ${{ secrets.SLIME_EXIT_PUSH_TOKEN }}
+        run: |
+          if [ -z "$PUSH_TOKEN" ]; then
+            echo "::error::SLIME_EXIT_PUSH_TOKEN secret is not set."
+            echo "Add a fine-grained PAT with Contents write on Yosie-lab/slime-exit."
+            exit 1
+          fi
+          workdir=$(mktemp -d)
+          cp -a slime-exit/. "$workdir/"
+          cd "$workdir"
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Sync from pk-kessen@${GITHUB_SHA::7}"
+          git branch -M main
+          git remote add origin "https://x-access-token:${PUSH_TOKEN}@github.com/Yosie-lab/slime-exit.git"
+          git push --force origin main

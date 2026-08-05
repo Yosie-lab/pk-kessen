@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#2a2438" />
+    <title>ぷにっと脱出（Slime Exit）</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game"></canvas>
+      <div id="hud" class="hud" hidden>
+        <div class="hud-top">
+          <span id="room-label" class="pill">部屋 1 / 7</span>
+          <span id="lv-label" class="pill accent">Lv.1</span>
+        </div>
+        <p id="prompt" class="prompt">部屋を観察してね</p>
+      </div>
+      <div id="controls" class="controls" hidden>
+        <button type="button" id="btn-back" class="btn ghost">引き返す</button>
+        <button type="button" id="btn-forward" class="btn primary">進む</button>
+      </div>
+      <section id="title-screen" class="screen">
+        <div class="title-card">
+          <p class="eyebrow">1-MINUTE SLIME PUZZLE</p>
+          <h1>ぷにっと脱出</h1>
+          <p class="tag">異変を見破って、大きくなれ！</p>
+          <button type="button" id="btn-start" class="btn primary xl">はじめる</button>
+          <p class="hint">正常なら「進む」・おかしいなら「引き返す」か異変をタップ</p>
+        </div>
+      </section>
+      <section id="result-screen" class="screen" hidden>
+        <div class="title-card">
+          <p id="result-kicker" class="eyebrow">CLEAR</p>
+          <h2 id="result-title">脱出成功！</h2>
+          <p id="result-sub" class="tag">ぷにっと成長して出口へ</p>
+          <button type="button" id="btn-retry" class="btn primary xl">もう一回</button>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
