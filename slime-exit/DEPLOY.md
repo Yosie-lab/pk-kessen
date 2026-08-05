@@ -41,4 +41,27 @@ git push -u origin main
 
 - 反映まで1〜2分かかることがある
 - iPhone Safari でスーパーリロード
-- `file://` ではなく必ず HTTPS で開く
+- `file://` ではなく必ず HTTPS で open
+
+## 5. Cursor Agent / Actions から push できない場合
+
+### A. Cursor GitHub App に slime-exit を追加（推奨）
+
+1. GitHub → **Settings** → **Applications** → **Cursor** → **Configure**
+2. **Repository access** → `Yosie-lab/slime-exit` を追加
+3. Cloud Agent を再実行するか、手順 2 の `git push` を再試行
+
+### B. Mac からワンコマンド push
+
+```bash
+cd slime-exit
+./scripts/push-standalone.sh
+```
+
+認証エラー時: `gh auth login`（`repo` スコープ）または SSH remote に切替。
+
+### C. pk-kessen Actions で自動同期
+
+1. Fine-grained PAT を作成（`Yosie-lab/slime-exit` → Contents: Read and write）
+2. `pk-kessen` リポジトリ **Settings → Secrets → Actions** → `SLIME_EXIT_PUSH_TOKEN` を追加
+3. **Actions** → **Sync Slime Exit to standalone repo** → **Run workflow**
