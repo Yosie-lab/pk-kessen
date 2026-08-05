@@ -1,11 +1,10 @@
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  // GitHub Pages のサブパスでも相対で動くようにする
+  // 独自リポジトリ Pages ルート（https://yosie-lab.github.io/slime-exit/）向け
   base: "./",
   build: {
-    // GitHub Pages 用にコミットする静的出力先
-    outDir: "play",
+    outDir: "dist",
     assetsDir: "assets",
     sourcemap: false,
     emptyOutDir: true,

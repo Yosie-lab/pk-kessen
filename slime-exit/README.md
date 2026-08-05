@@ -11,7 +11,7 @@
 | ① | 企画書PDF | [`docs/SlimeExit_企画書_v1.pdf`](docs/SlimeExit_企画書_v1.pdf) |
 | ① | 企画書HTML | [`docs/企画書.html`](docs/企画書.html) |
 | ② | 異変リスト | [`docs/異変リスト.md`](docs/異変リスト.md) |
-| ③ | 遊べる縦スライス | [`play/`](play/)（ビルド済み） |
+| ③ | 遊べる縦スライス | `npm run dev` / ビルドは `dist/`（Pagesは独自URLへ） |
 
 ## 遊び方（縦スライス）
 
@@ -35,17 +35,29 @@ npm run dev
 
 iPhone 実機: 同じ Wi‑Fi で `http://<MacのLAN-IP>:5181/`（`npm run dev` はホスト固定のため、必要なら `vite --host 0.0.0.0`）
 
+## 公開URL（独自リポジトリ）
+
+| 項目 | 内容 |
+|------|------|
+| 想定Pages URL | **https://yosie-lab.github.io/slime-exit/** |
+| リポジトリ | `Yosie-lab/slime-exit`（pk-kessen 配下ではない） |
+| Pages設定 | ブランチ `gh-pages` のルート、または Actions で `dist/` をデプロイ |
+
+`pk-kessen` のサブパス（`.../pk-kessen/slime-exit/...`）では公開しない。
+
 ## ビルド（Pages用）
 
 ```bash
 npm run build
 ```
 
-出力: `play/`（相対パス `base: './'`）
+出力: `dist/`（`base: './'`＝独自ドメイン／独自リポジトリルート向け）
 
-Pages 反映後の想定URL:
+ローカル確認用の静的プレビュー:
 
-`https://yosie-lab.github.io/pk-kessen/slime-exit/play/`
+```bash
+npm run preview
+```
 
 ## 技術
 
@@ -55,3 +67,4 @@ Pages 反映後の想定URL:
 | 開発／ビルド | Vite |
 | 状態 | 明示的モード（title / intro / play / grow / fail / result） |
 | 主ターゲット | iPhone SE3 Safari |
+| 配信 | 専用 GitHub Pages（独自URL） |
