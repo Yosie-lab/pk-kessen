@@ -47,14 +47,7 @@ Game-specific (iPhone SE is the perf budget):
 - Avoid per-frame heavy net meshes, full 3D trail balls, dense crowds, rain, HUD `backdrop-filter` on small screens
 - Reuse `mobileLite` / `bgCache`; invalidate cache on resize, kit/scene change, fixed-goal refresh
 - Title/result: render backdrop only, not the full pitch every frame
-
-Render-loop rules（描画ループ / GCハザード防止）:
-- `requestAnimationFrame` 内はアロケーション禁止（`new`・オブジェクト生成・即席配列 `.map`/`.filter` を `update`/`render` で作らない）。再利用するベクトル・行列・一時変数はループ外で事前生成（プール化）
-- パーティクル・数値データは TypedArray（`Float32Array`/`Int32Array`）で保持（通常 Array を避ける）
-- 高頻度イベント（`resize`/`scroll`/`mousemove`/`touchmove`）はスロットル/デバウンスを適用
-- 重い物理・数値計算は描画から分離し、Web Worker へオフロードするか描画より低頻度で実行
-- Dispose 時にタイマー（`setInterval`/`setTimeout`）・アニメーションループ・リスナーを解除し、Canvas/WebGL/WebGPU の GPU リソースは `dispose()` で明示解放（リーク防止）
-- ループはメモリ効率と計算量 O(N) を優先。変更時、既存ループに alloc/無駄計算が混入していないか自己チェックしてから提示
+- 汎用の描画ループ / メモリ / イベント規約は `.cursor/rules/engineering.mdc`（常時適用）に集約
 
 ## Boundaries
 ### Always

@@ -1,0 +1,21 @@
+---
+description: 状態管理(FSM)・描画ループ/メモリ・コード品質の共通エンジニアリング規約（常時適用）
+globs:
+alwaysApply: true
+---
+
+# 状態管理（FSM）
+- アプリ状態（Init/Playing/Paused/Result 等）の遷移は明示的な状態機械（FSM）で制御。
+- 入力（マウス/タッチ/キーボード）は描画を直接叩かず、状態/イベントレイヤー経由。
+
+# パフォーマンス（描画ループ / メモリ）
+- `requestAnimationFrame` 内はアロケーション厳禁（`new`・オブジェクト生成・即席配列 `.map`/`.filter`）。再利用する一時変数・ベクトル・行列はループ外で事前生成（プール化）。
+- パーティクル・数値データは TypedArray（`Float32Array` / `Int32Array` 等）で保持（通常 Array を避ける）。
+- 物理・数値計算と描画（Canvas/WebGL/WebGPU）を分離。重い計算は Web Worker へオフロードするか描画より低頻度で実行。
+- 高頻度イベント（`resize`/`scroll`/`mousemove`/`touchmove`, ResizeObserver）はスロットル/デバウンスを適用。
+- 破棄（Dispose）時にタイマー（`setInterval`/`setTimeout`）・アニメーションループ・リスナーを解除し、GPU リソース（Canvas/WebGL/WebGPU）は `dispose()` で解放（リーク防止）。
+
+# コード品質・リファクタリング
+- 描画結果とレスポンス性を損なわず最小差分でリファクタリング。破壊的変更は根拠を提示してから。
+- 物理・アルゴリズムには意図/計算の意味を書いた簡潔なコメントを残す。
+- テスト用 `console.log` や不要デバッグは必ず削除。ループはメモリ効率と計算量 O(N) を最優先。
